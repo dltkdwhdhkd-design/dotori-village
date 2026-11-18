@@ -63,6 +63,7 @@ export function buildWorld(village) {
       const v = VILLAGERS[vid], c = new THREE.Color(v.roof);
       return { model: v.house, tint: { roof: v.roof, roof_d: c.clone().multiplyScalar(0.8).getHex(), wall: v.wall, door: v.door, door_d: new THREE.Color(v.door).multiplyScalar(0.8).getHex() } };
     },
+    playerPos: () => (G.player && !G.room && G.started ? G.player : null),
     itemModel: (id) => {
       const it = ITEMS[id];
       if (!it) return 'bundle';

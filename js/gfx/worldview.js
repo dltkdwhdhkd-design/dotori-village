@@ -32,6 +32,33 @@ function glowMaterial(color = 0xffe9a0) {
   return patchMaterial(new THREE.MeshBasicMaterial({ map: glowTex, color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
 }
 
+// 주인공을 가리는 건물·나무를 비쳐 보이게 할 때 쓰는 재질(원래 재질마다 하나씩)
+const fadeCache = new Map();
+function fadeOf(mat) {
+  let m = fadeCache.get(mat);
+  if (!m) {
+    m = mat.clone();
+    m.userData = { base: mat.userData.base, fade: true };
+    m.transparent = true; m.opacity = 0.3;          // 깊이는 그대로 기록해서 겹친 잎이 덧칠되지 않게 한다
+    m.onBeforeCompile = null;
+    m.customProgramCacheKey = THREE.Material.prototype.customProgramCacheKey;
+    patchMaterial(m);
+    fadeCache.set(mat, m);
+  }
+  m.color.copy(mat.color);
+  if (mat.emissive) m.emissive.copy(mat.emissive);
+  return m;
+}
+function setFade(obj, on) {
+  if (!!obj.userData.faded === on) return;
+  obj.userData.faded = on;
+  obj.traverse((n) => {
+    if (!n.isMesh || n.userData.noFade) return;
+    if (on) { if (!n.userData.orig) n.userData.orig = n.material; n.material = fadeOf(n.userData.orig); n.renderOrder = 3; }
+    else if (n.userData.orig) { n.material = n.userData.orig; n.renderOrder = 0; }
+  });
+}
+
 export class WorldView {
   /** hooks: { buildingLook(b) -> {model,tint}|null, itemModel(id) -> 모델 이름 } */
   constructor(stage, village, hooks) {
@@ -186,7 +213,7 @@ export class WorldView {
     }
     if (!g) return null;
     g.position.set(x + 0.5, this.gy(x + 0.5, y + 0.5), y + 0.5);
-    if (shadow) { const sh = makeBlobShadow(shadow / g.scale.x, 0.28); g.add(sh); }
+    if (shadow) { const sh = makeBlobShadow(shadow / g.scale.x, 0.28); sh.userData.noFade = true; g.add(sh); }
     g.userData.o = o;
     return g;
   }
@@ -263,6 +290,33 @@ export class WorldView {
     }
     for (const [, g] of this.marks) { const dx = g.position.x - fx, dz = g.position.z - fz; g.visible = dx > -19 && dx < 19 && dz > -34 && dz < 11; }
     for (const [, g] of this.bldObjs) { const dx = g.position.x - fx, dz = g.position.z - fz; g.visible = dx > -24 && dx < 24 && dz > -38 && dz < 14; }
+    this.updateFade();
+  }
+
+  /** 주인공이 건물이나 나무 뒤(북쪽)에 서 있으면 그것을 비쳐 보이게 한다 */
+  updateFade() {
+    const p = this.hooks.playerPos ? this.hooks.playerPos() : null;
+    for (const [, g] of this.bldObjs) {
+      const b = g.userData.b;
+      const on = !!p && b && this.hooks.buildingLook(b) && p.x > b.x - 0.6 && p.x < b.x + b.w + 0.6 && p.z < b.y + 0.4 && p.z > b.y - 3.4;
+      setFade(g, on);
+    }
+    if (!p) return;
+    const px = Math.floor(p.x), pz = Math.floor(p.z);
+    const want = new Set();
+    for (let dy = 1; dy <= 3; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const i = (pz + dy) * MAP_W + px + dx, g = this.objs.get(i);
+      if (!g) continue;
+      const o = g.userData.o;
+      const tall = (o.t === 'tree' && o.stage >= 2) || (o.t === 'fix' && o.kind === 'bigtree');
+      if (!tall) continue;
+      const ddx = Math.abs(g.position.x - p.x), ddz = g.position.z - p.z;
+      const reach = o.kind === 'bigtree' ? 3.6 : 2.7, wide = o.kind === 'bigtree' ? 2.2 : 1.05;
+      if (ddx < wide && ddz > 0.35 && ddz < reach) want.add(g);
+    }
+    if (this.fadedObjs) for (const g of this.fadedObjs) if (!want.has(g)) setFade(g, false);
+    for (const g of want) setFade(g, true);
+    this.fadedObjs = want;
   }
 
   setVisible(v) { this.root.visible = v; }

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>도토리 마을 — 모델 구경</title>
+<style>html,body{margin:0;height:100%;background:#9fd88a;overflow:hidden;font-family:sans-serif}
+#bar{position:fixed;left:8px;top:8px;background:#fffc;padding:6px 10px;border-radius:8px;font-size:13px}
+#bar a{margin-right:8px;color:#3b2a1a}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+</head><body>
+<div id="bar">묶음: <a href="?b=nature">자연</a><a href="?b=buildings">건물</a><a href="?b=furniture">가구</a><a href="?b=items">물건</a><a href="?b=critters">생물</a><a href="?b=chars">캐릭터</a> · 드래그: 돌리기 / 휠: 확대</div>
+<script type="module">
+import * as THREE from 'three';
+import { loadBundle, loadSingle, make, MODELS } from './js/gfx/models.js';
+const q = new URLSearchParams(location.search);
+const b = q.get('b') || 'nature';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fd88a);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xa8c890, 2.2));
+const sun = new THREE.DirectionalLight(0xfff2dc, 2.2); sun.position.set(-4, 9, 6); scene.add(sun);
+const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 500);
+function label(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 40;
+  const x = c.getContext('2d'); x.font = 'bold 22px sans-serif'; x.textAlign = 'center'; x.fillStyle = '#2b3a22'; x.fillText(text, 128, 28);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+  s.scale.set(3.2, 0.5, 1); return s;
+}
+let names = [];
+if (b === 'chars') {
+  const list = await (await fetch('./assets/chars/chars.json')).json();
+  for (const id of Object.keys(list)) { try { await loadSingle('./assets/chars/' + list[id].file, id); names.push(id); } catch (e) { console.warn(id, e); } }
+} else {
+  await loadBundle('./assets/models/' + b + '.glb');
+  names = Object.keys(MODELS);
+}
+const only = q.get('m'); if (only) names = names.filter(n => only.split(',').some(k => n.includes(k)));
+const sp = +(q.get('sp') || (b === 'chars' ? 2.2 : 4)), cols = +(q.get('cols') || Math.ceil(Math.sqrt(names.length * 1.8)));
+names.forEach((n, i) => {
+  const o = make(n); const x = (i % cols) * sp, z = Math.floor(i / cols) * sp;
+  o.position.set(x, 0, z); scene.add(o);
+  if (o.userData.parts.snow && !q.get('snow')) o.userData.parts.snow.visible = false;
+  const l = label(n); l.position.set(x, -0.05, z + sp * 0.42); scene.add(l);
+});
+const rows = Math.ceil(names.length / cols);
+const cx = (cols - 1) * sp / 2, cz = (rows - 1) * sp / 2;
+let yaw = 0, pitch = +(q.get('pitch') || 0.75), dist = +(q.get('dist') || Math.max(cols * sp * 1.5, rows * sp * 2.2) + 4);
+function place() { cam.position.set(cx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, cz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(cx, 0.8, cz); }
+let drag = null;
+addEventListener('mousedown', e => drag = [e.clientX, e.clientY]);
+addEventListener('mouseup', () => drag = null);
+addEventListener('mousemove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.006; pitch = Math.min(1.5, Math.max(0.05, pitch + (e.clientY - drag[1]) * 0.006)); drag = [e.clientX, e.clientY]; });
+addEventListener('wheel', e => { dist *= e.deltaY > 0 ? 1.1 : 0.9; });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+renderer.setAnimationLoop(() => { place(); renderer.render(scene, cam); });
+document.title = 'ready ' + names.length;
+</script></body></html>

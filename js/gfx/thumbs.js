@@ -1,0 +1,53 @@
+// 아이템 그림(아이콘): 3D 모델을 작은 화면에 한 번 그려서 그림으로 만든다
+import * as THREE from 'three';
+import { make, has, CURVE } from './models.js';
+import { ITEMS } from '../data/items.js';
+
+const SIZE = 128;
+let renderer = null, scene = null, cam = null, holder = null;
+const cache = new Map();
+
+function init() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
+  renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setSize(SIZE, SIZE, false); renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8e8c0, 2.3));
+  const sun = new THREE.DirectionalLight(0xfff2dc, 2.0); sun.position.set(-3, 6, 5); scene.add(sun);
+  cam = new THREE.PerspectiveCamera(26, 1, 0.05, 100);
+  holder = new THREE.Group(); scene.add(holder);
+}
+
+/** 모델 이름으로 그림을 만든다. view: 'front'(기본, 살짝 위에서) | 'side' | 'top' */
+export function thumbOfModel(model, opts = {}) {
+  const key = model + '|' + JSON.stringify(opts.tint || {}) + '|' + (opts.view || '');
+  if (cache.has(key)) return cache.get(key);
+  if (!renderer) init();
+  if (!has(model)) { cache.set(key, ''); return ''; }
+  const o = make(model, { tint: opts.tint });
+  if (o.userData.parts && o.userData.parts.snow) o.userData.parts.snow.visible = false;
+  holder.add(o);
+  const box = new THREE.Box3().setFromObject(o);
+  const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  const r = Math.max(s.x, s.y, s.z) * 0.5 + 0.02;
+  const dist = r / Math.tan((26 * Math.PI) / 360) * 1.12;
+  const v = opts.view || 'front';
+  const dir = v === 'side' ? new THREE.Vector3(0.05, 0.22, 1) : v === 'top' ? new THREE.Vector3(0.15, 1, 0.55) : new THREE.Vector3(0.45, 0.55, 1);
+  dir.normalize();
+  cam.position.copy(c).addScaledVector(dir, dist);
+  cam.lookAt(c);
+  const k = CURVE.k.value; CURVE.k.value = 0;
+  renderer.render(scene, cam);
+  CURVE.k.value = k;
+  const url = renderer.domElement.toDataURL('image/png');
+  holder.remove(o);
+  cache.set(key, url);
+  return url;
+}
+
+export function thumb(id) {
+  const it = ITEMS[id];
+  if (!it) return '';
+  const view = it.kind === 'fish' || (it.kind === 'misc' && it.sp) ? 'side' : it.kind === 'bug' || it.kind === 'shell' ? 'top' : 'front';
+  return thumbOfModel(it.model, { tint: it.tint, view });
+}

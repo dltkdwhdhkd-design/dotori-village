@@ -1,0 +1,59 @@
+{
+ "villager_dalgom": {
+  "file": "villager_dalgom.glb"
+ },
+ "villager_goran": {
+  "file": "villager_goran.glb"
+ },
+ "villager_nureong": {
+  "file": "villager_nureong.glb"
+ },
+ "villager_beomi": {
+  "file": "villager_beomi.glb"
+ },
+ "villager_jangkki": {
+  "file": "villager_jangkki.glb"
+ },
+ "villager_pongdang": {
+  "file": "villager_pongdang.glb"
+ },
+ "villager_dungdung": {
+  "file": "villager_dungdung.glb"
+ },
+ "villager_sandeul": {
+  "file": "villager_sandeul.glb"
+ },
+ "villager_dahong": {
+  "file": "villager_dahong.glb"
+ },
+ "villager_kkokki": {
+  "file": "villager_kkokki.glb"
+ },
+ "villager_dodam": {
+  "file": "villager_dodam.glb"
+ },
+ "villager_pogeun": {
+  "file": "villager_pogeun.glb"
+ },
+ "npc_kkami": {
+  "file": "npc_kkami.glb"
+ },
+ "npc_duru": {
+  "file": "npc_duru.glb"
+ },
+ "npc_ujik": {
+  "file": "npc_ujik.glb"
+ },
+ "player_1": {
+  "file": "player_1.glb"
+ },
+ "player_2": {
+  "file": "player_2.glb"
+ },
+ "player_3": {
+  "file": "player_3.glb"
+ },
+ "player_4": {
+  "file": "player_4.glb"
+ }
+}

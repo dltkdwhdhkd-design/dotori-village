@@ -250,6 +250,16 @@ export class Critters {
           b.y = Math.abs(Math.sin(b.t * 12)) * 0.35;
           if (b.runT > 1.3) { b.state = 'idle'; b.runT = 0; b.y = 0.02; if (rand() < 0.4) { b.state = 'flee'; b.ft = 0; } }
           b.m.rotation.y = b.dir;
+        } else if (b.m.userData.parts && b.m.userData.parts.ball) {      // 쇠똥구리: 경단을 뒷다리로 받치고 뒷걸음질로 굴려 간다(굴리다 쉬다를 되풀이)
+          b.y = 0.02;
+          if (Math.sin(b.t * 0.45 + i) > -0.25) {
+            b.dir += Math.sin(b.t * 0.6 + i * 2) * 0.5 * dt;
+            if (Math.hypot(b.x - b.hx, b.z - b.hz) > 1.6) b.dir = Math.atan2(b.x - b.hx, b.z - b.hz);      // 너무 멀리 가면 머리를 바깥으로 돌려(= 경단 쪽이 집 방향) 되돌아온다
+            const v = 0.11, nx = b.x - Math.sin(b.dir) * v * dt, nz = b.z - Math.cos(b.dir) * v * dt;
+            if (G.village.walkableTerrain(Math.floor(nx), Math.floor(nz)) && !G.village.obj(Math.floor(nx), Math.floor(nz))) { b.x = nx; b.z = nz; b.m.userData.parts.ball.rotation.x -= (v * dt) / (0.078 * b.scale); }
+            else b.dir += Math.PI * 0.6;
+          }
+          b.m.rotation.y = b.dir;
         } else if (Math.sin(b.t * 0.7 + i) > 0.96) { b.y = 0.02 + Math.abs(Math.sin(b.t * 9)) * 0.12; } else b.y = 0.02;
       } else if (b.crawl) {
         const o = G.village.obj(b.tx, b.ty);

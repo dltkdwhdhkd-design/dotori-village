@@ -18,21 +18,22 @@ function init() {
   holder = new THREE.Group(); scene.add(holder);
 }
 
-/** 모델 이름으로 그림을 만든다. view: 'front'(기본, 살짝 위에서) | 'side' | 'top' */
+/** 모델 이름으로 그림을 만든다. view: 'front'(기본, 살짝 위에서) | 'side' | 'top' | 'profile'(곤충의 옆모습, 머리가 오른쪽)   yaw: 세운 축으로 돌려 놓고 그린다 */
 export function thumbOfModel(model, opts = {}) {
-  const key = model + '|' + JSON.stringify(opts.tint || {}) + '|' + (opts.view || '');
+  const key = model + '|' + JSON.stringify(opts.tint || {}) + '|' + (opts.view || '') + '|' + (opts.yaw || 0);
   if (cache.has(key)) return cache.get(key);
   if (!renderer) init();
   if (!has(model)) { cache.set(key, ''); return ''; }
   const o = make(model, { tint: opts.tint });
   if (o.userData.parts && o.userData.parts.snow) o.userData.parts.snow.visible = false;
+  if (opts.yaw) o.rotation.y = opts.yaw;
   holder.add(o);
   const box = new THREE.Box3().setFromObject(o);
   const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
   const r = Math.max(s.x, s.y, s.z) * 0.5 + 0.02;
   const dist = r / Math.tan((26 * Math.PI) / 360) * 1.12;
   const v = opts.view || 'front';
-  const dir = v === 'side' ? new THREE.Vector3(0.05, 0.22, 1) : v === 'top' ? new THREE.Vector3(0.15, 1, 0.55) : new THREE.Vector3(0.45, 0.55, 1);
+  const dir = v === 'side' ? new THREE.Vector3(0.05, 0.22, 1) : v === 'top' ? new THREE.Vector3(0.15, 1, 0.55) : v === 'profile' ? new THREE.Vector3(-1, 0.34, 0.4) : new THREE.Vector3(0.45, 0.55, 1);
   dir.normalize();
   cam.position.copy(c).addScaledVector(dir, dist);
   cam.lookAt(c);
@@ -45,10 +46,13 @@ export function thumbOfModel(model, opts = {}) {
   return url;
 }
 
+/** 넙치·가자미를 위에서 볼 때 등지느러미가 위로 오게 놓는 각도: 눈이 왼쪽에 몰린 넙치는 머리가 왼쪽, 오른쪽에 몰린 가자미는 머리가 오른쪽 */
+export function flatYaw(look) { return look && look.f === 'flat' && (look.flat || 'L') === 'L' ? Math.PI : 0; }
+
 export function thumb(id) {
   const it = ITEMS[id];
   if (!it) return '';
   const sp = it.sp && FISH_BY_ID[it.sp];
-  const view = it.kind === 'fish' || (it.kind === 'misc' && it.sp) ? (sp && sp.look.view === 'top' ? 'top' : 'side') : it.kind === 'bug' ? (BUG_BY_ID[it.sp] && BUG_BY_ID[it.sp].look.view === 'side' ? 'front' : 'top') : it.kind === 'shell' ? 'top' : 'front';
-  return thumbOfModel(it.model, { tint: it.tint, view });
+  const view = it.kind === 'fish' || (it.kind === 'misc' && it.sp) ? (sp && sp.look.view === 'top' ? 'top' : 'side') : it.kind === 'bug' ? (BUG_BY_ID[it.sp] && BUG_BY_ID[it.sp].look.view === 'side' ? 'profile' : 'top') : it.kind === 'shell' ? 'top' : 'front';
+  return thumbOfModel(it.model, { tint: it.tint, view, yaw: sp ? flatYaw(sp.look) : 0 });
 }

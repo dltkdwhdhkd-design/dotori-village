@@ -6,7 +6,7 @@
 #bar a{margin-right:8px;color:#3b2a1a}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 </head><body>
-<div id="bar"><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=looks">꾸미기</a> · 모든 종을 같은 크기 칸에 맞춰 늘어놓은 것(실제 크기 비율이 아님). 물고기는 옆모습, 곤충과 납작한 생물은 위에서 본 모습. <span id="pg"></span></div>
+<div id="bar"><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=looks">꾸미기</a> · 모든 종을 같은 크기 칸에 맞춰 늘어놓은 것(실제 크기 비율이 아님). 물고기는 옆모습, 곤충과 납작한 생물은 위에서 본 모습, 메뚜기·사마귀 무리는 옆모습. <span id="pg"></span></div>
 <script type="module">
 // 생물 모델을 종마다 한 칸씩 벽에 걸듯 늘어놓아 생김새를 확인하는 화면.
 //   ?b=fish|bugs  &from=0&n=24 (몇 번째부터 몇 종)  &cols=6  &m=id,id (그 종만)
@@ -72,7 +72,9 @@ list.forEach((e, i) => {
   }
   const o = make((b === 'bugs' ? 'bug_' : 'fish_') + e.id), g = new THREE.Group();
   const top = e.look.view ? e.look.view === 'top' : b === 'bugs';
-  if (top) o.rotation.set(Math.PI / 2, Math.PI, 0);       // 등이 화면을 보고 머리가 위로 오게 세운다
+  if (top && e.look.f === 'flat') o.rotation.set(Math.PI / 2, (e.look.flat || 'L') === 'L' ? Math.PI : 0, 0);      // 넙치·가자미: 등지느러미가 위로 오게(넙치는 머리가 왼쪽, 가자미는 오른쪽)
+  else if (top) o.rotation.set(Math.PI / 2, Math.PI, 0);  // 등이 화면을 보고 머리가 위로 오게 세운다
+  else if (b === 'bugs' && e.look.view === 'side') { o.rotation.order = 'XYZ'; o.rotation.set(0.32, Math.PI / 2 - 0.35, 0); }      // 옆모습(머리가 오른쪽, 살짝 위에서)
   g.add(o);
   const box = new THREE.Box3().setFromObject(g), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const s = Math.min((CW - 0.3) / sz.x, (CH - 0.5) / sz.y);

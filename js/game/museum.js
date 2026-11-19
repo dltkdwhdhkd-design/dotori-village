@@ -99,6 +99,7 @@ function swimmer(ex, sp, tk, i, n, scale) {
 /** 얕은 수조 바닥을 느릿느릿 돌아다니는 것 */
 function crawler(ex, sp, pl, i, scale, prefix = 'fish_') {
   const m = make(prefix + sp.id); m.scale.setScalar(scale);
+  const yaw0 = sp.look.f === 'flat' ? -Math.PI / 2 : 0;      // 넙치·가자미는 모델의 머리가 옆(+X)을 향해 있어서, 가는 쪽으로 머리가 오게 돌려 놓는다
   const e = { name: sp.name, fact: sp.fact, m, x: pl.x0 + (pl.x1 - pl.x0) * rnd(i, 11), z: pl.z0 + (pl.z1 - pl.z0) * rnd(i, 12), a: rnd(i, 13) * TAU, wait: rnd(i, 14) * 4, go: 0, y: pl.y };
   e.move = (q, t, dt) => {
     if (q.go > 0) {
@@ -106,7 +107,7 @@ function crawler(ex, sp, pl, i, scale, prefix = 'fish_') {
       const nx = q.x + Math.sin(q.a) * 0.22 * dt, nz = q.z + Math.cos(q.a) * 0.22 * dt;
       if (nx < pl.x0 || nx > pl.x1 || nz < pl.z0 || nz > pl.z1) { q.a += Math.PI * 0.7; q.go = 0; } else { q.x = nx; q.z = nz; }
     } else { q.wait -= dt; if (q.wait <= 0) { q.wait = 2 + rnd(i, Math.floor(t)) * 5; q.go = 1.5 + rnd(i, t) * 2; q.a += (rnd(i, t * 3) - 0.5) * 2.4; } }
-    q.m.rotation.y = q.a; q.m.position.set(q.x, q.y, q.z);
+    q.m.rotation.y = q.a + yaw0; q.m.position.set(q.x, q.y, q.z);
   };
   e.move(e, 0, 0);
   return ex.add(e);

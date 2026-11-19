@@ -69,7 +69,7 @@ def wing_patterns(T, W, key, pats, S, seed=1):
       ['cells', 날개, 색, r0, r1, 칸 수, 틈, [a0, a1]]  맥 사이 칸     ['veins', 날개, 색, 굵기, 줄 수, [r0]]      날개맥
       ['eye', 날개, a, r, 크기, [색…]]                  눈알 무늬      ['edge', 날개, 색, 굵기]                    가장자리 선
       ['wave', 날개, 색, r, 흔들림, 굽이 수, 굵기]      물결 줄         ['speck', 날개, 색, 개수, 크기]             자잘한 점
-      ['dust', 날개, 색, r1, 진하기]                    밑동의 흐린 물듦
+      ['dust', 날개, 색, r1, 진하기]                    밑동의 흐린 물듦   ['lune', 날개, a, r, 크기, [색…], 각도]    초승달 무늬
     날개: 'F' 앞, 'H' 뒤, 'FH' 둘 다."""
     cv = T.cv
     P = lambda pts: cv.P([(x, -y) for x, y in pts])
@@ -118,6 +118,19 @@ def wing_patterns(T, W, key, pats, S, seed=1):
                 x, y = W.pt(a, r)
                 rr = cv.px(sz * S * (1 - i / len(cols)))
                 ImageDraw.Draw(mm).ellipse([cv.X(x) - rr, cv.Y(-y) - rr, cv.X(x) + rr, cv.Y(-y) + rr], fill=255)
+                cv.fill_mask(c, ImageChops.multiply(mm, W.mask))
+            continue
+        elif kind == 'lune':                      # ['lune', 날개, a, r, 크기, [테두리색, 속 색], 벌어진 쪽(도)] 초승달 무늬
+            a, r, sz, cols = p[2], p[3], p[4], p[5]
+            ang = math.radians(p[6] if len(p) > 6 else 0)
+            x, y = W.pt(a, r)
+            for i, c in enumerate(cols):
+                rr = cv.px(sz * S * (1 - 0.3 * i))
+                mm = cv.mask()
+                dd = ImageDraw.Draw(mm)
+                dd.ellipse([cv.X(x) - rr, cv.Y(-y) - rr, cv.X(x) + rr, cv.Y(-y) + rr], fill=255)
+                ox, oy = cv.X(x) + math.cos(ang) * rr * 0.62, cv.Y(-y) + math.sin(ang) * rr * 0.62      # 한쪽을 둥글게 파내 초승달로
+                dd.ellipse([ox - rr * 0.95, oy - rr * 0.95, ox + rr * 0.95, oy + rr * 0.95], fill=0)
                 cv.fill_mask(c, ImageChops.multiply(mm, W.mask))
             continue
         elif kind == 'edge':
@@ -176,7 +189,7 @@ def butterfly(m, name, k):
         T.poly(fan, k['fan'])
         T.plate(fan, zb)
     T.blob((0, by, zb), (bw * 1.25, 0.05 * bs, bw * 1.2), k.get('thorax', body))
-    T.blob((0, by - 0.06 * bs, zb), (bw * 0.95, 0.022 * bs, bw * 0.9), k.get('head', body), sub=1)
+    T.blob((0, by - 0.06 * bs, zb), (bw * 0.95, 0.022 * bs, bw * 0.9), k.get('head', body), sub=2)
     for nm, s in (('wing_L', 1), ('wing_R', -1)):
         with m.part(nm, (0, by, zb + 0.004)):
             T.plate([(s * x, y) for x, y in H.outline(70)], zb + 0.001)
@@ -189,7 +202,7 @@ def butterfly(m, name, k):
     else:
         T.feelers(ac, (bw * 0.5, by - 0.075 * bs, zb + 0.004), [(0.02 * bs, -0.06 * bs, 0.014), (0.045 * bs, -0.13 * bs, 0.02)], r=0.0032 * bs, tip=0.0075 * bs if kind == 'club' else None)
     for s in (1, -1):
-        ball((s * bw * 0.8, by - 0.065 * bs, zb + bw * 0.2), bw * 0.5, k.get('eye', '#1a1a1a'), sub=1)
+        ball((s * bw * 0.8, by - 0.065 * bs, zb + bw * 0.2), bw * 0.5, k.get('eye', '#1a1a1a'), sub=2)
     T.finish()
 
 
@@ -258,7 +271,7 @@ def dragonfly(m, name, k):
     if k.get('tstripe'):
         for s in (1, -1):
             T.line([(s * bw * 0.5, -L * 0.08), (s * bw * 0.75, L * 0.06)], bw * 0.3, k['tstripe'])
-    T.blob((0, -L * 0.115, T.z0 + bw * 0.8), (bw * 0.75, L * 0.035, bw * 0.6), k.get('head', tc), sub=1)
+    T.blob((0, -L * 0.115, T.z0 + bw * 0.8), (bw * 0.75, L * 0.035, bw * 0.6), k.get('head', tc), sub=2)
     zw = T.z0 + bw * 1.5
     for nm, s in (('wing_L', 1), ('wing_R', -1)):
         with m.part(nm, (0, 0, zw)):
@@ -268,7 +281,7 @@ def dragonfly(m, name, k):
     ec = k.get('eye', '#4a8a5a')
     for s in (1, -1):
         if damsel:
-            ball((s * bw * 0.85, -L * 0.125, T.z0 + bw * 0.9), bw * 0.5, ec, sub=1)
+            ball((s * bw * 0.85, -L * 0.125, T.z0 + bw * 0.9), bw * 0.5, ec, sub=2)
         else:
             ball((s * bw * 0.42, -L * 0.135, T.z0 + bw * 0.95), 1.0, ec, (bw * 0.5, bw * 0.55, bw * 0.5), sub=2)
     T.legs(k.get('leg', '#2a2a2a'), [((bw * 0.5, -L * 0.06 + i * L * 0.04, T.z0 + bw * 0.4), (bw * 1.3, -L * 0.12 + i * L * 0.05, T.z0 + bw * 0.6), (bw * 1.1, -L * 0.2 + i * L * 0.07)) for i in range(3)], r=L * 0.007)
@@ -326,7 +339,7 @@ def cicada(m, name, k):
             rot_about(fs, (s * W * 0.2, 0, zt + 0.004), 'Y', s * k.get('roof', 24))
     T.off()
     for s in (1, -1):
-        ball((s * W * (0.42 if not slim else 0.5), -L * 0.43, T.z0 + hz * 0.6), W * (0.11 if not slim else 0.22), k.get('eye', '#2a2a2a'), sub=1)
+        ball((s * W * (0.42 if not slim else 0.5), -L * 0.43, T.z0 + hz * 0.6), W * (0.11 if not slim else 0.22), k.get('eye', '#2a2a2a'), sub=2)
     if slim:
         T.feelers(col, (W * 0.2, -L * 0.48, T.z0 + hz * 0.6), [(L * 0.1, -L * 0.2, 0.01), (L * 0.22, -L * 0.34, 0.0)], r=L * 0.006)
     T.legs6(k.get('leg', shade(col, 0.7)), [-L * 0.3, -L * 0.18, -L * 0.06], W * 0.3, W * 0.5, T.z0 + hz * 0.3, r=L * 0.012, z=T.z0 + 0.01)
@@ -386,17 +399,21 @@ def ant(m, name, k):
     L = k.get('len', 0.2)
     c = k['col']
     z = L * 0.2
-    ball((0, -L * 0.36, z + L * 0.05), 1.0, c, (L * 0.14, L * 0.15, L * 0.12), sub=2)
-    ball((0, -L * 0.1, z), 1.0, c, (L * 0.09, L * 0.17, L * 0.09), sub=2)
-    ball((0, L * 0.08, z + L * 0.02), L * 0.05, c, sub=1)
-    ball((0, L * 0.3, z + L * 0.03), 1.0, c, (L * 0.15, L * 0.2, L * 0.14), sub=2)
+    ball((0, -L * 0.36, z + L * 0.05), 1.0, c, (L * 0.14, L * 0.15, L * 0.12), sub=3)          # 머리
+    ball((0, -L * 0.12, z), 1.0, c, (L * 0.085, L * 0.15, L * 0.09), sub=3)                    # 가슴
+    ball((0, -L * 0.0, z - L * 0.005), 1.0, c, (L * 0.065, L * 0.08, L * 0.07), sub=2)
+    ball((0, L * 0.09, z + L * 0.03), 1.0, c, (L * 0.035, L * 0.04, L * 0.055), sub=2)         # 허리 마디(배자루)
+    ball((0, L * 0.31, z + L * 0.03), 1.0, c, (L * 0.15, L * 0.2, L * 0.14), sub=3)            # 배
+    for i in range(3):                                                                        # 배마디의 윤기
+        ball((0, L * (0.22 + i * 0.07), z + L * 0.03), 1.0, shade(c, 1.25), (L * 0.151, L * 0.012, L * 0.141), sub=2)
     lc = shade(c, 0.85)
     for s in (1, -1):
-        ball((s * L * 0.1, -L * 0.4, z + L * 0.09), L * 0.03, '#141414', sub=1)
-        chain([(s * L * 0.06, -L * 0.46, z + L * 0.08), (s * L * 0.16, -L * 0.56, z + L * 0.16), (s * L * 0.2, -L * 0.72, z + L * 0.08)], L * 0.016, lc, r2=L * 0.01)
+        ball((s * L * 0.1, -L * 0.4, z + L * 0.09), 1.0, '#141414', (L * 0.028, L * 0.038, L * 0.03), sub=2)
+        tube((s * L * 0.04, -L * 0.49, z + L * 0.02), (s * L * 0.07, -L * 0.56, z - L * 0.01), L * 0.014, shade(c, 0.7), r2=L * 0.004, seg=5)    # 큰턱
+        chain([(s * L * 0.06, -L * 0.46, z + L * 0.08), (s * L * 0.17, -L * 0.54, z + L * 0.16), (s * L * 0.2, -L * 0.72, z + L * 0.08)], L * 0.013, lc, r2=L * 0.008)
         for i in range(3):
-            y = -L * 0.2 + i * L * 0.1
-            chain([(s * L * 0.06, y, z), (s * L * 0.24, y + (i - 1) * L * 0.12, z + L * 0.14), (s * L * 0.38, y + (i - 1) * L * 0.26, 0)], L * 0.016, lc, r2=L * 0.008)
+            y = -L * 0.2 + i * L * 0.09
+            leg3((s * L * 0.06, y, z), (s * L * 0.24, y + (i - 1) * L * 0.13, z + L * 0.15), (s * L * 0.36, y + (i - 1) * L * 0.27, 0), L * 0.012, lc)
 
 
 # ============================================================================ 딱정벌레 무리
@@ -404,7 +421,7 @@ def _surface_pat(T, M, pats, W, L, seed=2):
     """등판 무늬. M(u, v) → (x, y): u는 가운데 0 → 가장자리 1, v는 앞 0 → 뒤 1. 좌우 대칭으로 그린다.
       ['spots', 색, [[u, v, 크기]…]]      ['stripes', 색, [u…], 굵기, [v0, v1]]     ['bands', 색, [[v0, v1]…], [u0, u1]]
       ['rim', 색, 폭]   ['suture', 색, 굵기]   ['sheen', 색, u, 폭, 진하기]   ['speck', 색, 개수, 크기]
-      ['grooves', 색, 줄 수, 진하기]   ['grad', 색, v0, 진하기]   ['blotch', 색, 크기, 문턱, 진하기]"""
+      ['grooves', 색, 줄 수, 진하기]   ['grad', 색, v0, 진하기]   ['blotch', 색, 크기, 문턱, 진하기]   ['arc', 색, v, 굵기, 휨, [u0, u1]]"""
     cv = T.cv
     rnd = random.Random(seed)
     P = lambda pts: cv.P([(x, -y) for x, y in pts])
@@ -429,6 +446,11 @@ def _surface_pat(T, M, pats, W, L, seed=2):
                 u0, u1 = (p[3], p[4]) if len(p) > 4 else (0.0, 1.0)
                 for (v0, v1) in p[2]:
                     d.polygon(P([Q(u0 + (u1 - u0) * i / 8, v0) for i in range(9)] + [Q(u0 + (u1 - u0) * i / 8, v1) for i in reversed(range(9))]), fill=255)
+            elif kind == 'arc':                   # ['arc', 색, 가운데 v, 굵기, 휨, [u0, u1]] 가로로 굽은 띠(가장자리 쪽이 뒤로 처지거나 앞으로 들린다)
+                u0, u1 = (p[5], p[6]) if len(p) > 6 else (0.0, 1.0)
+                top = [Q(u0 + (u1 - u0) * i / 10, p[2] - p[3] / 2 + p[4] * (i / 10) ** 2) for i in range(11)]
+                bot = [Q(u0 + (u1 - u0) * i / 10, p[2] + p[3] / 2 + p[4] * (i / 10) ** 2) for i in reversed(range(11))]
+                d.polygon(P(top + bot), fill=255)
             elif kind == 'rim':
                 d.polygon(P([Q(1, i / 16) for i in range(17)] + [Q(1 - p[2], i / 16) for i in reversed(range(17))]), fill=255)
             elif kind == 'suture':
@@ -451,6 +473,8 @@ def _surface_pat(T, M, pats, W, L, seed=2):
                 alpha = p[3]
         if kind == 'sheen':
             m = cv.blur(m, W * 0.03)
+        elif kind == 'arc':
+            m = cv.blur(m, W * 0.012)
         elif kind == 'grad':
             m = cv.blur(m, L * 0.06)
         elif kind == 'blotch':
@@ -464,6 +488,7 @@ MANDIBLE = {     # 큰턱: 뻗는 길(몸길이에 대한 비), 굵기, 안쪽 �
     'saw': dict(path=[(0.07, 0.0), (0.18, -0.1), (0.22, -0.25), (0.15, -0.4), (0.07, -0.46)], r=0.026, teeth=[(0.3, 0.035), (0.45, 0.04), (0.6, 0.04), (0.75, 0.035), (0.88, 0.03)]),
     'flat': dict(path=[(0.08, 0.0), (0.11, -0.14), (0.11, -0.28), (0.05, -0.37)], r=0.036, teeth=[(0.28, 0.06), (0.7, 0.025)]),
     'king': dict(path=[(0.08, 0.0), (0.15, -0.09), (0.16, -0.21), (0.08, -0.3)], r=0.04, teeth=[(0.55, 0.075)]),
+    'sickle': dict(path=[(0.06, 0.0), (0.13, -0.07), (0.1, -0.17), (0.02, -0.2)], r=0.02, teeth=[(0.55, 0.035)]),
 }
 
 
@@ -500,7 +525,7 @@ def beetle(m, name, k):
     z = T.z0
     er = L * k.get('eyer', 0.022)
     for s in (1, -1):
-        ball((s * W * hwf * 0.46, y0 + hd * L * 0.6, z + pz * 0.4), er, k.get('eye', '#141414'), sub=1)
+        ball((s * W * hwf * 0.46, y0 + hd * L * 0.6, z + pz * 0.4), er, k.get('eye', '#141414'), sub=2)
     # 다리
     reach = L * k.get('reach', 0.2)
     legs = k.get('legs', 'normal')
@@ -512,7 +537,9 @@ def beetle(m, name, k):
         if legs == 'oar' and i == 2:              # 물방개의 헤엄다리
             for s in (1, -1):
                 chain([(s * W * 0.3, y, z + 0.01), (s * (W * 0.5 + reach * 0.5), y + reach * 0.6, z + 0.01)], lr * 1.3, lc)
-                ball((s * (W * 0.5 + reach * 0.75), y + reach * 0.95, z + 0.01), 1.0, lc, (lr * 2.2, reach * 0.45, lr * 0.8), sub=1)
+                ball((s * (W * 0.5 + reach * 0.75), y + reach * 0.95, z + 0.01), 1.0, lc, (lr * 2.2, reach * 0.45, lr * 0.8), sub=2)
+            continue
+        if k.get('ball') and i == 2:
             continue
         P3.append(((W * 0.3, y, z + 0.012), (W * 0.5 + reach * 0.35, y + fy * reach * 0.35, z + pz * 0.55), (W * 0.5 + reach * 0.75, y + fy * reach * 0.75)))
     T.legs(lc, P3, r=lr)
@@ -572,12 +599,27 @@ def beetle(m, name, k):
         chain([(0, y0 + L * 0.04, zb), (0, y0 - L * 0.14, zb + L * 0.01), (0, y0 - L * 0.3, zb - L * 0.06)], L * 0.026, hc, r2=L * 0.016, seg=6)
         for s in (1, -1):
             chain([(s * L * 0.01, y0 - L * 0.16, zb), (s * L * 0.09, y0 - L * 0.2, zb + L * 0.03), (s * L * 0.14, y0 - L * 0.3, zb + L * 0.02)], L * 0.01, lc)
-            ball((s * L * 0.14, y0 - L * 0.3, zb + L * 0.02), L * 0.018, lc, sub=1)
+            ball((s * L * 0.14, y0 - L * 0.3, zb + L * 0.02), L * 0.018, lc, sub=2)
     if k.get('glow'):                             # 반딧불이의 불빛
         with m.part('glow'):
             ball((0, ye1 - L * 0.06, z + hz * 0.3), 1.0, '#eaff8a', (W * 0.36, L * 0.1, hz * 0.6), sub=2)
-    if k.get('ball'):                             # 쇠똥구리의 경단
-        ball((0, y0 - L * 0.34, L * 0.24), L * 0.24, k['ball'], sub=2)
+    if k.get('ball'):                             # 쇠똥구리의 경단: 뒷다리로 받치고 뒷걸음질로 굴린다(게임에서 굴릴 수 있게 따로 둔 부위)
+        br = L * 0.3
+        bc = Vector((0, ye1 + br * 0.92, br))
+        T.off()
+        with m.part('ball', tuple(bc)):
+            ball(tuple(bc), br, k['ball'], sub=3)
+            rnd = random.Random(7)
+            for i in range(30):                   # 겉에 박힌 흙 알갱이와 짚 부스러기
+                a, b_ = rnd.uniform(0, 2 * math.pi), math.acos(rnd.uniform(-0.95, 0.95))
+                n_ = Vector((math.cos(a) * math.sin(b_), math.sin(a) * math.sin(b_), math.cos(b_)))
+                q = bc + n_ * br * 0.97
+                if i % 4 == 0:
+                    tube(tuple(q), tuple(q + (n_.cross(Vector((0, 0, 1))).normalized() if abs(n_.z) < 0.95 else Vector((1, 0, 0))) * br * 0.3 + n_ * br * 0.04), br * 0.022, '#c8b070', seg=4)
+                else:
+                    ball(tuple(q), br * rnd.uniform(0.05, 0.11), shade(k['ball'], rnd.uniform(0.72, 1.18)), (1, 1, 0.6), sub=1)
+        for s in (1, -1):                         # 경단을 받친 뒷다리
+            chain([(s * W * 0.3, ye1 - L * 0.12, z + 0.012), (s * W * 0.52, ye1 + L * 0.02, z + hz * 0.9), (s * br * 0.72, bc.y - br * 0.25, br * 1.3)], lr * 1.3, lc, r2=lr * 0.7)
     T.finish()
 
 
@@ -589,7 +631,7 @@ def hopper(m, name, k):
     wc = k.get('wingc', col)
     W = L * (0.2 + 0.1 * fat)
     H = W * k.get('tall', 1.05)
-    cone = k.get('head') == 'cone'
+    pointy = k.get('head') == 'cone'
     T = Top(m, name, W * k.get('wingw', 1.0) * 0.62 + 0.01, L * 0.56, L * 0.58, px=96, bg=col, z0=L * 0.07)
     wend = -L * 0.2 + L * 0.7 * k.get('wing', 1.0)
     yab = L * (0.44 if k.get('wing', 1.0) >= 0.95 else 0.5)
@@ -616,40 +658,53 @@ def hopper(m, name, k):
         for s in (1, -1):
             T.line([(s * W * 0.36, -L * 0.46), (s * W * 0.4, -L * 0.2)], W * 0.2, k['side'])
     # 머리
-    if cone:
+    if pointy:
         T.shell(-L * 0.6, -L * 0.36, via([(0, 0.15), (0.6, 0.7), (1, 0.95)]), via([(0, 0.3), (1, 1)]), W * 0.9, H, k.get('headc', col), n=5, seg=6)
     else:
         T.shell(-L * 0.5, -L * 0.36, via([(0, 0.55), (0.5, 1), (1, 0.95)]), via([(0, 0.7), (0.5, 1), (1, 1)]), W * 0.92 * k.get('headw', 1.0), H * 1.02, k.get('headc', col), n=4, seg=6)
     T.off()
     z = T.z0
-    for s in (1, -1):
-        ball((s * W * 0.4, -L * (0.47 if cone else 0.44), z + H * 0.75), L * 0.022, k.get('eye', '#2a2018'), sub=1)
+    hw_ = W * 0.92 * k.get('headw', 1.0)
+    for s in (1, -1):                             # 겹눈: 머리 양옆 위쪽에 불룩하게
+        ball((s * (W * 0.34 if pointy else hw_ * 0.4), -L * (0.44 if pointy else 0.445), z + H * (0.72 if pointy else 0.78)), 1.0, k.get('eye', '#2a2018'), (L * 0.024, L * 0.034, L * 0.03), sub=2)
+    if not pointy:                                  # 입(큰턱): 얼굴 아래
+        ball((0, -L * 0.488, z + H * 0.2), 1.0, shade(k.get('headc', col), 0.62), (hw_ * 0.26, L * 0.02, H * 0.2), sub=2)
     # 더듬이
     al = L * k.get('ant', 0.3)
     ac = k.get('antc', shade(col, 0.7))
-    yb_ = -L * (0.56 if cone else 0.48)
+    yb_ = -L * (0.56 if pointy else 0.48)
     if al > L * 0.6:
         T.feelers(ac, (W * 0.15, yb_, z + H * 0.85), [(al * 0.15, -al * 0.2, 0.03), (al * 0.4, -al * 0.2, 0.05), (al * 0.62, al * 0.1, 0.03), (al * 0.7, al * 0.5, 0.0)], r=L * 0.006)
     else:
-        T.feelers(ac, (W * 0.15, yb_, z + H * 0.85), [(al * 0.3, -al * 0.6, 0.02), (al * 0.5, -al, 0.03)], r=L * (0.014 if cone else 0.008))
+        T.feelers(ac, (W * 0.15, yb_, z + H * 0.85), [(al * 0.3, -al * 0.6, 0.02), (al * 0.5, -al, 0.03)], r=L * (0.014 if pointy else 0.008))
     # 다리
     lc = k.get('leg', shade(col, 0.82))
     hc = k.get('hind', col)
     hs = k.get('hsize', 1.0)
     for s in (1, -1):
-        hip = (s * W * 0.42, -L * 0.04, z + H * 0.35)
-        knee = (s * (W * 0.5 + L * 0.15 * hs), L * 0.2 * hs, z + H * 0.9 + L * 0.1 * hs)       # 뒷다리는 옆으로 벌어져 위에서도 잘 보인다
-        tube(hip, knee, L * 0.042 * hs, hc, r2=L * 0.016, seg=6)
-        tube(knee, (s * (W * 0.5 + L * 0.2 * hs), L * 0.4 * hs, 0.0), L * 0.013, k.get('tibia', lc), r2=L * 0.008, seg=4)
-        ball(knee, L * 0.018, k.get('knee', shade(hc, 0.6)), sub=1)
+        # 뒷다리: 굵은 넓적다리가 무릎에서 위로 꺾이고, 가는 종아리가 땅을 짚는다
+        hip = Vector((s * W * 0.44, -L * 0.03, z + H * 0.4))
+        knee = Vector((s * (W * 0.5 + L * 0.13 * hs), L * 0.22 * hs, z + H * 0.95 + L * 0.11 * hs))
+        foot = Vector((s * (W * 0.5 + L * 0.19 * hs), L * 0.42 * hs, 0.0))
+        p1 = hip.lerp(knee, 0.3)
+        fr = L * 0.05 * hs * (0.75 if pointy else 1.0)
+        tube(tuple(hip), tuple(p1), fr * 0.72, hc, r2=fr, seg=8)
+        tube(tuple(p1), tuple(knee), fr, hc, r2=L * 0.017, seg=8)
+        ball(tuple(knee), L * 0.021, k.get('knee', shade(hc, 0.6)), sub=2)
+        tb = k.get('tibia', lc)
+        tube(tuple(knee), tuple(foot), L * 0.014, tb, r2=L * 0.009, seg=6)
+        tube(tuple(foot), (foot.x + s * L * 0.01, foot.y - L * 0.085, 0.0), L * 0.011, tb, r2=L * 0.005, seg=5)     # 발목마디
         for i, y in enumerate((-L * 0.3, -L * 0.17)):
             if k.get('dig') and i == 0:           # 땅강아지의 삽 같은 앞다리
-                tube((s * W * 0.4, y, z + H * 0.3), (s * (W * 0.5 + L * 0.06), y - L * 0.08, z + H * 0.2), L * 0.03, lc, seg=5)
-                ball((s * (W * 0.5 + L * 0.09), y - L * 0.13, z + H * 0.15), 1.0, lc, (L * 0.05, L * 0.06, L * 0.03), sub=1)
+                tube((s * W * 0.4, y, z + H * 0.3), (s * (W * 0.5 + L * 0.06), y - L * 0.08, z + H * 0.2), L * 0.034, lc, seg=8)
+                ball((s * (W * 0.5 + L * 0.09), y - L * 0.13, z + H * 0.15), 1.0, lc, (L * 0.055, L * 0.065, L * 0.032), sub=2)
+                for j in range(4):                # 삽날의 발톱
+                    a = math.radians(-30 + j * 28)
+                    cone((s * (W * 0.5 + L * 0.09 + math.sin(a) * L * 0.05), y - L * 0.13 - math.cos(a) * L * 0.055, z + H * 0.1), L * 0.012, L * 0.035, shade(lc, 0.7), seg=5, rot=(90 + 10, 0, -s * math.degrees(a)))
             else:
-                chain([(s * W * 0.4, y, z + H * 0.3), (s * (W * 0.5 + L * 0.08), y - L * 0.04 + i * L * 0.06, z + H * 0.6), (s * (W * 0.5 + L * 0.14), y - L * 0.09 + i * L * 0.12, 0.0)], L * 0.012, lc, r2=L * 0.007)
+                leg3((s * W * 0.4, y, z + H * 0.3), (s * (W * 0.5 + L * 0.08), y - L * 0.04 + i * L * 0.06, z + H * 0.62), (s * (W * 0.5 + L * 0.13), y - L * 0.1 + i * L * 0.13, 0.0), L * 0.0105, lc)
         if k.get('cerci'):
-            tube((s * W * 0.15, yab - L * 0.02, z + H * 0.3), (s * W * 0.5, yab + L * 0.16, z + H * 0.3), L * 0.01, lc, r2=0.002, seg=4)
+            tube((s * W * 0.15, yab - L * 0.02, z + H * 0.3), (s * W * 0.5, yab + L * 0.16, z + H * 0.3), L * 0.01, lc, r2=0.002, seg=5)
     T.finish()
 
 
@@ -657,31 +712,53 @@ def mantis(m, name, k):
     L = k.get('len', 0.5)
     col = k['col']
     wc = k.get('wingc', col)
-    T = Top(m, name, L * 0.2, L * 0.56, L * 0.58, px=80, bg=col, z0=L * 0.1)
+    T = Top(m, name, L * 0.2, L * 0.6, L * 0.58, px=96, bg=col, z0=L * 0.13)
     AW = L * k.get('w', 0.2)
-    T.shell(-L * 0.04, L * 0.5, via([(0, 0.5), (0.35, 1), (0.8, 0.8), (1, 0.2)]), via([(0, 0.8), (0.4, 1), (1, 0.4)]), AW, AW * 0.5, k.get('abd', col), n=7, seg=6)
-    T.shell(-L * 0.06, L * 0.48, via([(0, 0.5), (0.35, 0.86), (0.8, 0.7), (1, 0.15)]), via([(0, 0.8), (0.4, 1), (1, 0.4)]), AW, AW * 0.5, wc, n=7, seg=6, z0=T.z0 + AW * 0.06)
+    # 배와 그 위를 덮은 날개
+    T.shell(-L * 0.04, L * 0.5, via([(0, 0.5), (0.35, 1), (0.8, 0.8), (1, 0.2)]), via([(0, 0.8), (0.4, 1), (1, 0.4)]), AW, AW * 0.62, k.get('abd', col), n=7, seg=6)
+    T.shell(-L * 0.06, L * 0.5, via([(0, 0.5), (0.35, 0.86), (0.8, 0.7), (1, 0.15)]), via([(0, 0.8), (0.4, 1), (1, 0.4)]), AW, AW * 0.62, wc, n=7, seg=6, z0=T.z0 + AW * 0.08)
     if k.get('edge'):                             # 날개 가장자리의 밝은 줄
         for s in (1, -1):
             T.line([(s * AW * 0.2, -L * 0.04), (s * AW * 0.4, L * 0.14), (s * AW * 0.3, L * 0.4)], L * 0.012, k['edge'])
     T.line([(0, -L * 0.02), (0, L * 0.46)], L * 0.006, shade(wc, 0.75))
-    f1 = T.shell(-L * 0.38, L * 0.0, via([(0, 0.8), (0.2, 1), (1, 0.75)]), const(1.0), L * 0.065, L * 0.045, k.get('pro', col), n=5, seg=6, z0=T.z0 + AW * 0.1)
-    f2 = T.shell(-L * 0.47, -L * 0.36, via([(0, 0.25), (0.5, 1), (1, 0.6)]), via([(0, 0.6), (1, 1)]), L * 0.13, L * 0.05, k.get('headc', col), n=4, seg=6, z0=T.z0 + AW * 0.1)
-    for s in (1, -1):
-        T.ell((s * L * 0.05, -L * 0.42), (L * 0.022, L * 0.026), k.get('eye', '#5a8a3a'))
-    pv = (0, L * 0.0, T.z0 + AW * 0.2)
-    lift = k.get('lift', 26)
+    for i in range(5):                            # 날개맥
+        for s in (1, -1):
+            T.line([(s * AW * 0.08 * (i + 1) / 3, L * 0.02), (s * AW * 0.1 * (i + 1) / 3, L * 0.42)], L * 0.003, shade(wc, 0.86))
+    # 긴 앞가슴과 세모난 머리(나중에 함께 치켜세운다)
+    pc = k.get('pro', col)
+    f1 = T.shell(-L * 0.4, L * 0.0, via([(0, 0.7), (0.22, 1), (1, 0.7)]), const(1.0), L * 0.07, L * 0.05, pc, n=5, seg=6, z0=T.z0 + AW * 0.12)
+    hc = k.get('headc', col)
+    f2 = T.shell(-L * 0.5, -L * 0.385, via([(0, 0.12), (0.45, 0.72), (0.8, 1), (1, 0.55)]), via([(0, 0.5), (0.7, 1), (1, 0.9)]), L * 0.17, L * 0.06, hc, n=5, seg=6, z0=T.z0 + AW * 0.12)
+    pv = (0, L * 0.0, T.z0 + AW * 0.25)
+    lift = k.get('lift', 34)
     rot_about(f1 + f2, pv, 'X', -lift)            # 앞가슴과 머리를 세운다
     T.off()
     lc = k.get('leg', shade(col, 0.85))
     R = Matrix.Translation(Vector(pv)) @ Matrix.Rotation(math.radians(-lift), 4, 'X') @ Matrix.Translation(-Vector(pv))
     up = lambda p: tuple(R @ Vector(p))
-    z = T.z0 + AW * 0.2
-    for s in (1, -1):                             # 낫 같은 앞다리
-        chain([up((s * L * 0.03, -L * 0.3, z)), up((s * L * 0.09, -L * 0.36, z - L * 0.07)), up((s * L * 0.08, -L * 0.52, z + L * 0.0)), up((s * L * 0.05, -L * 0.42, z - L * 0.03))], L * 0.02, k.get('arm', col), r2=L * 0.01, seg=5)
-        tube(up((s * L * 0.03, -L * 0.46, z + L * 0.02)), up((s * L * 0.09, -L * 0.6, z + L * 0.04)), L * 0.004, lc, seg=4)
-        for i, y in enumerate((-L * 0.0, L * 0.08)):
-            chain([(s * L * 0.03, y, T.z0 + AW * 0.2), (s * L * 0.2, y - L * 0.06 + i * L * 0.16, T.z0 + L * 0.1), (s * L * 0.3, y - L * 0.1 + i * L * 0.3, 0.0)], L * 0.01, lc, r2=L * 0.006)
+    z = T.z0 + AW * 0.12
+    ec = k.get('eye', '#6a9a3a')
+    for s in (1, -1):
+        ball(up((s * L * 0.07, -L * 0.42, z + L * 0.035)), 1.0, ec, (L * 0.028, L * 0.034, L * 0.03), sub=2)      # 머리 양 끝의 큰 겹눈
+        ball(up((s * L * 0.076, -L * 0.43, z + L * 0.04)), L * 0.008, '#1e1a14', sub=2)                          # 눈동자처럼 보이는 검은 점
+        chain([up((s * L * 0.02, -L * 0.47, z + L * 0.05)), up((s * L * 0.06, -L * 0.6, z + L * 0.09)), up((s * L * 0.1, -L * 0.74, z + L * 0.08))], L * 0.004, lc, r2=L * 0.002, seg=5)   # 더듬이
+        # 낫 같은 앞다리: 밑마디(아래로) → 굵은 넓적다리(앞으로 치켜듦) → 접힌 종아리(낫)
+        c0 = up((s * L * 0.03, -L * 0.33, z + L * 0.0))
+        c1 = up((s * L * 0.075, -L * 0.3, z - L * 0.1))
+        f_ = up((s * L * 0.085, -L * 0.5, z - L * 0.03))
+        t_ = up((s * L * 0.06, -L * 0.36, z - L * 0.075))
+        arm = k.get('arm', col)
+        tube(c0, c1, L * 0.017, arm, r2=L * 0.02, seg=6)
+        ball(c1, L * 0.022, arm, sub=2)
+        tube(c1, f_, L * 0.03, arm, r2=L * 0.022, seg=8)
+        ball(f_, L * 0.022, arm, sub=2)
+        tube(f_, t_, L * 0.016, shade(arm, 0.9), r2=L * 0.004, seg=6)
+        cv, fv = Vector(c1), Vector(f_)
+        for j in range(5):                        # 넓적다리 안쪽의 가시
+            q = cv.lerp(fv, 0.25 + j * 0.15)
+            cone((q.x - s * L * 0.012, q.y, q.z - L * 0.02), L * 0.006, L * 0.03, shade(arm, 0.7), seg=4, rot=(180, 0, 0))
+        for i, y in enumerate((L * 0.02, L * 0.12)):     # 걷는 다리 두 쌍
+            leg3((s * L * 0.03, y, T.z0 + AW * 0.25), (s * L * 0.2, y - L * 0.05 + i * L * 0.16, T.z0 + L * 0.12), (s * L * 0.28, y - L * 0.1 + i * L * 0.3, 0.0), L * 0.0085, lc, tarsus=0.2)
     T.finish()
 
 
@@ -697,7 +774,7 @@ def stick(m, name, k):
     lc = shade(col, 0.9)
     z = T.z0 + L * 0.02
     for s in (1, -1):
-        ball((s * L * 0.016, -L * 0.47, z + L * 0.012), L * 0.008, '#2a2018', sub=1)
+        ball((s * L * 0.016, -L * 0.47, z + L * 0.012), L * 0.008, '#2a2018', sub=2)
         chain([(s * L * 0.01, -L * 0.5, z), (s * L * 0.03, -L * 0.6, z + 0.01)], L * 0.004, lc)
         chain([(s * L * 0.02, -L * 0.36, z), (s * L * 0.1, -L * 0.6, z + L * 0.08), (s * L * 0.14, -L * 0.82, 0.0)], L * 0.008, lc, r2=L * 0.005)
         chain([(s * L * 0.02, -L * 0.2, z), (s * L * 0.2, -L * 0.22, z + L * 0.1), (s * L * 0.36, -L * 0.12, 0.0)], L * 0.008, lc, r2=L * 0.005)
@@ -737,7 +814,7 @@ def shield(m, name, k):
     lc = k.get('leg', shade(col, 0.6))
     z = T.z0
     for s in (1, -1):
-        ball((s * W * 0.1, Y(0.06), z + L * 0.03), L * 0.02, '#3a1e1a', sub=1)
+        ball((s * W * 0.1, Y(0.06), z + L * 0.03), L * 0.02, '#3a1e1a', sub=2)
         chain([(s * W * 0.05, Y(0.02), z + L * 0.02), (s * W * 0.3, Y(-0.12), z + L * 0.05), (s * W * 0.5, Y(-0.3), z + L * 0.03)], L * 0.01, k.get('antc', lc))
     T.legs6(lc, [Y(0.28), Y(0.42), Y(0.56)], W * 0.25, L * 0.3, z + L * 0.1, r=L * 0.012)
     T.finish()
@@ -785,11 +862,11 @@ def waterbug(m, name, k):
     elif kind == 'back':
         for s in (1, -1):
             chain([(s * W * 0.3, Y(0.46), z + 0.01), (s * W * 1.5, Y(0.4), z + 0.01)], L * 0.018, lc)                # 노 같은 뒷다리
-            ball((s * W * 1.9, Y(0.44), z + 0.01), 1.0, lc, (W * 0.5, L * 0.03, L * 0.008), sub=1)
+            ball((s * W * 1.9, Y(0.44), z + 0.01), 1.0, lc, (W * 0.5, L * 0.03, L * 0.008), sub=2)
             chain([(s * W * 0.3, Y(0.2), z), (s * W * 0.7, Y(0.06), z + 0.01), (s * W * 0.6, Y(-0.08), z)], L * 0.012, lc)
     else:                                         # 소금쟁이: 물 위에 뜬 긴 다리
         for s in (1, -1):
-            ball((s * W * 0.34, Y(0.08), z + W * 0.3), L * 0.02, '#1a1a1a', sub=1)
+            ball((s * W * 0.34, Y(0.08), z + W * 0.3), L * 0.02, '#1a1a1a', sub=2)
             chain([(s * W * 0.3, Y(0.16), z + 0.01), (s * W * 0.9, Y(0.02), z + 0.03), (s * W * 0.8, Y(-0.14), 0.0)], L * 0.01, lc)
             chain([(s * W * 0.3, Y(0.36), z + 0.01), (s * W * 2.6, Y(0.2), z + 0.05), (s * W * 5.0, Y(0.02), 0.0)], L * 0.008, lc)
             chain([(s * W * 0.3, Y(0.5), z + 0.01), (s * W * 2.2, Y(0.74), z + 0.05), (s * W * 3.8, Y(1.2), 0.0)], L * 0.008, lc)
@@ -842,33 +919,69 @@ def spider(m, name, k):
             tube(a, b, L * 0.012, lc, seg=4)
             tube(b, mid, L * 0.011, l2, seg=4)
             tube(mid, c, L * 0.009, lc, r2=L * 0.005, seg=4)
-        ball((s * L * 0.03, -L * 0.4, z + L * 0.03), L * 0.012, '#141414', sub=1)
+        ball((s * L * 0.03, -L * 0.4, z + L * 0.03), L * 0.012, '#141414', sub=2)
     T.finish()
 
 
+def spiral_shell(apex_dir, mouth, r0, turns=4.2, k=0.62, cols=('#e8d9b8', '#b8845a'), stripes=(2, 6), seg=12, per=16):
+    """고둥 껍데기: 점점 가늘어지는 관이 축을 감아 올라가는 나선. mouth=입구(관이 시작하는 곳)의 가운데, apex_dir=뾰족한 끝이 향하는 쪽.
+    입구는 앞(-Y) 쪽으로 열린다. stripes: 단면에서 둘째 색을 칠할 칸(나선을 따라 띠가 된다)."""
+    Z = Vector(apex_dir).normalized()
+    Y = (Vector((0, 1, 0)) - Z * Z.y).normalized()          # 입구의 반대쪽(뒤)
+    X = Y.cross(Z)
+    R0 = r0 * 0.5
+    H = r0 * 2.3
+    org = Vector(mouth) - X * R0
+    n = int(turns * per)
+    V = []
+    for i in range(n + 1):
+        th = 2 * math.pi * i / per
+        g = k ** (i / per)
+        er = X * math.cos(th) + Y * math.sin(th)
+        c = org + er * (R0 * g) + Z * (H * (1 - g))
+        for j in range(seg):
+            ph = 2 * math.pi * j / seg
+            V.append(c + (er * math.cos(ph) + Z * math.sin(ph)) * (r0 * g))
+    FA, FB = [], []
+    for i in range(n):
+        for j in range(seg):
+            f = (i * seg + j, i * seg + (j + 1) % seg, (i + 1) * seg + (j + 1) % seg, (i + 1) * seg + j)
+            (FB if j in stripes else FA).append(f)
+    FA.append(tuple(range(n * seg, n * seg + seg)))          # 뾰족한 끝을 막는다
+    fa = poly([tuple(v) for v in V], FA, cols[0], smooth=True)
+    fb = poly([tuple(v) for v in V], FB, cols[1], smooth=True)
+    fix_normals(list(fa) + list(fb))
+    lip = [V[j] for j in range(seg)]                         # 입구의 두툼한 입술
+    for j in range(seg):
+        tube(tuple(lip[j]), tuple(lip[(j + 1) % seg]), r0 * 0.07, shade(cols[0], 1.08), seg=5)
+    return org
+
+
 def hermit(m, name, k):
-    """소라게: 고둥 껍데기를 짊어진 게"""
+    """소라게: 나선으로 감긴 고둥 껍데기를 짊어지고, 입구로 몸 앞쪽과 집게·다리만 내민다(오른쪽 집게가 더 크다)"""
     L = k.get('len', 0.34)
     sh, s2 = k.get('shell', '#e8d9b8'), k.get('shell2', '#b8845a')
     col = k['col']
-    ax = Vector((0.25, 0.8, 0.55)).normalized()   # 껍데기가 뻗는 방향(뒤쪽 위)
-    p = Vector((0, L * 0.02, L * 0.2))
-    for i in range(6):                            # 점점 작아지는 층
-        r = L * 0.24 * (0.72 ** i)
-        ball(tuple(p), 1.0, sh if i % 2 == 0 else s2, (r, r, r * 0.9), sub=2 if i < 3 else 1)
-        p = p + ax * r * 0.95
-    ball((0, -L * 0.16, L * 0.1), 1.0, col, (L * 0.13, L * 0.12, L * 0.09), sub=2)
+    mouth = (0, -L * 0.02, L * 0.2)
+    spiral_shell((0.3, 0.72, 0.62), mouth, L * 0.2, cols=(sh, s2))
+    ball((0, -L * 0.02, L * 0.19), 1.0, '#3a2a22', (L * 0.17, L * 0.05, L * 0.17), sub=2)        # 입구 안쪽의 어두운 속
+    ball((0, -L * 0.17, L * 0.12), 1.0, col, (L * 0.12, L * 0.13, L * 0.09), sub=3)             # 내민 몸(머리가슴)
     lc = shade(col, 0.85)
+    tipc = k.get('tip', shade(col, 1.3))
     for s in (1, -1):
-        tube((s * L * 0.04, -L * 0.22, L * 0.14), (s * L * 0.06, -L * 0.3, L * 0.24), L * 0.01, lc, seg=4)
-        ball((s * L * 0.06, -L * 0.31, L * 0.25), L * 0.022, '#141414', sub=1)
-        chain([(s * L * 0.04, -L * 0.26, L * 0.12), (s * L * 0.2, -L * 0.5, L * 0.2), (s * L * 0.3, -L * 0.7, L * 0.1)], L * 0.006, lc)
-        cl = 1.25 if s > 0 else 0.9               # 한쪽 집게가 더 크다
-        chain([(s * L * 0.1, -L * 0.2, L * 0.08), (s * L * 0.22, -L * 0.34, L * 0.1)], L * 0.035 * cl, col, seg=5)
-        ball((s * L * 0.2, -L * 0.42, L * 0.08), 1.0, col, (L * 0.07 * cl, L * 0.09 * cl, L * 0.05 * cl), sub=2)
-        tube((s * L * 0.2, -L * 0.48, L * 0.08), (s * L * 0.14, -L * 0.6, L * 0.06), L * 0.022 * cl, k.get('tip', shade(col, 1.3)), r2=0.003, seg=4)
-        for i in range(2):
-            chain([(s * L * 0.12, -L * 0.12 + i * L * 0.07, L * 0.07), (s * L * 0.32, -L * 0.18 + i * L * 0.12, L * 0.14), (s * L * 0.42, -L * 0.22 + i * L * 0.2, 0.0)], L * 0.022, col, r2=L * 0.008, seg=5)
+        tube((s * L * 0.04, -L * 0.25, L * 0.16), (s * L * 0.06, -L * 0.33, L * 0.26), L * 0.012, lc, seg=5)        # 눈자루
+        ball((s * L * 0.06, -L * 0.34, L * 0.27), L * 0.024, '#141414', sub=2)
+        chain([(s * L * 0.03, -L * 0.28, L * 0.13), (s * L * 0.18, -L * 0.52, L * 0.2), (s * L * 0.28, -L * 0.72, L * 0.1)], L * 0.006, lc, r2=L * 0.003)      # 긴 더듬이
+        cl = 1.3 if s > 0 else 0.9               # 오른쪽 집게가 더 크다
+        a_, b_ = (s * L * 0.1, -L * 0.22, L * 0.09), (s * L * 0.24, -L * 0.36, L * 0.1)
+        tube(a_, b_, L * 0.04 * cl, col, r2=L * 0.045 * cl, seg=7)
+        ball(b_, L * 0.046 * cl, col, sub=2)
+        hand = (s * L * 0.2, -L * 0.47, L * 0.08)
+        ball(hand, 1.0, col, (L * 0.07 * cl, L * 0.095 * cl, L * 0.055 * cl), sub=3)
+        tube((hand[0] + s * L * 0.02 * cl, hand[1] - L * 0.05 * cl, hand[2]), (s * L * 0.15, -L * 0.47 - L * 0.17 * cl, L * 0.06), L * 0.026 * cl, tipc, r2=0.003, seg=6)
+        tube((hand[0] - s * L * 0.03 * cl, hand[1] - L * 0.05 * cl, hand[2]), (s * L * 0.11, -L * 0.47 - L * 0.15 * cl, L * 0.05), L * 0.02 * cl, tipc, r2=0.003, seg=6)
+        for i in range(2):                        # 걷는 다리 두 쌍(나머지 두 쌍은 껍데기 속에서 껍데기를 붙든다)
+            crableg((s * L * 0.11, -L * 0.14 + i * L * 0.06, L * 0.08), (s * L * 0.3, -L * 0.2 + i * L * 0.12, L * 0.16), (s * L * 0.4, -L * 0.25 + i * L * 0.2, L * 0.06), (s * L * 0.46, -L * 0.29 + i * L * 0.25, 0.004), L * 0.016, col, shade(col, 0.7))
 
 
 def snail(m, name, k):
@@ -896,7 +1009,7 @@ def snail(m, name, k):
     T.off()
     for s in (1, -1):                             # 눈자루와 작은 더듬이
         tube((s * L * 0.035, -L * 0.44, L * 0.07), (s * L * 0.09, -L * 0.58, L * 0.2), L * 0.012, body, r2=L * 0.008, seg=5)
-        ball((s * L * 0.09, -L * 0.58, L * 0.2), L * 0.016, '#2a2420', sub=1)
+        ball((s * L * 0.09, -L * 0.58, L * 0.2), L * 0.016, '#2a2420', sub=2)
         tube((s * L * 0.03, -L * 0.48, L * 0.04), (s * L * 0.06, -L * 0.57, L * 0.05), L * 0.008, body, seg=4)
     T.finish()
 
@@ -916,7 +1029,7 @@ def bagworm(m, name, k):
         tube((math.cos(a) * r, math.sin(a) * r, z0), (math.cos(a) * (r + L * 0.02), math.sin(a) * (r + L * 0.02), z0 + ln), L * 0.024, twig[i % 4], seg=5)
         cyl((math.cos(a) * (r + L * 0.02), math.sin(a) * (r + L * 0.02), z0 + ln), L * 0.02, 0.004, '#d9b98a', seg=5)
     tube((0, 0, L * 0.98), (0, 0, L * 1.6), 0.004, '#f3f0e6', seg=4)           # 매달린 실
-    ball((0, -L * 0.03, L * 0.03), L * 0.05, '#3a2a1e', sub=1)                  # 아래로 빼꼼 내민 머리
+    ball((0, -L * 0.03, L * 0.03), L * 0.05, '#3a2a1e', sub=2)                  # 아래로 빼꼼 내민 머리
 
 
 BUG_FN = {'snail': snail, 'bagworm': bagworm, 'butterfly': butterfly, 'dragonfly': dragonfly, 'cicada': cicada, 'bee': bee, 'ant': ant, 'beetle': beetle, 'hopper': hopper,

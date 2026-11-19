@@ -160,6 +160,7 @@ function convert(root, assoc) {
     if (src.map || (n.geometry.attributes.color && src.vertexColors)) {
       const m = new THREE.MeshLambertMaterial({ map: src.map || null, color: src.color ? src.color.clone() : 0xffffff, vertexColors: !!src.vertexColors, transparent: src.transparent, alphaTest: src.alphaTest, side: src.side });
       m.name = name; m.userData.base = name;
+      if (m.transparent) { m.depthWrite = false; n.castShadow = false; n.renderOrder = 2; }   // 비치는 날개
       n.material = patchMaterial(m, { rim: true });
       return;
     }

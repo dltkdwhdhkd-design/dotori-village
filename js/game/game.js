@@ -27,7 +27,7 @@ export const G = {
 
 // ---------------------------------------------------------------- 자산 불러오기
 export async function loadAssets(onProgress) {
-  const bundles = ['nature', 'buildings', 'furniture', 'items', 'critters'];
+  const bundles = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs'];
   let done = 0;
   const V = '?v=' + VERSION;
   const chars = await fetch('./assets/chars/chars.json' + V).then((r) => r.json());

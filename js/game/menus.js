@@ -122,25 +122,27 @@ function compress(m) { // [3,4,5,9] -> ['3~5','9']
   return out.length ? out : ['1~12'];
 }
 const hoursText = (h) => (h === 'all' ? '하루 종일' : h.map(([a, b]) => `${a}시~${b}시`).join(', '));
-const LOC_KO = { river: '강', pond: '연못', sea: '바다', mouth: '강어귀', pier: '부두' };
-const WHERE_KO = { air: '날아다님', flower: '꽃 위', tree: '나무줄기', ground: '풀밭', pond: '물 위', stump: '그루터기', rainrock: '비 오는 날 바위', light: '가로등 주변', glow: '물가의 밤', shake: '나무를 흔들면', rock: '바위를 두드리면', food: '땅에 놓아둔 과일 곁' };
+const LOC_KO = { river: '강', upstream: '강 상류', pond: '연못', sea: '바다', mouth: '강어귀', pier: '부두' };
+const WHERE_KO = { shore: '물가를 날아다님', path: '길 위', sand: '모래밭', air: '날아다님', flower: '꽃 위', tree: '나무줄기', ground: '풀밭', pond: '물 위', stump: '그루터기', rainrock: '비 오는 날 바위', light: '가로등 주변', glow: '물가의 밤', shake: '나무를 흔들면', rock: '바위를 두드리면', food: '땅에 놓아둔 과일 곁' };
 
 export function openDex() {
-  const box = el('div'); let tab = 'fish', sel = null;
+  const box = el('div'); let tab = 'fresh', sel = null;
   const draw = () => {
     box.innerHTML = '';
     const tabs = el('div', 'tabs');
-    for (const [k, ko] of [['fish', '물고기'], ['bug', '곤충'], ['fossil', '화석']]) { const t = el('button', 'tab' + (tab === k ? ' on' : ''), ko); t.onclick = () => { tab = k; sel = null; Sound.sfx('ui'); draw(); }; tabs.appendChild(t); }
+    for (const [k, ko] of [['fresh', '민물고기'], ['sea', '바닷물고기'], ['bug', '곤충'], ['fossil', '화석']]) { const t = el('button', 'tab' + (tab === k ? ' on' : ''), ko); t.onclick = () => { tab = k; sel = null; Sound.sfx('ui'); draw(); }; tabs.appendChild(t); }
     box.appendChild(tabs);
-    const list = tab === 'fish' ? FISH.filter((f) => !f.trash) : tab === 'bug' ? BUGS : FOSSILS.map((f) => ({ id: f[0], name: f[1], fact: f[3], price: f[2] }));
-    const got = (id) => !!S.dex[tab][id], don = (id) => S.museum[tab].includes(id);
+    const cat = tab === 'fresh' || tab === 'sea' ? 'fish' : tab;       // 기록은 민물·바다를 나누지 않고 fish 하나에 쌓인다
+    const list = cat === 'fish' ? FISH.filter((f) => f.water === tab) : tab === 'bug' ? BUGS : FOSSILS.map((f) => ({ id: f[0], name: f[1], fact: f[3], price: f[2] }));
+    const got = (id) => !!S.dex[cat][id], don = (id) => S.museum[cat].includes(id);
     const n = list.filter((x) => got(x.id)).length;
-    box.appendChild(el('div', 'note', `찾은 것 ${n} / ${list.length}　·　박물관 기증 ${S.museum[tab].length}`));
+    box.appendChild(el('div', 'note', `찾은 것 ${n} / ${list.length}　·　박물관 기증 ${list.filter((x) => don(x.id)).length}`));
     box.appendChild(el('div', 'bar', `<i style="width:${Math.round((n / list.length) * 100)}%"></i>`));
     const row = el('div', 'row2');
     const grid = el('div', 'grid'); grid.style.gridTemplateColumns = 'repeat(7, 76px)';
+    grid.style.maxHeight = '56vh'; grid.style.overflowY = 'auto'; grid.style.paddingRight = '6px'; grid.style.alignContent = 'start';
     for (const x of list) {
-      const id = (tab === 'fossil' ? 'fossil_' : tab + '_') + x.id;
+      const id = (tab === 'fossil' ? 'fossil_' : cat + '_') + x.id;
       const d = slotEl({ id, n: 1 }, { unknown: !got(x.id), sel: sel === x });
       if (don(x.id)) d.appendChild(el('span', 'mark', '기증'));
       d.title = got(x.id) ? x.name : '???';
@@ -150,7 +152,7 @@ export function openDex() {
     const det = el('div', 'detail');
     if (!sel) det.innerHTML = '<p>칸을 누르면 자세한 내용이 나온다. 아직 못 만난 것은 그림자로만 보인다.</p>';
     else if (!got(sel.id)) det.innerHTML = '<h3>???</h3><p>아직 만나지 못했다.</p>';
-    else if (tab === 'fish') { const r = S.dex.fish[sel.id]; det.innerHTML = `<h3>${sel.name}</h3><p>사는 곳: ${sel.loc.map((l) => LOC_KO[l]).join(', ')}</p><p>철: ${monthsText(sel.m)}</p><p>시간: ${hoursText(sel.h)}</p><p>잡은 수 ${r.n}마리 · 최고 ${r.max}cm</p><p>값: ${acorns(sel.price)}</p><p>${sel.fact}</p>`; }
+    else if (cat === 'fish') { const r = S.dex.fish[sel.id]; det.innerHTML = `<h3>${sel.name}</h3><p>사는 곳: ${sel.loc.map((l) => LOC_KO[l]).join(', ')}</p><p>철: ${monthsText(sel.m)}</p><p>시간: ${hoursText(sel.h)}</p><p>잡은 수 ${r.n}마리 · 최고 ${r.max}cm</p><p>값: ${acorns(sel.price)}</p><p>${sel.fact}</p>`; }
     else if (tab === 'bug') { const r = S.dex.bug[sel.id]; det.innerHTML = `<h3>${sel.name}</h3><p>있는 곳: ${WHERE_KO[sel.where] || ''}</p><p>철: ${monthsText(sel.m)}</p><p>시간: ${hoursText(sel.h)}</p><p>잡은 수 ${r.n}마리</p><p>값: ${acorns(sel.price)}</p><p>${sel.fact}</p>`; }
     else det.innerHTML = `<h3>${sel.name}</h3><p>값: ${acorns(sel.price)}</p><p>${sel.fact}</p>`;
     row.appendChild(grid); row.appendChild(det); box.appendChild(row);

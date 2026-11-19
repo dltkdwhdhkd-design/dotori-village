@@ -6,15 +6,20 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import lib
 
-CATS = ['nature', 'buildings', 'furniture', 'items', 'critters']
+CATS = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs']
+# 묶음 이름 → (모듈, 만드는 함수, 그림을 webp로 줄여 넣을지)
+SPEC = {'fish': ('critters', 'build_fish', True), 'bugs': ('critters', 'build_bugs', True)}
 
 
 def build_cat(cat):
     lib.reset()
-    mod = importlib.import_module(cat)
+    name, fn, webp = SPEC.get(cat, (cat, 'build', False))
+    for dep in ('paint', 'fishkit', 'topkit', 'bugkit') if name == 'critters' else ():
+        importlib.reload(importlib.import_module(dep))
+    mod = importlib.import_module(name)
     importlib.reload(mod)
-    mod.build()
-    lib.export(os.path.join(ROOT, 'assets/models', cat + '.glb'), os.path.join(ROOT, 'blend', cat + '.blend'))
+    getattr(mod, fn)()
+    lib.export(os.path.join(ROOT, 'assets/models', cat + '.glb'), os.path.join(ROOT, 'blend', cat + '.blend'), webp=webp)
 
 
 def build_chars(only=None):
@@ -43,6 +48,6 @@ if __name__ == '__main__':
     for c in want:
         if c.startswith('chars'):          # chars 또는 chars:이름,이름 (일부만 다시 만들기)
             build_chars(c.split(':')[1].split(',') if ':' in c else None)
-        elif os.path.exists(os.path.join(HERE, c + '.py')):
+        elif c in SPEC or os.path.exists(os.path.join(HERE, c + '.py')):
             print('[%s]' % c)
             build_cat(c)

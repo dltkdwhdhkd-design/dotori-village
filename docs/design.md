@@ -115,7 +115,7 @@
 
 | 더하고 싶은 것 | 고칠 곳 |
 | --- | --- |
-| 물고기·곤충 | `data/fish.json`, `data/bugs.json` 에 한 줄 → `python3 tools/blender/build.py critters` |
+| 물고기·곤충 | `data/fish.json`, `data/bugs.json` 에 한 줄(생김새는 `look`) → `python3 tools/blender/build.py fish bugs` (자세한 것은 `docs/blender.md` 의 '생물') |
 | 가구 | `tools/blender/furniture.py` + `js/data/items.js` 의 `FURNITURE` |
 | 벽지·바닥재 | `js/gfx/roomtex.js` 의 `DRAW` + `js/data/items.js` 의 `WALLS`/`FLOORS` |
 | 주민 | `tools/blender/chars.py` + `js/data/villagers.js` |

@@ -1,7 +1,7 @@
 // 아이템 그림(아이콘): 3D 모델을 작은 화면에 한 번 그려서 그림으로 만든다
 import * as THREE from 'three';
 import { make, has, CURVE } from './models.js';
-import { ITEMS } from '../data/items.js';
+import { ITEMS, FISH_BY_ID } from '../data/items.js';
 
 const SIZE = 128;
 let renderer = null, scene = null, cam = null, holder = null;
@@ -48,6 +48,7 @@ export function thumbOfModel(model, opts = {}) {
 export function thumb(id) {
   const it = ITEMS[id];
   if (!it) return '';
-  const view = it.kind === 'fish' || (it.kind === 'misc' && it.sp) ? 'side' : it.kind === 'bug' || it.kind === 'shell' ? 'top' : 'front';
+  const sp = it.sp && FISH_BY_ID[it.sp];
+  const view = it.kind === 'fish' || (it.kind === 'misc' && it.sp) ? (sp && sp.look.view === 'top' ? 'top' : 'side') : it.kind === 'bug' || it.kind === 'shell' ? 'top' : 'front';
   return thumbOfModel(it.model, { tint: it.tint, view });
 }

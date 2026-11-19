@@ -427,10 +427,11 @@ export async function exitRoom() {
 }
 
 // ---------------------------------------------------------------- 잡았다!
-function holdUp(model, tint, scale = 1) {
+function holdUp(model, tint, scale = 1, tilt = 0) {
   const a = G.player.actor;
   const o = make(model, tint ? { tint } : {});
-  o.scale.setScalar(scale); o.position.set(0, a.topY + 0.25, 0);
+  o.scale.setScalar(scale); o.position.set(0, a.topY + 0.25 + (tilt ? 0.2 : 0), 0);
+  o.rotation.x = tilt;                 // 위에서 본 모습이 특징인 생물(곤충, 게, 넙치 등)은 등이 보이게 세워 든다
   a.root.add(o); a.play('show', 99); a.face(0);
   return () => { a.root.remove(o); a.anim = null; };
 }
@@ -440,7 +441,7 @@ export function caughtFish(sp) {
     const cm = Math.round((sp.cm[0] + rand() * (sp.cm[1] - sp.cm[0])) * 10) / 10;
     const d = S.dex.fish[sp.id], isNew = !d && !sp.trash;
     if (!sp.trash) S.dex.fish[sp.id] = { n: (d ? d.n : 0) + 1, max: Math.max(d ? d.max : 0, cm) };
-    const done = holdUp('fish_' + sp.id, null, Math.min(1.1, 0.9 / (sp.look.len || 0.8)));
+    const done = holdUp('fish_' + sp.id, null, Math.min(1.1, 0.9 / (sp.look.len || 0.8)), sp.look.view === 'top' ? 1.0 : 0);
     Sound.sfx(isNew ? 'fanfare' : sp.trash ? 'fail' : 'catch');
     if (!sp.trash) burst('spark', G.player.x, 2, G.player.z, 8);
     await UI.card({ id, title: sp.say, sub: sp.trash ? '' : `${cm}cm${d && cm > d.max ? ' · 내 최고 기록!' : ''}`, isNew });
@@ -453,7 +454,7 @@ export function caughtBug(b) {
   runScript(async () => {
     const sp = b.sp, id = 'bug_' + sp.id, d = S.dex.bug[sp.id], isNew = !d;
     S.dex.bug[sp.id] = { n: (d ? d.n : 0) + 1 };
-    const done = holdUp('bug_' + sp.id, null, 2.2);
+    const done = holdUp('bug_' + sp.id, null, Math.min(2.2, 0.8 / (sp.look.span || sp.look.len || 0.36)), 1.0);
     Sound.sfx(isNew ? 'fanfare' : 'catch'); burst('spark', G.player.x, 2, G.player.z, 8);
     await UI.card({ id, title: sp.say, sub: '', isNew });
     done();

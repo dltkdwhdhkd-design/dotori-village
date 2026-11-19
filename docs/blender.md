@@ -12,7 +12,8 @@
 | `blend/buildings.blend` | 집, 가게, 박물관, 마을회관, 다리, 시설물 | `assets/models/buildings.glb` |
 | `blend/furniture.blend` | 가구, 실내 소품 | `assets/models/furniture.glb` |
 | `blend/items.blend` | 도구, 화석, 잡동사니 | `assets/models/items.glb` |
-| `blend/critters.blend` | 물고기, 곤충 | `assets/models/critters.glb` |
+| `blend/fish.blend` | 물고기와 물속 생물 80종, 물고기 그림자 | `assets/models/fish.glb` |
+| `blend/bugs.blend` | 곤충 80종 | `assets/models/bugs.glb` |
 | `blend/chars/<id>.blend` | 캐릭터(한 명씩) | `assets/chars/<id>.glb` |
 
 - 모델은 바둑판처럼 늘어서 있습니다. **맨 위 오브젝트의 이름이 게임이 찾는 이름**이니 바꾸지 마세요(예: `tree_fruit`, `house_a`, `f_log_bed`).
@@ -53,3 +54,30 @@ python3 tools/blender/build.py chars:dalgom,player   # 이름에 그 글자가 �
 - 물고기·곤충은 `data/fish.json`, `data/bugs.json` 의 `look` 값으로 만들어집니다. 종을 추가하면 모델도 생깁니다.
 
 주의: 블렌더에서 직접 고친 `.blend` 는 스크립트를 다시 돌리면 덮어써집니다. 한쪽 길을 정해 쓰세요.
+
+
+## 생물(물고기·곤충): 종마다 그림을 그려 입힌다
+
+물고기와 곤충은 손으로 모양을 하나하나 깎지 않고, **종마다 그림 한 장을 그려서 같은 윤곽의 몸에 입히는** 방식으로 만든다.
+그림은 Pillow로 그리고(`paint.py`), 몸의 꼭짓점 위치를 그대로 그림 위의 자리로 쓴다(평면 투영). 그래서 그림에 그린 무늬가 모델의 같은 자리에 나타난다.
+
+| 파일 | 하는 일 |
+| --- | --- |
+| `paint.py` | 그림판 `Canvas`(모델 좌표로 그리기, 투명도, 좌우 대칭), 그림 재질 `tex_material` |
+| `fishkit.py` | 옆모습 물고기. `FAMILY` 에 무리별 기본 체형(피라미형, 잉어형, 송어형, 농어형, 돔형, 고등어형, 다랑어형, 넙치형, 상어형 …)이 있고, 종의 `look` 이 그 값을 덮어쓴다 |
+| `topkit.py` | 위에서 본 그림을 입히는 공통 틀 `Top` 과, 게·가재·거북·가오리·개구리·올챙이·아귀·해파리 |
+| `bugkit.py` | 곤충. 나비(`WING` 날개 윤곽 + 무늬), 잠자리, 매미, 벌, 딱정벌레(뿔·큰턱·더듬이·등판 무늬), 메뚜기, 사마귀, 노린재, 물속 노린재, 거미 … |
+| `critters.py` | `data/fish.json`, `data/bugs.json` 을 읽어 종마다 `look.f`(틀 이름)에 맞는 함수로 모델을 만든다 |
+
+종을 더하거나 고치는 법
+1. `data/fish.json` (또는 `bugs.json`)에 한 줄을 더한다. 철·시간·값은 다른 줄을 본뜨고, 생김새는 `look` 에 적는다.
+2. `python3 tools/blender/build.py fish` (또는 `bugs`). 그림은 `/tmp/dotori_tex/` 에도 저장되니 열어서 바로 확인할 수 있다.
+3. `viewer.html?b=fish&m=<id>&pitch=0.1` 로 3D 모양을 본다.
+
+물고기 `look` 의 주요 값: `f` 무리, `len` 길이(칸), `dep` 몸높이, `col` [등, 옆구리, 배], `fin` 지느러미 색, `d/d2/a` 지느러미 [시작, 끝, 높이, 모양], `c` 꼬리 [모양, 폭, 파임],
+`pat` 무늬 목록(`bars` 세로띠, `spots` 점, `stripe` 가로줄, `wavy` 물결, `blotch` 얼룩, `scales` 비늘, `parr` 타원 무늬, `ocellus` 눈알 무늬, `dotrows` 점줄, `lines`, `scutes`, `grid` …). 값의 뜻은 `fishkit.py` 맨 위와 `patterns()` 의 주석에 있다.
+
+나비 `look`: `w` 날개 윤곽 틀, `span` 편 날개 길이, `base`/`hbase` 앞·뒷날개 바탕색, `pat` 무늬(자리는 `a` 앞가장자리 0→뒷가장자리 1, `r` 밑동 0→바깥 1 로 적는다. `bugkit.py` 의 `wing_patterns` 주석 참고).
+딱정벌레 `look`: `len`, `w` 폭, `col`/`pc`/`hc` 딱지날개·앞가슴·머리 색, `horn` (`rhino`, `stag`, `saw`, `flat`, `king`, `antler`, `snout`), `ant` 더듬이, `pat`/`ppat` 등판 무늬(`_surface_pat` 주석 참고).
+
+비치는 날개(잠자리·매미·벌)는 투명도가 있는 둘째 그림(`txa_<id>`)을 쓴다. 날개는 `wing_L` / `wing_R` 부위로 따로 두어 게임에서 퍼덕인다.

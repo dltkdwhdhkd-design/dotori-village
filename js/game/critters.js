@@ -12,7 +12,8 @@ import { rand, weighted, clamp, TAU } from '../core/util.js';
 
 const LOC = { [WK.RIVER]: 'river', [WK.POND]: 'pond', [WK.SEA]: 'sea', [WK.MOUTH]: 'mouth' };
 // 곤충을 화면에 그리는 크기(실제보다 크게, 하지만 징그럽지 않을 만큼만)
-const BUG_SCALE = { air: 1.4, light: 1.4, glow: 1.3, flower: 1.2, ground: 1.2, tree: 1.4, stump: 1.3, pond: 1.3, rainrock: 1.3, rock: 1.2, shake: 1.3, food: 0.62 };
+const BUG_SCALE = { air: 1.25, shore: 1.3, light: 1.25, glow: 1.3, flower: 1.2, ground: 1.2, path: 1.2, sand: 1.3, tree: 1.4, stump: 1.3, pond: 1.3, rainrock: 1.3, rock: 1.2, shake: 1.3, food: 0.62 };
+export const UPSTREAM_Y = 20;  // 강에서 이보다 북쪽(위쪽)은 '상류'
 const BUG_MAX = 4;           // 한 번에 주변에 나와 있는 곤충 수의 한도
 
 export class Critters {
@@ -30,7 +31,8 @@ export class Critters {
     let loc = LOC[k]; if (!loc) return [];
     const d = v.dock, nearPier = loc === 'sea' && Math.abs(x - (d.x + 1)) < 3.5 && z < d.y + d.len + 2.5 && z > d.y + 1.2;
     const now = G.now;
-    return FISH.filter((f) => (f.loc.includes(loc) || (nearPier && f.loc.includes('pier'))) && inMonths(f.m, now) && inHours(f.h, now));
+    const up = loc === 'river' && z < UPSTREAM_Y;      // 강의 위쪽은 상류: 상류에만 사는 물고기가 나온다
+    return FISH.filter((f) => (f.loc.includes(loc) || (up && f.loc.includes('upstream')) || (nearPier && f.loc.includes('pier'))) && inMonths(f.m, now) && inHours(f.h, now));
   }
   deepWater(x, z) { return G.world.terrain.sample(G.world.terrain.F.water, x, z) > 0.8 && G.village.isWater(Math.floor(x), Math.floor(z)); }
   /** 물고기가 나타날 수 있는 물 칸 목록(한 번만 만든다) */
@@ -157,7 +159,7 @@ export class Critters {
 
   spawnBug() {
     const v = G.village, p = G.player;
-    const list = this.bugPool().filter((b) => this.countOf(b) < (b.where === 'air' ? 2 : 1));
+    const list = this.bugPool().filter((b) => this.countOf(b) < (b.where === 'air' && b.w >= 6 ? 2 : 1));
     const sp = weighted(list, (b) => b.w);
     if (!sp) return;
     const pick = (pred) => {
@@ -172,6 +174,9 @@ export class Critters {
     const w = sp.where;
     let s = null;
     if (w === 'air') { s = pick((x, y, o) => o && o.t === 'flower') || pick((x, y, o) => !o && v.terrainAt(x, y) === T.GRASS); if (s) this.addBug(sp, s.x + 0.5, 0.75, s.y + 0.5, { fly: true }); }
+    else if (w === 'shore') { s = pick((x, y, o) => !o && v.walkableTerrain(x, y) && (v.isWater(x + 1, y) || v.isWater(x - 1, y) || v.isWater(x, y + 1) || v.isWater(x, y - 1))); if (s) this.addBug(sp, s.x + 0.5, 0.55, s.y + 0.5, { fly: true }); }
+    else if (w === 'path') { s = pick((x, y, o) => !o && v.terrainAt(x, y) === T.PATH); if (s) this.addBug(sp, s.x + 0.5, 0.02, s.y + 0.5, { hop: true }); }
+    else if (w === 'sand') { s = pick((x, y, o) => !o && v.terrainAt(x, y) === T.SAND); if (s) this.addBug(sp, s.x + 0.5, 0.02, s.y + 0.5, { hop: true }); }
     else if (w === 'flower') { s = pick((x, y, o) => o && o.t === 'flower'); if (s) this.addBug(sp, s.x + 0.5, 0.42, s.y + 0.42); }
     else if (w === 'tree') { s = pick((x, y, o) => o && o.t === 'tree' && o.stage === 3 && v.walkableTerrain(x, y + 1) && !v.obj(x, y + 1)); if (s) { const b = this.addBug(sp, s.x + 0.5, 0.85, s.y + 0.5 + 0.24, { onTree: true }); b.m.rotation.x = -Math.PI / 2; } }
     else if (w === 'ground') { s = pick((x, y, o) => !o && v.terrainAt(x, y) === T.GRASS); if (s) this.addBug(sp, s.x + 0.5, 0.02, s.y + 0.5, { hop: true }); }
@@ -263,7 +268,7 @@ export class Critters {
       }
       b.m.position.set(b.x, b.y, b.z);
       const P = b.m.userData.parts;
-      if (P && P.wing_L) { const fl = b.fly || b.state === 'flee' ? Math.sin(b.t * (b.sp.look.type === 'butterfly' ? 16 : 60)) * 0.8 : 0.1; P.wing_L.rotation.z = fl; P.wing_R.rotation.z = -fl; }
+      if (P && P.wing_L) { const fl = b.fly || b.state === 'flee' ? Math.sin(b.t * (b.sp.look.f === 'butterfly' ? 16 : 60)) * 0.8 : 0.1; P.wing_L.rotation.z = fl; P.wing_R.rotation.z = -fl; }
     }
     // 벌 떼
     const sw = this.swarm;

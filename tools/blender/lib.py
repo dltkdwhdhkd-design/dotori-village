@@ -45,6 +45,10 @@ def hexlin(h):
 
 def get_mat(name):
     """이름으로 재질을 얻는다. '#rrggbb'를 주면 그 색의 재질(이름 c_rrggbb)을 만든다."""
+    if isinstance(name, (tuple, list)):    # (r, g, b) 0~255
+        name = '#%02x%02x%02x' % tuple(int(max(0, min(255, v))) for v in name[:3])
+    if name in _mats:                      # 그림을 입힌 재질 등, 미리 등록해 둔 것
+        return _mats[name]
     if name.startswith('#'):
         key, col = 'c_' + name[1:].lower(), name
     else:
@@ -182,6 +186,15 @@ def cur():
     return _current[-1]
 
 
+_proj = [None]
+
+
+def set_proj(fn):
+    """그림을 입히는 방법을 정한다. fn(꼭짓점 위치) → (u, v). None이면 끈다.
+    켜 둔 동안 만드는 모든 도형에, 그 위치를 그림 위의 한 점으로 비춰 텍스처 좌표를 준다(평면 투영)."""
+    _proj[0] = fn
+
+
 def _finish(new_verts, mat, smooth):
     p = cur()
     idx = p.mi(mat)
@@ -192,7 +205,30 @@ def _finish(new_verts, mat, smooth):
     for f in faces:
         f.material_index = idx
         f.smooth = smooth
+    if _proj[0]:
+        uv = p.bm.loops.layers.uv.verify()
+        fn = _proj[0]
+        for f in faces:
+            for l in f.loops:
+                l[uv].uv = fn(l.vert.co)
     return list(faces)
+
+
+def xform(faces, M):
+    """이미 만든 면들의 꼭짓점을 행렬 M으로 옮긴다(그림 좌표는 그대로 둔 채 모양만 기울이거나 옮길 때)."""
+    vs = set()
+    for f in faces:
+        for v in f.verts:
+            vs.add(v)
+    for v in vs:
+        v.co = M @ v.co
+
+
+def rot_about(faces, pivot, axis, deg):
+    """면들을 pivot을 지나는 축(axis 'X'|'Y'|'Z' 또는 벡터)으로 deg도 돌린다."""
+    pv = Vector(pivot)
+    R = Matrix.Rotation(math.radians(deg), 4, axis)
+    xform(faces, Matrix.Translation(pv) @ R @ Matrix.Translation(-pv))
 
 
 # ----------------------------------------------------------------- 도형
@@ -262,6 +298,38 @@ def poly(verts, faces, mat, smooth=False):
             pass
     bm.normal_update()
     return _finish(vs, mat, smooth)
+
+
+def register_mat(name, material):
+    """이미 만든 블렌더 재질(그림 재질 등)을 이름으로 쓸 수 있게 등록한다."""
+    _mats[name] = material
+
+
+def mesh_uv(verts, faces, mat, uvs, smooth=True):
+    """꼭짓점·면·텍스처 좌표를 직접 줘서 만든다(그림을 입히는 모델용). uvs는 꼭짓점마다 (u, v)."""
+    bm = cur().bm
+    layer = bm.loops.layers.uv.verify()
+    vs = [bm.verts.new(v) for v in verts]
+    made = []
+    for f in faces:
+        try:
+            face = bm.faces.new([vs[i] for i in f])
+        except ValueError:
+            continue
+        for loop, i in zip(face.loops, f):
+            loop[layer].uv = uvs[i]
+        made.append(face)
+    bm.normal_update()
+    idx = cur().mi(mat)
+    for f in made:
+        f.material_index = idx
+        f.smooth = smooth
+    return made
+
+
+def fix_normals(faces):
+    """면들의 앞뒤를 바깥쪽으로 맞춘다(닫힌 덩어리용)."""
+    bmesh.ops.recalc_face_normals(cur().bm, faces=faces)
 
 
 def prism(base, w, d, h, mat, rot=(0, 0, 0), over=0.0):
@@ -431,17 +499,19 @@ def layout_grid(spacing=4.0, cols=8):
         root.location = Vector(((i % cols) * spacing, -(i // cols) * spacing, 0))
 
 
-def export(glb_path, blend_path=None, spacing=4.0, cols=8):
+def export(glb_path, blend_path=None, spacing=4.0, cols=8, webp=False):
     os.makedirs(os.path.dirname(glb_path), exist_ok=True)
+    _proj[0] = None
+    extra = dict(export_image_format='WEBP', export_image_quality=92) if webp else {}
     for root in MODELS:
         root.location = Vector((0, 0, 0))
     bpy.ops.object.select_all(action='DESELECT')
     for ob in bpy.context.scene.collection.all_objects:
         ob.select_set(True)
     bpy.ops.export_scene.gltf(filepath=glb_path, export_format='GLB', use_selection=True, export_yup=True,
-                              export_apply=False, export_texcoords=False, export_normals=True,
+                              export_apply=False, export_texcoords=True, export_normals=True,
                               export_materials='EXPORT', export_cameras=False, export_lights=False,
-                              export_animations=False, export_extras=False)
+                              export_animations=False, export_extras=False, **extra)
     if blend_path:
         os.makedirs(os.path.dirname(blend_path), exist_ok=True)
         layout_grid(spacing, cols)

@@ -10,6 +10,7 @@ import { Sound } from '../core/audio.js';
 import { UI } from '../ui/ui.js';
 import { S, addItem, canAdd } from './state.js';
 import { clamp, rand } from '../core/util.js';
+import { signMesh } from './museum.js';
 
 const WALL_H = 2.5;
 const K = (k, t) => `<b>${k}</b>${t}`;
@@ -21,9 +22,13 @@ export function footprint(it) {
 }
 
 export class Room {
-  /** spec: { id, w, h, wall, floor, items:[{id,x,y,r,sale?,prop?}], editable, npcs:[{model,name,pitch,x,z,fixed,talk,face}], onExit } */
+  /** spec: { id, w, h, wall, floor, items:[{id,x,y,r,sale?,prop?}], editable, npcDefs:[{model,name,pitch,x,z,fixed,talk,face}],
+   *          portals:[{x, to, label}] 뒷벽에 난 다른 방으로 가는 문,  exitTo 아래쪽 문으로 나가면 가는 방(없으면 마을),
+   *          setup(room) 방을 다 지은 뒤 꾸밈·전시물을 더하는 함수. { update(dt), probe(player) → {label, act} } 를 돌려주면 방이 불러 준다 } */
   constructor(spec) {
     Object.assign(this, spec);
+    this.blocks = [];          // 가구가 아닌 것(수조, 전시대, 나무)이 막고 있는 칸
+    this.ex = null;
     this.group = new THREE.Group();
     this.npcs = [];
     this.objs = [];
@@ -56,8 +61,16 @@ export class Room {
     under.rotation.x = -Math.PI / 2; under.position.set(w / 2, -0.02, h / 2); this.group.add(under);
     const mat = make('doormat'); mat.position.set(w / 2, 0, h + 0.32); this.group.add(mat);
     box(1.5, 0.02, 0.7, w / 2, -0.005, h + 0.3, patchMaterial(new THREE.MeshLambertMaterial({ color: 0xcfb58a })));
+    // 다른 방으로 가는 문(뒷벽): 어두운 문틀과 팻말
+    for (const pt of this.portals || []) {
+      box(1.24, 2.0, 0.05, pt.x, 1.0, 0.03, new THREE.MeshBasicMaterial({ color: 0x3a2a20 }));
+      box(0.12, 2.1, 0.12, pt.x - 0.68, 1.05, 0.06, trim); box(0.12, 2.1, 0.12, pt.x + 0.68, 1.05, 0.06, trim); box(1.48, 0.12, 0.12, pt.x, 2.12, 0.06, trim);
+      const s = signMesh(pt.label, 1.16, 0.3); s.position.set(pt.x, 1.74, 0.07); this.group.add(s);
+      box(1.1, 0.02, 0.5, pt.x, 0.011, 0.3, patchMaterial(new THREE.MeshLambertMaterial({ color: 0xb85a4a })));
+    }
     this.rebuildItems();
     for (const n of this.npcDefs || []) this.addNpc(n);
+    if (this.setup) { this.ex = this.setup(this) || null; this.rebuildItems(); }
     G.stage.scene.add(this.group);
   }
 
@@ -82,7 +95,13 @@ export class Room {
       if (it.scale) o.scale.setScalar(it.scale);
       this.group.add(o); this.objs.push(o);
     });
+    for (const [x, y] of this.blocks) this.occ[y * this.w + x] = -2;
   }
+  /** 가구가 아닌 것이 차지한 칸을 막는다 */
+  block(x0, y0, x1 = x0, y1 = y0) {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x >= 0 && y >= 0 && x < this.w && y < this.h) { this.blocks.push([x, y]); this.occ[y * this.w + x] = -2; }
+  }
+  portalAt(x) { return (this.portals || []).find((q) => Math.abs(x - q.x) < 0.5) || null; }
 
   addNpc(d) {
     const a = new Actor(d.model);
@@ -96,13 +115,13 @@ export class Room {
   dispose() { G.stage.scene.remove(this.group); }
   focus(px, pz) { return { x: this.w / 2 + (px - this.w / 2) * 0.45, z: this.h / 2 + (pz - this.h / 2) * 0.5 + 0.9 }; }
 
-  free(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.occ[y * this.w + x] < 0; }
+  free(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.occ[y * this.w + x] === -1; }
   canPlace(it, ignore = -1) {
     const [fw, fh] = footprint(it);
     for (let y = it.y; y < it.y + fh; y++) for (let x = it.x; x < it.x + fw; x++) {
       if (x < 0 || y < 0 || x >= this.w || y >= this.h) return false;
       const o = this.occ[y * this.w + x];
-      if (o >= 0 && o !== ignore) return false;
+      if (o !== -1 && o !== ignore) return false;
     }
     // 문 앞 두 칸은 비워 둔다
     const dx = Math.floor(this.w / 2);
@@ -112,13 +131,15 @@ export class Room {
 
   resolve(x, z, r) {
     const door = Math.abs(x - this.w / 2) < 0.62;
+    const pt = this.portalAt(x);
     x = clamp(x, r, this.w - r);
-    z = clamp(z, r + 0.15, door ? this.h + 0.5 : this.h - r);
+    z = clamp(z, pt ? -0.45 : r + 0.15, door ? this.h + 0.5 : this.h - r);
     if (z > this.h - r) x = clamp(x, this.w / 2 - 0.5, this.w / 2 + 0.5);
+    if (pt && z < r + 0.15) x = clamp(x, pt.x - 0.3, pt.x + 0.3);
     for (let pass = 0; pass < 2; pass++) {
       const cx0 = Math.floor(x), cy0 = Math.floor(z);
       for (let cy = cy0 - 1; cy <= cy0 + 1; cy++) for (let cx = cx0 - 1; cx <= cx0 + 1; cx++) {
-        if (cx < 0 || cy < 0 || cx >= this.w || cy >= this.h || this.occ[cy * this.w + cx] < 0) continue;
+        if (cx < 0 || cy < 0 || cx >= this.w || cy >= this.h || this.occ[cy * this.w + cx] === -1) continue;
         const nx = clamp(x, cx, cx + 1), nz = clamp(z, cy, cy + 1), dx = x - nx, dz = z - nz, d = Math.hypot(dx, dz);
         if (d < r) {
           if (d < 1e-5) { const l = x - cx, rr = cx + 1 - x, u = z - cy, dn = cy + 1 - z, m = Math.min(l, rr, u, dn); if (m === l) x = cx - r; else if (m === rr) x = cx + 1 + r; else if (m === u) z = cy - r; else z = cy + 1 + r; }
@@ -130,7 +151,13 @@ export class Room {
     return { x, z };
   }
 
-  checkExit(p) { if (p.z > this.h + 0.28) { G.hooks.exit(); return true; } return false; }
+  checkExit(p) {
+    if (p.z > this.h + 0.28) { G.hooks.exit(); return true; }
+    const pt = this.portalAt(p.x);
+    if (pt && p.z < -0.12) { G.hooks.portal(pt.to); return true; }
+    return false;
+  }
+  probe(p) { return this.ex && this.ex.probe ? this.ex.probe(p) : null; }
 
   itemInFront(p) {
     const f = p.front(0.75);
@@ -142,6 +169,8 @@ export class Room {
 
   hint(p) {
     if (p.npcInFront()) return K('Space', '말 걸기');
+    const e = this.probe(p);
+    if (e) return K('Space', e.label);
     const t = this.itemInFront(p);
     if (!t || t.i < 0) return this.editable ? K('E', '가방에서 가구 꺼내 놓기') : '';
     const def = ITEMS[t.it.id];
@@ -156,6 +185,8 @@ export class Room {
   act(p) {
     const npc = p.npcInFront();
     if (npc) { if (npc.talk) npc.talk(npc); return; }
+    const e = this.probe(p);
+    if (e) return e.act();
     const t = this.itemInFront(p);
     if (!t || t.i < 0) return;
     const def = ITEMS[t.it.id];
@@ -209,6 +240,7 @@ export class Room {
   update(dt) {
     const p = G.player;
     if (this.editable && !UI.blocking() && !G.busy && Input.take('cycle')) this.rotateInFront(p);
+    if (this.ex && this.ex.update) this.ex.update(dt);
     for (const n of this.npcs) {
       const a = n.actor;
       const dp = Math.hypot(p.x - n.x, p.z - n.z);

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { G, runScript, save, refreshTime, burst } from './game.js';
 import { Room } from './rooms.js';
+import { museumSpec } from './museum.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
 import { S, addItem, canAdd, takeItem, hasItem, countItem, freeSlots, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
 import { ITEMS, FISH, BUGS, FISH_BY_ID, BUG_BY_ID, FOSSILS, FURNITURE, WALLS, FLOORS, FRUIT_KO, SHELL_IDS, itemName, sellPrice, isDonatable } from '../data/items.js';
@@ -291,7 +292,7 @@ async function talkDuru() {
       await say(d, tot === 0 ? '아직은 텅 비어 있지요. 첫 기증의 주인공이 되어 주시겠습니까?' : tot < 30 ? '갈 길이 멀지만, 박물관은 원래 천천히 채우는 곳입니다.' : '이만하면 어디 내놓아도 부끄럽지 않은 박물관입니다. 전부 {p} 님 덕분이지요.');
     } else break;
   }
-  await say(d, '또 오십시오. 박물관은 밤에도 열려 있습니다.');
+  await say(d, '또 오십시오. 기증하신 것은 뒤쪽 전시관에서 직접 보실 수 있습니다.');
 }
 
 // ---------------------------------------------------------------- 마을회관
@@ -359,17 +360,7 @@ function roomSpec(b) {
     S.shop.furn.filter((f) => !S.shop.sold.includes(f)).forEach((f, i) => { if (spots[i]) items.push({ id: f, x: spots[i][0], y: spots[i][1], r: 0, sale: ITEMS[f].buy }); });
     return { id: 'shop', w: 8, h: 6, wall: 'wall_wood', floor: 'floor_wood', items, npcDefs: [{ model: 'npc_kkami', name: NPCS.kkami.name, x: 4, z: 0.6, fixed: true, talk: () => runScript(talkKkami) }] };
   }
-  if (b.type === 'museum') {
-    const pr = museumProgress();
-    const show = (title, cat) => () => runScript(async () => { await narr(`${title} 전시. 지금까지 ${pr[cat][0]}/${pr[cat][1]}${cat === 'fossil' ? '점' : '종'}이 모였다.`); });
-    return {
-      id: 'museum', w: 10, h: 7, wall: 'wall_cream', floor: 'floor_stone',
-      items: [{ id: 'p_desk', x: 4, y: 1, w: 2, d: 1, r: 0 }, { id: 'p_skeleton', x: 0, y: 2, w: 2, d: 1, r: 0, act: show('화석', 'fossil'), actLabel: '화석 전시 보기' },
-        { id: 'p_tank', x: 8, y: 2, w: 2, d: 1, r: 0, act: show('물고기', 'fish'), actLabel: '수조 보기' }, { id: 'p_bugcase', x: 8, y: 5, r: 0, act: show('곤충', 'bug'), actLabel: '표본 보기' },
-        { id: 'p_plant', x: 0, y: 6, r: 0 }, { id: 'p_plant', x: 0, y: 0, r: 0 }, { id: 'p_plant', x: 9, y: 0, r: 0 }],
-      npcDefs: [{ model: 'npc_duru', name: NPCS.duru.name, x: 5, z: 0.6, fixed: true, talk: () => runScript(talkDuru) }],
-    };
-  }
+  if (b.type === 'museum') return museumSpec('museum');
   if (b.type === 'hall') {
     return {
       id: 'hall', w: 8, h: 6, wall: 'wall_hanji', floor: 'floor_dark',
@@ -411,7 +402,24 @@ export async function enter(b) {
     await UI.fade(false);
   });
 }
+/** 박물관 안에서 방과 방 사이를 오간다 */
+export async function portal(to) {
+  await runScript(async () => {
+    Sound.sfx('door');
+    await UI.fade(true);
+    const from = G.room.id, b = G.room.building;
+    G.room.dispose();
+    G.room = new Room(museumSpec(to)); G.room.building = b;
+    G.stage.setMode(true, G.room.h);
+    const pt = (G.room.portals || []).find((q) => q.to === from);
+    if (pt) { G.player.setPos(pt.x, 0.8); G.player.yaw = 0; G.player.actor.face(0, true); }          // 전시관에서 로비로: 그 문 앞에
+    else { G.player.setPos(G.room.w / 2, G.room.h - 0.7); G.player.yaw = Math.PI; G.player.actor.face(Math.PI, true); }
+    const f = G.room.focus(G.player.x, G.player.z); G.stage.setFocus(f.x, 0, f.z, true);
+    await UI.fade(false);
+  });
+}
 export async function exitRoom() {
+  if (G.room && G.room.exitTo) return portal(G.room.exitTo);
   await runScript(async () => {
     Sound.sfx('door');
     await UI.fade(true);
@@ -473,7 +481,9 @@ export function stung() {
 export function registerScripts() {
   Object.assign(G.hooks, {
     talk: (n) => runScript(() => talkVillager(n)),
-    enter, exit: exitRoom, caughtFish, caughtBug, stung, buyDisplay: (room, i) => runScript(() => buyDisplay(room, i)),
+    enter, exit: exitRoom, portal, caughtFish, caughtBug, stung,
+    talkDuru: () => runScript(talkDuru),
+    exhibit: (name, text) => runScript(async () => { await Dialog.say(name, text); }), buyDisplay: (room, i) => runScript(() => buyDisplay(room, i)),
     syncVillagers: () => { if (!G.room) syncVillagers(); },
     minute: () => { if (!G.room) syncVillagers(); },
   });

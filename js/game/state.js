@@ -10,7 +10,7 @@ export const LOANS = [5000, 30000, 80000];          // 처음 집값, 1차 증�
 export const ROOM_SIZE = { 1: [6, 5], 2: [8, 6], 3: [10, 8] };
 
 export const S = {};                                // 현재 진행 상태
-export const Settings = { bgm: 0.5, sfx: 0.7, offsetMin: 0 };
+export const Settings = { bgm: 0.5, sfx: 0.7, offsetMin: 0, shadow: true };
 
 export function loadSettings() {
   try { Object.assign(Settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) { /* 무시 */ }

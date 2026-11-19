@@ -121,14 +121,14 @@ export const UI = {
 export const Dialog = {
   active: false, full: '', shown: 0, acc: 0, done: false, resolve: null, choices: null, sel: 0, pitch: 1, holdT: 0,
   /** 한 마디. 주인공이 넘길 때까지 기다린다. */
-  say(name, text, { pitch = 1, color = null } = {}) {
+  say(name, text, { pitch = 1, color = null, actor = null } = {}) {
     return new Promise((res) => {
       const d = $('dlg');
       d.classList.remove('hidden');
       const nm = d.querySelector('.name');
       nm.textContent = name || ''; nm.style.display = name ? '' : 'none';
       nm.style.background = color || '';
-      this.active = true; this.full = text; this.shown = 0; this.acc = 0; this.done = false; this.resolve = res; this.pitch = pitch; this.choices = null;
+      this.active = true; this.full = text; this.shown = 0; this.acc = 0; this.done = false; this.resolve = res; this.pitch = pitch; this.choices = null; this.actor = actor;
       d.querySelector('.text').innerHTML = ''; d.querySelector('.next').style.visibility = 'hidden';
       $('dlg-choices').classList.add('hidden');
     });
@@ -178,6 +178,7 @@ export const Dialog = {
         if (this.full[this.shown] === '<') { const e = this.full.indexOf('>', this.shown); this.shown = e + 1; continue; }
         const ch = this.full[this.shown++];
         if (ch.trim() && this.shown % 2 === 0) Sound.voice(this.pitch, ch);
+        if (this.actor) this.actor.talk();
       }
       this.render();
       if (this.shown >= this.full.length) this.finish();

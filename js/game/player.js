@@ -54,6 +54,8 @@ export function resolveVillage(x, z, r) {
   return { x: clamp(x, 3.3, MAP_W - 3.3), z: clamp(z, 4.3, MAP_H - 0.6) };
 }
 
+const _tip = new THREE.Vector3();
+
 export class Player {
   constructor() {
     this.actor = new Actor(S.player.model);
@@ -69,13 +71,17 @@ export class Player {
   setPos(x, z) { this.x = x; this.z = z; this.place(); }
   front(d = 0.8) { const x = this.x + Math.sin(this.yaw) * d, z = this.z + Math.cos(this.yaw) * d; return { x, z, tx: Math.floor(x), ty: Math.floor(z) }; }
   busy() { return this.lock > 0 || !!this.fishing; }
-  do(anim, dur, after) { this.actor.play(anim, dur); this.lock = dur; this.after = after || null; }
+  /** 동작을 하고 그동안 움직이지 못하게 한다. after는 동작의 at(0~1) 지점에서 실행한다(휘두르기는 내려친 순간). */
+  do(anim, dur, after, at) {
+    if (anim === 'swing' || anim === 'dig') dur = Math.max(dur, 0.5);
+    if (at == null) at = anim === 'swing' || anim === 'dig' ? 0.48 : anim === 'pour' ? 0.45 : 1;
+    this.actor.play(anim, dur); this.lock = dur; this.after = after || null; this.afterT = dur * (1 - at);
+  }
 
   equip(id, silent = false) {
     if (this.fishing) this.endFishing();
     S.player.tool = id;
     this.actor.hold(id ? ITEMS[id].model : null);
-    if (this.actor.held) { this.actor.held.scale.setScalar(0.92); this.actor.held.rotation.set(0.25, 0, 0); }
     this.netHold = false; this.actor.sneak = false;
     if (!silent) Sound.sfx(id ? 'pick' : 'drop');
   }
@@ -90,7 +96,7 @@ export class Player {
     const a = this.actor;
     if (this.lock > 0) {
       this.lock -= dt; a.speed = 0;
-      if (this.lock <= 0) { const f = this.after; this.after = null; if (f) f(); }
+      if (this.after && this.lock <= (this.afterT || 0)) { const f = this.after; this.after = null; f(); }
       a.update(dt); return;
     }
     if (this.fishing) { this.updateFishing(dt, free); a.update(dt); return; }
@@ -304,7 +310,7 @@ export class Player {
   chop(f, o) {
     const v = G.village, idx = f.ty * MAP_W + f.tx, cx = f.tx + 0.5, cz = f.ty + 0.5;
     this.actor.faceTo(cx, cz);
-    this.do('swing', 0.4, () => {
+    this.do('swing', 0.5, () => {
       Sound.sfx('chop'); G.world.shake(idx, 1.4); burst('leaf', cx, 1.6, cz, 4);
       o.chop = (o.chop || 0) + 1;
       if (o.chop >= 3) {
@@ -317,7 +323,7 @@ export class Player {
 
   water(f, o) {
     const cx = f.tx + 0.5, cz = f.ty + 0.5;
-    this.do('pick', 0.5, () => {
+    this.do('pour', 0.9, () => {
       Sound.sfx('water'); burst('splash', cx, 0.5, cz, 7);
       if (o && o.t === 'flower') { o.w = dayKey(); }
     });
@@ -345,7 +351,7 @@ export class Player {
     const spot = this.castSpot();
     if (!spot) { this.do('cast', 0.4, () => UI.toast('찌를 던질 물이 앞에 없다.')); Sound.sfx('swing'); return; }
     Sound.sfx('swing');
-    this.actor.play('cast', 0.4);
+    this.actor.play('cast', 0.5);
     if (!this.bobber) {
       this.bobber = make('bobber'); this.bobber.scale.setScalar(1.3); G.stage.scene.add(this.bobber);
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
@@ -367,7 +373,7 @@ export class Player {
     F.t += dt; a.speed = 0;
     let bx = F.x, bz = F.z, by = WATER_Y + 0.03;
     if (F.state === 'fly') {
-      const k = Math.min(1, F.t / 0.4);
+      const k = Math.min(1, F.t / 0.5);
       bx = F.sx + (F.x - F.sx) * k; bz = F.sz + (F.z - F.sz) * k; by = WATER_Y + 0.03 + Math.sin(k * Math.PI) * 1.6 + (1 - k) * 1.0;
       if (k >= 1) { F.state = 'wait'; F.t = 0; Sound.sfx('plop'); burst('splash', F.x, WATER_Y + 0.1, F.z, 5); G.critters.bobber = { x: F.x, z: F.z, state: 'idle', fish: null }; a.play('holdrod', 99); }
     } else {
@@ -388,8 +394,11 @@ export class Player {
     }
     this.bobber.position.set(bx, by, bz);
     const p = this.line.geometry.attributes.position.array;
-    const hx = this.x + Math.sin(this.yaw) * 0.55, hz = this.z + Math.cos(this.yaw) * 0.55;
-    p[0] = hx; p[1] = a.root.position.y + 1.75; p[2] = hz; p[3] = bx; p[4] = by + 0.1; p[5] = bz;
+    // 낚싯줄은 낚싯대 끝에서 나간다
+    const tip = a.held && a.held.userData.parts && a.held.userData.parts.tip;
+    if (tip) { tip.getWorldPosition(_tip); p[0] = _tip.x; p[1] = _tip.y; p[2] = _tip.z; }
+    else { p[0] = this.x + Math.sin(this.yaw) * 0.55; p[1] = a.root.position.y + 1.75; p[2] = this.z + Math.cos(this.yaw) * 0.55; }
+    p[3] = bx; p[4] = by + 0.1; p[5] = bz;
     this.line.geometry.attributes.position.needsUpdate = true;
   }
   reelIn(sp) {

@@ -1,5 +1,6 @@
 // 아이템 목록 — 도구, 과일, 조개, 물고기, 곤충, 화석, 가구, 벽지/바닥, 씨앗 등
 import { FLOWER_HEX } from '../gfx/worldview.js';
+import { VERSION } from '../core/version.js';
 
 export const ITEMS = {};
 export const FISH = [], BUGS = [];
@@ -85,7 +86,7 @@ for (const [id, name, buy, col] of FLOORS) def(id, { name, kind: 'floor', buy: b
 
 /** data/*.json에서 물고기·곤충을 읽어 아이템으로 등록한다 */
 export async function loadData() {
-  const [fish, bugs] = await Promise.all([fetch('./data/fish.json').then((r) => r.json()), fetch('./data/bugs.json').then((r) => r.json())]);
+  const [fish, bugs] = await Promise.all([fetch('./data/fish.json?v=' + VERSION).then((r) => r.json()), fetch('./data/bugs.json?v=' + VERSION).then((r) => r.json())]);
   for (const f of fish) {
     FISH.push(f); FISH_BY_ID[f.id] = f;
     def('fish_' + f.id, { name: f.name, kind: f.trash ? 'misc' : 'fish', price: f.price, model: 'fish_' + f.id, sp: f.id, scale: 1, desc: f.trash ? '쓰레기. 가게에서 치워 준다.' : '낚은 물고기. 박물관에 기증하거나 팔 수 있다.' });

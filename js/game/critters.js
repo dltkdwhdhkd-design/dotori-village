@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { make } from '../gfx/models.js';
 import { G, burst, WATER_Y } from './game.js';
 import { G as T, MAP_W, MAP_H, WK } from '../world/mapgen.js';
-import { FISH, BUGS, BUG_BY_ID } from '../data/items.js';
+import { FISH, BUGS, BUG_BY_ID, ITEMS } from '../data/items.js';
 import { inMonths, inHours } from '../core/clock.js';
 import { Sound } from '../core/audio.js';
 import { UI } from '../ui/ui.js';
@@ -11,6 +11,9 @@ import { S } from './state.js';
 import { rand, weighted, clamp, TAU } from '../core/util.js';
 
 const LOC = { [WK.RIVER]: 'river', [WK.POND]: 'pond', [WK.SEA]: 'sea', [WK.MOUTH]: 'mouth' };
+// 곤충을 화면에 그리는 크기(실제보다 크게, 하지만 징그럽지 않을 만큼만)
+const BUG_SCALE = { air: 1.4, light: 1.4, glow: 1.3, flower: 1.2, ground: 1.2, tree: 1.4, stump: 1.3, pond: 1.3, rainrock: 1.3, rock: 1.2, shake: 1.3, food: 0.62 };
+const BUG_MAX = 4;           // 한 번에 주변에 나와 있는 곤충 수의 한도
 
 export class Critters {
   constructor() {
@@ -122,18 +125,39 @@ export class Critters {
   }
   addBug(sp, x, y, z, extra = {}) {
     const m = make('bug_' + sp.id);
-    m.scale.setScalar(sp.where === 'air' || sp.where === 'light' ? 1.5 : 1.7);
+    const scale = BUG_SCALE[sp.where] || 1.3;
+    m.scale.setScalar(scale);
     m.position.set(x, y, z);
     this.root.add(m);
-    const b = { sp, x, y, z, hx: x, hz: z, baseY: y, m, t: rand() * 9, state: 'idle', dir: rand() * TAU, life: 60 + rand() * 70, ...extra };
+    const b = { sp, x, y, z, hx: x, hz: z, baseY: y, m, scale, t: rand() * 9, state: 'idle', dir: rand() * TAU, life: 60 + rand() * 70, ...extra };
     this.bugs.push(b);
     return b;
   }
   removeBug(b) { const i = this.bugs.indexOf(b); if (i >= 0) { this.root.remove(b.m); this.bugs.splice(i, 1); } }
 
+  /** 지금 철·시간·날씨에 나오는 곤충들. 종류가 적은 철에는 곤충도 드물게 나온다. */
+  bugPool() { return BUGS.filter((b) => b.w > 0 && this.bugOK(b)); }
+  bugCap() { const w = this.bugPool().reduce((s, b) => s + b.w, 0); return w <= 0 ? 0 : Math.min(BUG_MAX, 1 + Math.floor(w / 16)); }
+  countOf(sp) { let n = 0; for (const b of this.bugs) if (b.sp === sp && b.state !== 'flee') n++; return n; }
+
+  /** 땅에 놓아둔 과일에 개미가 꼬인다(그 밖에는 개미가 돌아다니지 않는다) */
+  spawnAnts() {
+    const v = G.village, p = G.player, sp = BUG_BY_ID.gaemi;
+    if (!sp || !this.bugOK(sp) || this.countOf(sp) > 0) return;
+    for (let k = 0; k < 40; k++) {
+      const x = Math.floor(p.x + (rand() - 0.5) * 24), y = Math.floor(p.z + (rand() - 0.6) * 20);
+      if (!v.inb(x, y) || Math.hypot(x + 0.5 - p.x, y + 0.5 - p.z) < 4) continue;
+      const o = v.obj(x, y);
+      if (!o || o.t !== 'item' || !ITEMS[o.id] || ITEMS[o.id].kind !== 'fruit') continue;
+      const b = this.addBug(sp, x + 0.5, 0.02, y + 0.5, { crawl: true, tx: x, ty: y, life: 90 + rand() * 60 });
+      for (let i = 1; i <= 2; i++) { const f = make('bug_' + sp.id); f.position.set(0.06 * i, 0, 0.3 * i); f.rotation.y = -0.28 * i; b.m.add(f); }   // 줄지어 따라가는 두 마리
+      return;
+    }
+  }
+
   spawnBug() {
     const v = G.village, p = G.player;
-    const list = BUGS.filter((b) => b.w > 0 && this.bugOK(b));
+    const list = this.bugPool().filter((b) => this.countOf(b) < (b.where === 'air' ? 2 : 1));
     const sp = weighted(list, (b) => b.w);
     if (!sp) return;
     const pick = (pred) => {
@@ -189,7 +213,7 @@ export class Critters {
   updateBugs(dt) {
     const p = G.player;
     this.bugT -= dt;
-    if (this.bugT <= 0) { this.bugT = 2.2; if (this.bugs.length < 7) this.spawnBug(); }
+    if (this.bugT <= 0) { this.bugT = 3.5; if (this.bugs.length < this.bugCap()) this.spawnBug(); if (rand() < 0.3) this.spawnAnts(); }
     for (let i = this.bugs.length - 1; i >= 0; i--) {
       const b = this.bugs[i];
       b.t += dt; b.life -= dt;
@@ -199,7 +223,7 @@ export class Critters {
       if (b.state === 'flee') {
         b.ft += dt;
         b.y += dt * 2.2; b.x += Math.sin(b.dir) * dt * 2.5; b.z += Math.cos(b.dir) * dt * 2.5;
-        b.m.scale.setScalar(Math.max(0.01, 1.6 * (1 - b.ft / 1.1)));
+        b.m.scale.setScalar(Math.max(0.01, b.scale * (1 - b.ft / 1.1)));
         if (b.ft > 1.1) { this.removeBug(b); continue; }
       } else if (b.fly) {
         const alert = b.glow ? 1.2 : 1.5;
@@ -222,6 +246,12 @@ export class Critters {
           if (b.runT > 1.3) { b.state = 'idle'; b.runT = 0; b.y = 0.02; if (rand() < 0.4) { b.state = 'flee'; b.ft = 0; } }
           b.m.rotation.y = b.dir;
         } else if (Math.sin(b.t * 0.7 + i) > 0.96) { b.y = 0.02 + Math.abs(Math.sin(b.t * 9)) * 0.12; } else b.y = 0.02;
+      } else if (b.crawl) {
+        const o = G.village.obj(b.tx, b.ty);
+        if (!o || o.t !== 'item') { b.state = 'flee'; b.ft = 0; continue; }
+        const ang = b.t * 0.9;
+        b.x = b.hx + Math.cos(ang) * 0.34; b.z = b.hz + Math.sin(ang) * 0.3;
+        b.m.rotation.y = -ang + Math.PI;
       } else if (b.skate) {
         if (dp < 1.2 && fast) { b.state = 'flee'; b.ft = 0; b.dir = Math.atan2(b.x - p.x, b.z - p.z); continue; }
         b.x = b.hx + Math.sin(b.t * 0.8 + i) * 0.25; b.z = b.hz + Math.cos(b.t * 1.1 + i) * 0.2;

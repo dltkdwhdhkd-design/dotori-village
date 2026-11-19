@@ -3,46 +3,60 @@ import math
 from lib import *
 
 
-def trunk(r=0.2, h=1.3, r2=0.14):
-    cyl((0, 0, 0), r * 1.35, 0.18, 'bark', r2=r, seg=10)
-    cyl((0, 0, 0.16), r, h - 0.16, 'bark', r2=r2, seg=10)
+def trunk(r=0.2, h=1.3, r2=0.14, roots=3, seg=12):
+    """뿌리 쪽이 넓게 퍼진 줄기"""
+    lathe([(r * 1.75, 0.0), (r * 1.3, 0.07), (r * 1.05, 0.22), (r, 0.5), (r2, h)], 'bark', seg=seg)
+    for i in range(roots):
+        a = math.radians(25 + i * 360 / roots)
+        tube((math.cos(a) * r * 0.7, math.sin(a) * r * 0.7, 0.2), (math.cos(a) * r * 2.3, math.sin(a) * r * 2.3, 0.0), r * 0.42, 'bark', r2=r * 0.2, seg=6)
+    lathe([(r * 1.03, 0.62), (r * 1.0, 0.66)], 'bark_d', seg=seg, caps=False)      # 줄기 무늬
+    lathe([(r * 0.96, 0.9), (r * 0.93, 0.94)], 'bark_d', seg=seg, caps=False)
+
+
+def puffs(spec):
+    """잎 뭉치: [(x, y, z, 반지름, 재질, 세밀함), ...]"""
+    big = sorted((q[3] for q in spec), reverse=True)[:3]
+    for (x, y, z, r, mt, sub) in spec:
+        ball((x, y, z), r, mt, (1, 1, 0.92), sub=3 if r >= big[-1] else 2)
 
 
 def tree_fruit():
     with Model('tree_fruit') as m:
         trunk()
+        for (x, y, z) in ((-0.5, 0.0, 1.55), (0.5, 0.05, 1.5)):
+            tube((0, 0, 1.05), (x, y, z), 0.085, 'bark', r2=0.05, seg=6)
         with m.part('canopy'):
-            ball((0, 0, 2.05), 0.98, 'leaf', (1, 1, 0.9))
-            ball((-0.66, 0.05, 1.72), 0.64, 'leaf_d')
-            ball((0.66, -0.05, 1.72), 0.64, 'leaf_d')
-            ball((0.05, -0.56, 1.66), 0.6, 'leaf_d')
-            ball((0, 0.55, 1.8), 0.62, 'leaf_d')
-            ball((0.08, -0.05, 2.66), 0.62, 'leaf_l')
-            ball((-0.4, -0.3, 2.35), 0.42, 'leaf_l')
+            puffs([
+                (0.0, 0.02, 2.12, 1.0, 'leaf', 3),
+                (-0.72, 0.08, 1.78, 0.66, 'leaf_d', 3), (0.72, -0.02, 1.76, 0.66, 'leaf_d', 3),
+                (0.02, -0.62, 1.7, 0.62, 'leaf_d', 3), (0.0, 0.62, 1.86, 0.64, 'leaf_d', 2),
+                (-0.42, -0.42, 1.98, 0.6, 'leaf', 2), (0.46, -0.4, 2.0, 0.58, 'leaf', 2),
+                (0.1, -0.06, 2.72, 0.64, 'leaf_l', 3), (-0.46, -0.3, 2.42, 0.44, 'leaf_l', 2), (0.5, 0.1, 2.5, 0.42, 'leaf_l', 2),
+                (-0.2, -0.75, 2.2, 0.3, 'leaf_l', 2),
+            ])
         with m.part('snow'):
-            ball((0.08, -0.05, 2.95), 0.5, 'snow', (1, 1, 0.42))
-            ball((-0.5, -0.25, 2.5), 0.36, 'snow', (1, 1, 0.42))
-            ball((0.55, 0.1, 2.32), 0.36, 'snow', (1, 1, 0.42))
-        m.anchor('fruit1', (-0.62, -0.62, 1.5))
-        m.anchor('fruit2', (0.1, -0.98, 1.95))
-        m.anchor('fruit3', (0.68, -0.6, 1.52))
+            ball((0.1, -0.06, 3.02), 0.52, 'snow', (1, 1, 0.42), sub=2)
+            ball((-0.52, -0.28, 2.6), 0.38, 'snow', (1, 1, 0.42), sub=2)
+            ball((0.56, 0.1, 2.66), 0.36, 'snow', (1, 1, 0.42), sub=2)
+        m.anchor('fruit1', (-0.66, -0.66, 1.5))
+        m.anchor('fruit2', (0.08, -1.02, 1.92))
+        m.anchor('fruit3', (0.72, -0.62, 1.5))
 
 
 def tree_blossom():
     with Model('tree_blossom') as m:
-        cyl((0, 0, 0), 0.25, 0.18, 'bark', r2=0.18, seg=10)
-        cyl((0, 0, 0.16), 0.18, 1.0, 'bark', r2=0.13, seg=10)
-        tips = [(-0.6, 0.0, 1.95), (0.62, 0.05, 1.9), (0.0, 0.5, 2.1), (0.05, -0.45, 2.0), (0.0, 0.0, 2.55)]
+        trunk(r=0.18, h=1.1, r2=0.13)
+        tips = [(-0.62, 0.0, 1.95), (0.64, 0.05, 1.9), (0.0, 0.52, 2.1), (0.05, -0.47, 2.0), (0.0, 0.0, 2.55)]
         for t in tips:
-            tube((0, 0, 1.1), t, 0.09, 'bark', r2=0.04, seg=6)
+            tube((0, 0, 1.05), t, 0.095, 'bark', r2=0.04, seg=6)
         with m.part('canopy'):
-            ball((-0.62, 0.0, 2.0), 0.72, 'bloom_d')
-            ball((0.64, 0.05, 1.95), 0.72, 'bloom_d')
-            ball((0.0, 0.5, 2.15), 0.7, 'bloom_d')
-            ball((0.05, -0.45, 2.05), 0.72, 'bloom')
-            ball((0.0, 0.0, 2.6), 0.78, 'bloom')
-            ball((-0.25, -0.2, 2.95), 0.42, 'bloom_l')
-            ball((0.4, -0.3, 2.6), 0.36, 'bloom_l')
+            puffs([
+                (-0.66, 0.0, 2.02, 0.74, 'bloom_d', 3), (0.68, 0.05, 1.97, 0.74, 'bloom_d', 3),
+                (0.0, 0.54, 2.17, 0.72, 'bloom_d', 2), (0.05, -0.5, 2.07, 0.74, 'bloom', 3),
+                (0.0, 0.0, 2.62, 0.8, 'bloom', 3),
+                (-0.3, -0.24, 2.98, 0.44, 'bloom_l', 2), (0.44, -0.3, 2.66, 0.4, 'bloom_l', 2), (-0.7, -0.4, 2.3, 0.36, 'bloom_l', 2),
+                (0.36, 0.3, 3.0, 0.34, 'bloom_l', 2),
+            ])
         with m.part('snow'):
             for t in tips:
                 ball((t[0], t[1], t[2] + 0.04), 0.17, 'snow', (1, 1, 0.5))
@@ -51,46 +65,66 @@ def tree_blossom():
 
 def tree_pine():
     with Model('tree_pine') as m:
-        cyl((0, 0, 0), 0.2, 0.16, 'bark', r2=0.15, seg=8)
-        cyl((0, 0, 0.14), 0.15, 0.7, 'bark', r2=0.12, seg=8)
-        tiers = [(0.62, 1.05, 1.15, 'pine_d'), (1.3, 0.86, 1.05, 'pine'), (1.95, 0.66, 0.95, 'pine'), (2.55, 0.44, 0.85, 'pine_l')]
+        lathe([(0.3, 0.0), (0.2, 0.08), (0.15, 0.3), (0.12, 0.85)], 'bark', seg=8)
+        tiers = [(0.6, 1.08, 1.15, 'pine_d'), (1.28, 0.88, 1.05, 'pine'), (1.92, 0.68, 0.95, 'pine'), (2.52, 0.46, 0.9, 'pine_l')]
         with m.part('canopy'):
-            for (z, r, h, mt) in tiers:
-                cone((0, 0, z), r, h, mt, seg=10)
+            for (z, r, h, mt) in tiers:      # 아랫단이 둥글게 말린 층
+                lathe([(0.0, z + 0.06), (r * 0.8, z), (r, z + 0.07), (r * 0.9, z + 0.18), (r * 0.42, z + h * 0.6), (0.0, z + h)], mt, seg=12)
         with m.part('snow'):
             for (z, r, h, mt) in tiers:
-                cone((0, 0, z + h * 0.52), r * 0.56, h * 0.5, 'snow', seg=10)
+                lathe([(r * 0.62, z + h * 0.42), (r * 0.42, z + h * 0.62), (0.0, z + h + 0.02)], 'snow', seg=12, caps=False)
 
 
 def bigtree():
     with Model('bigtree') as m:
-        cyl((0, 0, 0), 0.75, 0.3, 'bark', r2=0.52, seg=12)
-        cyl((0, 0, 0.28), 0.52, 1.6, 'bark', r2=0.4, seg=12)
+        lathe([(1.05, 0.0), (0.74, 0.14), (0.56, 0.42), (0.5, 1.0), (0.42, 1.9)], 'bark', seg=14)
         for (x, y) in ((0.55, 0.2), (-0.5, 0.3), (0.1, -0.6), (-0.3, -0.45), (0.45, -0.35)):
-            tube((x * 0.5, y * 0.5, 0.4), (x * 1.5, y * 1.5, 0.0), 0.2, 'bark', r2=0.08, seg=6)
+            tube((x * 0.5, y * 0.5, 0.4), (x * 1.7, y * 1.7, 0.0), 0.2, 'bark', r2=0.07, seg=6)
         tips = [(-1.4, 0.2, 3.0), (1.45, 0.1, 3.0), (0.0, 1.2, 3.3), (0.2, -1.1, 3.0), (0.0, 0.0, 3.9), (-0.9, -0.8, 3.3), (1.0, 0.9, 3.4)]
         for t in tips:
             tube((0, 0, 1.8), (t[0] * 0.6, t[1] * 0.6, t[2] - 0.4), 0.2, 'bark', r2=0.1, seg=6)
-        torus((0, 0, 1.05), 0.5, 0.045, 'cream', seg=14, tseg=5)
-        box((0.18, -0.5, 0.9), (0.08, 0.03, 0.26), 'cream')
-        box((-0.12, -0.5, 0.92), (0.08, 0.03, 0.2), 'cream')
+        torus((0, 0, 1.05), 0.52, 0.05, 'cream', seg=16, tseg=6)                  # 금줄
+        for (x, rl) in ((0.2, 6), (-0.14, -5), (0.0, 0)):
+            box((x, -0.52, 0.9), (0.08, 0.03, 0.26 - abs(x) * 0.3), 'cream', rot=(0, rl, 0))
         with m.part('canopy'):
-            ball((-1.45, 0.2, 3.0), 1.15, 'big_d')
-            ball((1.5, 0.1, 3.0), 1.15, 'big_d')
-            ball((0.0, 1.25, 3.2), 1.2, 'big_d')
-            ball((0.2, -1.15, 2.95), 1.1, 'big_d')
-            ball((-0.95, -0.85, 3.4), 1.0, 'big')
-            ball((1.0, 0.9, 3.5), 1.05, 'big')
-            ball((0.0, 0.0, 3.9), 1.5, 'big')
-            ball((0.9, -0.7, 3.9), 0.9, 'big')
-            ball((-0.3, -0.2, 4.9), 0.95, 'big_l')
-            ball((-1.0, 0.3, 4.2), 0.8, 'big_l')
-            ball((0.7, 0.1, 4.6), 0.7, 'big_l')
+            puffs([
+                (-1.45, 0.2, 3.0, 1.15, 'big_d', 3), (1.5, 0.1, 3.0, 1.15, 'big_d', 3), (0.0, 1.25, 3.2, 1.2, 'big_d', 2),
+                (0.2, -1.15, 2.95, 1.1, 'big_d', 3), (-0.95, -0.85, 3.4, 1.0, 'big', 3), (1.0, 0.9, 3.5, 1.05, 'big', 2),
+                (0.0, 0.0, 3.9, 1.5, 'big', 3), (0.9, -0.7, 3.9, 0.9, 'big', 3),
+                (-0.3, -0.2, 4.9, 0.95, 'big_l', 3), (-1.0, 0.3, 4.2, 0.8, 'big_l', 2), (0.7, 0.1, 4.6, 0.7, 'big_l', 2),
+                (-1.6, -0.5, 3.5, 0.5, 'big_l', 2), (1.5, -0.6, 3.6, 0.5, 'big_l', 2),
+            ])
         with m.part('snow'):
             ball((-0.3, -0.2, 5.5), 0.7, 'snow', (1, 1, 0.4))
             ball((-1.2, 0.3, 4.75), 0.55, 'snow', (1, 1, 0.4))
             ball((0.9, 0.1, 5.05), 0.5, 'snow', (1, 1, 0.4))
             ball((1.5, 0.1, 3.95), 0.6, 'snow', (1, 1, 0.4))
+
+
+def blade(x, y, a, lean, h, w, mat):
+    """풀잎 한 가닥(납작한 잎). a=벌어지는 방향(도), lean=눕는 정도(도)"""
+    cone((x, y, 0), w, h, mat, seg=4, rot=(0, lean, a), scale=(0.45, 1, 1))
+
+
+def grass():
+    """땅에 깔리는 풀포기(게임이 수천 개를 한꺼번에 그린다)"""
+    with Model('grass_a'):
+        for i, (a, ln, h) in enumerate(((0, 40, 0.2), (62, 46, 0.17), (128, 38, 0.21), (190, 48, 0.16), (250, 42, 0.19), (312, 46, 0.17))):
+            blade(math.cos(math.radians(a)) * 0.02, math.sin(math.radians(a)) * 0.02, a, ln, h, 0.05, 'tuft' if i % 2 else 'tuft_l')
+        blade(0, 0, 0, 6, 0.2, 0.045, 'tuft_l')
+    with Model('grass_b'):
+        for i, (a, ln, h) in enumerate(((30, 44, 0.14), (150, 40, 0.16), (268, 46, 0.13))):
+            blade(math.cos(math.radians(a)) * 0.02, math.sin(math.radians(a)) * 0.02, a, ln, h, 0.045, 'tuft' if i % 2 else 'tuft_l')
+        blade(0, 0, 90, 8, 0.13, 0.04, 'tuft_l')
+    with Model('grass_f'):               # 작은 들꽃이 섞인 풀
+        for i, (a, ln, h) in enumerate(((10, 42, 0.15), (130, 46, 0.14), (250, 42, 0.16))):
+            blade(math.cos(math.radians(a)) * 0.02, math.sin(math.radians(a)) * 0.02, a, ln, h, 0.045, 'tuft')
+        for (x, y, h) in ((0.08, -0.05, 0.14), (-0.07, 0.06, 0.11), (0.0, -0.11, 0.09)):
+            cyl((x, y, 0), 0.008, h, 'tuft', seg=4)
+            for k in range(5):
+                r = 2 * math.pi * k / 5
+                ball((x + math.cos(r) * 0.026, y + math.sin(r) * 0.026, h + 0.005), 0.02, 'tuft_f', (1, 1, 0.5), sub=1)
+            ball((x, y, h + 0.012), 0.015, 'petal_c', sub=1)
 
 
 def small_things():
@@ -108,15 +142,16 @@ def small_things():
             cyl((0, 0, 0.28), 0.21, 0.05, 'snow', r2=0.15, seg=10)
     for i, (sc, sd) in enumerate((((0.44, 0.4, 0.32), 1), ((0.5, 0.36, 0.28), 5))):
         with Model('rock%d' % (i + 1)) as m:
-            lump((0, 0, sc[2] * 0.8), 1.0, 'rock', sc, seed=sd, amp=0.22)
-            lump((0.3, -0.15, 0.12), 1.0, 'rock_d', (0.2, 0.18, 0.15), seed=sd + 2, amp=0.2)
+            lump((0, 0, sc[2] * 0.8), 1.0, 'rock', sc, seed=sd, amp=0.2, sub=3, smooth=True)
+            lump((0.3, -0.15, 0.12), 1.0, 'rock_d', (0.2, 0.18, 0.15), seed=sd + 2, amp=0.18, smooth=True)
+            lump((-0.12, -0.1, sc[2] * 1.25), 1.0, 'rock_l', (sc[0] * 0.55, sc[1] * 0.5, sc[2] * 0.45), seed=sd + 5, amp=0.15, smooth=True)
             with m.part('snow'):
                 lump((0, 0, sc[2] * 1.5), 1.0, 'snow', (sc[0] * 0.75, sc[1] * 0.75, 0.08), seed=sd, amp=0.1)
     for i, sd in enumerate((3, 8)):
         with Model('boulder%d' % (i + 1)):
-            lump((0, 0, 0.5), 1.0, 'rock', (0.85, 0.75, 0.7), seed=sd, amp=0.25)
-            lump((0.6, -0.3, 0.25), 1.0, 'rock_d', (0.45, 0.4, 0.35), seed=sd + 1, amp=0.25)
-            lump((-0.55, 0.3, 0.3), 1.0, 'rock_l', (0.4, 0.4, 0.4), seed=sd + 4, amp=0.25)
+            lump((0, 0, 0.5), 1.0, 'rock', (0.85, 0.75, 0.7), seed=sd, amp=0.22, sub=3, smooth=True)
+            lump((0.6, -0.3, 0.25), 1.0, 'rock_d', (0.45, 0.4, 0.35), seed=sd + 1, amp=0.22, smooth=True)
+            lump((-0.55, 0.3, 0.3), 1.0, 'rock_l', (0.4, 0.4, 0.4), seed=sd + 4, amp=0.22, smooth=True)
     for v in (1, 2):
         with Model('weed%d' % v):
             n = 5 if v == 1 else 4
@@ -126,10 +161,11 @@ def small_things():
             tube((0, 0, 0), (0, 0, 0.32), 0.035, 'weed', r2=0.004, seg=5)
             if v == 2:
                 ball((0, 0, 0.33), 0.045, 'petal_c')
-    with Model('digspot'):
-        for a in (0, 45, 90, 135):
-            box((0, 0, 0.012), (0.42, 0.05, 0.012), 'dirt_d', rot=(0, 0, a))
-        disc((0, 0, 0.02), 0.07, 'dirt_d', seg=8)
+    with Model('digspot'):   # 무언가 묻힌 자리: 살짝 솟은 흙과 갈라진 금
+        ball((0, 0, 0), 0.24, 'dirt', (1, 1, 0.16), sub=2)
+        for a in (35, 125):
+            box((0, 0, 0.036), (0.3, 0.05, 0.012), 'dirt_d', rot=(0, 0, a))
+        ball((0.12, -0.1, 0.02), 0.035, 'dirt_d', (1, 1, 0.5), sub=1)
     with Model('hole'):
         torus((0, 0, 0.02), 0.3, 0.07, 'dirt', seg=12, tseg=5, scale=(1, 1, 0.6))
         disc((0, 0, 0.01), 0.3, 'dirt_d', seg=12)
@@ -243,7 +279,7 @@ def shells():
 
 
 def build():
-    tree_fruit(); tree_blossom(); tree_pine(); bigtree(); small_things()
+    tree_fruit(); tree_blossom(); tree_pine(); bigtree(); grass(); small_things()
     for sp in ('tulip', 'cosmos', 'pansy', 'mum'):
         flower(sp)
     fruits(); shells()

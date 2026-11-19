@@ -1,5 +1,6 @@
 // 창: 가방, 도감, 지도, 설정, 우체통, 창고, 게시판, 타이틀 화면
 import { G, runScript, save, burst, refreshTime } from './game.js';
+import { VERSION } from '../core/version.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, INV_SIZE, hasSave } from './state.js';
 import { ITEMS, FISH, BUGS, FOSSILS, FISH_BY_ID, BUG_BY_ID, itemName, sellPrice, FRUIT_KO } from '../data/items.js';
@@ -122,7 +123,7 @@ function compress(m) { // [3,4,5,9] -> ['3~5','9']
 }
 const hoursText = (h) => (h === 'all' ? '하루 종일' : h.map(([a, b]) => `${a}시~${b}시`).join(', '));
 const LOC_KO = { river: '강', pond: '연못', sea: '바다', mouth: '강어귀', pier: '부두' };
-const WHERE_KO = { air: '날아다님', flower: '꽃 위', tree: '나무줄기', ground: '풀밭', pond: '물 위', stump: '그루터기', rainrock: '비 오는 날 바위', light: '가로등 주변', glow: '물가의 밤', shake: '나무를 흔들면', rock: '바위를 두드리면' };
+const WHERE_KO = { air: '날아다님', flower: '꽃 위', tree: '나무줄기', ground: '풀밭', pond: '물 위', stump: '그루터기', rainrock: '비 오는 날 바위', light: '가로등 주변', glow: '물가의 밤', shake: '나무를 흔들면', rock: '바위를 두드리면', food: '땅에 놓아둔 과일 곁' };
 
 export function openDex() {
   const box = el('div'); let tab = 'fish', sel = null;
@@ -263,6 +264,7 @@ export function openMenu() {
       <span>배경음</span><input type="range" id="st-bgm" min="0" max="100" value="${Math.round(Settings.bgm * 100)}">
       <span>효과음</span><input type="range" id="st-sfx" min="0" max="100" value="${Math.round(Settings.sfx * 100)}">
       <span>게임 시계</span><span><select id="st-off"></select> <span class="note">밤에만 접속한다면 시계를 앞뒤로 옮길 수 있다.</span></span>
+      <span>해 그림자</span><span><label><input type="checkbox" id="st-shadow" ${Settings.shadow !== false ? 'checked' : ''}> 켜기</label> <span class="note">느린 컴퓨터에서는 끄면 가벼워진다.</span></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 6px">
       <button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
@@ -285,6 +287,7 @@ export function openMenu() {
   $('st-bgm').oninput = (e) => { Settings.bgm = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); };
   $('st-sfx').oninput = (e) => { Settings.sfx = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); Sound.sfx('ui'); };
   off.onchange = () => { Settings.offsetMin = +off.value; Clock.offsetMin = Settings.offsetMin; saveSettings(); refreshTime(true); UI.toast('게임 시계를 바꿨다.'); };
+  $('st-shadow').onchange = (e) => { Settings.shadow = e.target.checked; G.stage.setShadows(Settings.shadow); G.noAutoQuality = true; saveSettings(); };
   $('st-save').onclick = () => { UI.toast(save() ? '저장했다.' : '저장에 실패했다.'); Sound.sfx('save'); };
   $('st-exp').onclick = () => { save(); const t = $('st-text'); t.classList.remove('hidden'); t.value = exportSave(); t.select(); UI.toast('아래 글자를 전부 복사해 보관하세요.'); };
   $('st-imp').onclick = () => { const t = $('st-text'); if (t.classList.contains('hidden') || !t.value.trim()) { t.classList.remove('hidden'); t.value = ''; t.placeholder = '보관해 둔 저장 글자를 붙여 넣고 [저장 가져오기]를 한 번 더 누르세요.'; return; } try { importSave(t.value.trim()); location.reload(); } catch (e) { UI.toast('저장 글자가 올바르지 않다.'); } };
@@ -298,7 +301,7 @@ export function showTitle({ onNew, onContinue }) {
   const main = () => {
     t.innerHTML = `<h1>도토리 마을</h1><div class="sub">느긋하게 사는 작은 마을 이야기</div>
       <div class="box">${hasSave() ? '<button class="big" id="t-cont">이어서 하기</button>' : ''}<button class="big ${hasSave() ? 'alt' : ''}" id="t-new">새로 시작하기</button></div>
-      <div class="foot">저장은 이 브라우저에 됩니다 · 소리가 납니다</div>`;
+      <div class="foot">저장은 이 브라우저에 됩니다 · 소리가 납니다 · 판 ${VERSION}</div>`;
     const c = t.querySelector('#t-cont'); if (c) c.onclick = () => { Sound.unlock(); Sound.sfx('open'); t.classList.add('hidden'); onContinue(); };
     t.querySelector('#t-new').onclick = () => { Sound.unlock(); Sound.sfx('ui'); if (hasSave() && !confirm('이미 살고 있는 마을이 있습니다. 새로 시작하면 그 마을은 사라져요. 계속할까요?')) return; form(); };
   };

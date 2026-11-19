@@ -20,11 +20,12 @@ PALETTE = {
     'pine': '#3a9862', 'pine_d': '#2a7b52', 'pine_l': '#57b877',
     'big': '#58b256', 'big_d': '#3f934a', 'big_l': '#80d06c',            # 당산나무
     'snow': '#ffffff', 'rock': '#a8a199', 'rock_d': '#8a837b', 'rock_l': '#c4beb6',
+    'tuft': '#63b658', 'tuft_l': '#8fd678', 'tuft_f': '#ffffff',                 # 풀포기(계절 따라 게임이 색을 바꿈)
     'stem': '#4f9a52', 'weed': '#5fb04a', 'petal': '#f0564e', 'petal_c': '#ffd84a',
     'dirt': '#8a6238', 'dirt_d': '#4a3020',
     # 건물
-    'wall': '#fff3d6', 'wall_d': '#e6d3a8', 'roof': '#d9584a', 'roof_d': '#b8443a', 'door': '#9b6a44', 'door_d': '#7a5030',
-    'window': '#9fd4f2', 'frame': '#fffaf0', 'stone': '#cfc6b8', 'stone_d': '#b3a998', 'metal': '#5a6674', 'metal_l': '#8a96a4',
+    'wall': '#fff3d6', 'wall_d': '#e2cfa6', 'thatch': '#e3c878', 'thatch_d': '#c4a557', 'roof': '#d9584a', 'roof_d': '#b8443a', 'door': '#9b6a44', 'door_d': '#7a5030',
+    'window': '#9fd4f2', 'frame': '#fffaf0', 'stone': '#cfc6b8', 'stone_d': '#b3a998', 'stone_l': '#e2dbcf', 'metal': '#5a6674', 'metal_l': '#8a96a4',
     'gold': '#f2c230', 'glass': '#dff2ff', 'lampglass': '#fff3a8', 'giwa': '#4a5568', 'giwa_d': '#394252', 'plaster': '#f7f3ea',
     'red': '#e8574c', 'orange': '#f29a3c', 'yellow': '#ffd84a', 'green': '#5fae62', 'teal': '#3fa39a', 'blue': '#4a90d9',
     'purple': '#9a6bd0', 'pink': '#ff9fc2', 'white': '#ffffff', 'black': '#2a2030', 'cream': '#fff3d6', 'gray': '#b8bcc4',
@@ -76,9 +77,10 @@ MODELS = []            # 만들어진 모델 루트 목록(순서대로)
 class Part:
     """모델의 한 부위. 여기에 도형을 계속 더한 뒤 메시 하나로 만든다."""
 
-    def __init__(self, name, pivot=(0, 0, 0)):
+    def __init__(self, name, pivot=(0, 0, 0), parent=None):
         self.name = name
         self.pivot = Vector(pivot)
+        self.parent = parent
         self.bm = bmesh.new()
         self.mats = []
         self.sharp = 50.0
@@ -132,8 +134,9 @@ class Model:
         _current.append(self.main)
         return self
 
-    def part(self, name, pivot=(0, 0, 0)):
-        p = Part(name, pivot)
+    def part(self, name, pivot=(0, 0, 0), parent=None):
+        """움직이는 부위를 만든다. parent에 다른 부위 이름을 주면 그 부위에 딸려 움직인다(예: 머리에 붙은 눈)."""
+        p = Part(name, pivot, parent)
         self.parts.append(p)
         return p
 
@@ -157,13 +160,18 @@ class Model:
                 ob = p.build(self.name + '__' + p.name)
                 ob.parent = root
                 built[p.name] = ob
+            for p in self.parts:
+                if p.parent and p.parent in built:
+                    ob = built[p.name]
+                    ob.parent = built[p.parent]
+                    ob.location = p.pivot - built[p.parent].location
             for (nm, loc, parent) in self.anchors:
                 e = bpy.data.objects.new(self.name + '__' + nm, None)
                 e.empty_display_size = 0.08
                 bpy.context.scene.collection.objects.link(e)
                 if parent and parent in built:
                     e.parent = built[parent]
-                    e.location = loc - built[parent].location
+                    e.location = loc - next(q.pivot for q in self.parts if q.name == parent)
                 else:
                     e.parent = root
                     e.location = loc
@@ -285,6 +293,95 @@ def torus(center, R, r, mat, seg=14, tseg=6, rot=(0, 0, 0), scale=(1, 1, 1)):
             a, b = i * tseg + j, i * tseg + (j + 1) % tseg
             c, d = ((i + 1) % seg) * tseg + (j + 1) % tseg, ((i + 1) % seg) * tseg + j
             F.append((a, d, c, b))
+    return poly(V, F, mat, smooth=True)
+
+
+def lathe(profile, mat, center=(0, 0, 0), seg=16, scale=(1, 1), rot=(0, 0, 0), smooth=True, caps=True):
+    """회전체. profile=[(반지름, 높이), ...]를 아래에서 위로 적는다. 반지름 0이면 꼭짓점으로 모인다.
+    scale=(x, y)로 단면을 타원으로 만든다. 옷 입은 몸통, 모자, 항아리, 둥근 지붕 등에 쓴다."""
+    M = TRS(center, rot, (scale[0], scale[1], 1))
+    bm = cur().bm
+    rings = []
+    for (r, z) in profile:
+        if r <= 1e-5:
+            rings.append([bm.verts.new(tuple(M @ Vector((0, 0, z))))])
+        else:
+            rings.append([bm.verts.new(tuple(M @ Vector((r * math.cos(2 * math.pi * j / seg), r * math.sin(2 * math.pi * j / seg), z)))) for j in range(seg)])
+    faces = []
+    for a, b in zip(rings[:-1], rings[1:]):
+        for j in range(seg):
+            k = (j + 1) % seg
+            if len(a) == 1 and len(b) == 1:
+                continue
+            if len(a) == 1:
+                vs = [a[0], b[k], b[j]]
+            elif len(b) == 1:
+                vs = [a[j], a[k], b[0]]
+            else:
+                vs = [a[j], a[k], b[k], b[j]]
+            try:
+                faces.append(bm.faces.new(vs))
+            except ValueError:
+                pass
+    if caps:
+        if len(rings[0]) > 1:
+            faces.append(bm.faces.new(list(reversed(rings[0]))))
+        if len(rings[-1]) > 1:
+            faces.append(bm.faces.new(rings[-1]))
+    bm.normal_update()
+    allv = [v for r in rings for v in r]
+    return _finish(allv, mat, smooth)
+
+
+def dome(center, r, mat, scale=(1, 1, 1), rot=(0, 0, 0), seg=16, rings=6, cut=0.5, smooth=True, aim=(0, 0, 0)):
+    """구의 윗부분만(머리카락, 모자 등). cut=0.5면 반구, 0.7이면 조금 더 아래까지 덮는다.
+    aim=(x,y,z)도: 찌그러뜨리기(scale) '전에' 돌린다 — 타원 머리의 한쪽을 딱 맞게 덮을 때 쓴다."""
+    if isinstance(scale, (int, float)):
+        scale = (scale, scale, scale)
+    prof = []
+    for i in range(rings + 1):
+        a = math.pi * cut * (1 - i / rings)          # 아래(자른 곳)에서 꼭대기로
+        prof.append((r * math.sin(a), r * math.cos(a)))
+    M = TRS(center, rot, scale) @ Euler([math.radians(a) for a in aim], 'XYZ').to_matrix().to_4x4()
+    bm = cur().bm
+    rs = []
+    for (rr, z) in prof:
+        if rr <= 1e-5:
+            rs.append([bm.verts.new(tuple(M @ Vector((0, 0, z))))])
+        else:
+            rs.append([bm.verts.new(tuple(M @ Vector((rr * math.cos(2 * math.pi * j / seg), rr * math.sin(2 * math.pi * j / seg), z)))) for j in range(seg)])
+    for a, b in zip(rs[:-1], rs[1:]):
+        for j in range(seg):
+            k = (j + 1) % seg
+            vs = [a[j], a[k], b[0]] if len(b) == 1 else [a[j], a[k], b[k], b[j]]
+            try:
+                bm.faces.new(vs)
+            except ValueError:
+                pass
+    bm.normal_update()
+    return _finish([v for q in rs for v in q], mat, smooth)
+
+
+def arc(center, R, r, mat, a0=0, a1=180, seg=10, tseg=6, rot=(0, 0, 0), scale=(1, 1, 1)):
+    """고리의 일부(웃는 입, 눈썹, 손잡이 등). XY 평면에 a0~a1도 만큼 그린다."""
+    M = TRS(center, rot, scale)
+    V, F = [], []
+    for i in range(seg + 1):
+        a = math.radians(a0 + (a1 - a0) * i / seg)
+        for j in range(tseg):
+            b = 2 * math.pi * j / tseg
+            V.append(tuple(M @ Vector(((R + r * math.cos(b)) * math.cos(a), (R + r * math.cos(b)) * math.sin(a), r * math.sin(b)))))
+    for i in range(seg):
+        for j in range(tseg):
+            a, b = i * tseg + j, i * tseg + (j + 1) % tseg
+            c, d = (i + 1) * tseg + (j + 1) % tseg, (i + 1) * tseg + j
+            F.append((a, d, c, b))
+    n = len(V)
+    V.append(tuple(M @ Vector((R * math.cos(math.radians(a0)), R * math.sin(math.radians(a0)), 0))))
+    V.append(tuple(M @ Vector((R * math.cos(math.radians(a1)), R * math.sin(math.radians(a1)), 0))))
+    for j in range(tseg):
+        F.append((n, j, (j + 1) % tseg))
+        F.append((n + 1, seg * tseg + (j + 1) % tseg, seg * tseg + j))
     return poly(V, F, mat, smooth=True)
 
 

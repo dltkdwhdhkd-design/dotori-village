@@ -15,7 +15,7 @@ import { rand, fmt, josa, el, wait } from '../core/util.js';
 
 const pick = (a) => a[Math.floor(rand() * a.length)];
 const narr = (t) => Dialog.say('', t);
-const say = (who, text, vars = {}) => Dialog.say(who.name, fill(text, { p: S.player.name, v: S.village.name, ...vars }), { pitch: who.pitch || 1 });
+const say = (who, text, vars = {}) => Dialog.say(who.name, fill(text, { p: S.player.name, v: S.village.name, ...vars }), { pitch: who.pitch || 1, actor: who.actor || null });
 const npcOf = (k) => ({ name: NPCS[k].name, pitch: NPCS[k].pitch });
 
 // ---------------------------------------------------------------- 주민과 대화

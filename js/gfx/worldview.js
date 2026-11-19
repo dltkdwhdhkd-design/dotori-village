@@ -1,6 +1,6 @@
 // 마을을 3D로 보여 주는 부분: 지형 위에 나무·꽃·건물·다리 등을 세운다
 import * as THREE from 'three';
-import { make, MODELS, setMatColor, getMat, sharedMat, patchMaterial } from './models.js';
+import { make, MODELS, setMatColor, getMat, sharedMat, patchMaterial, FX } from './models.js';
 import { Terrain, PAD } from './terrain.js';
 import { makeBlobShadow } from './stage.js';
 import { G, MAP_W, MAP_H } from '../world/mapgen.js';
@@ -12,10 +12,10 @@ export const FLOWER_HEX = { red: 0xf0564e, yellow: 0xffd84a, white: 0xffffff, pi
 
 // 계절별 잎 색
 const LEAVES = {
-  spring: { leaf: 0x6cc25a, leaf_d: 0x4fa551, leaf_l: 0x93da76, bloom: 0x80cf68, bloom_d: 0x5aae58, bloom_l: 0xb4ea8c, pine: 0x3f9a63, pine_d: 0x2f7f55, pine_l: 0x5cba7a, big: 0x74c860, big_d: 0x50a652, big_l: 0xa9e584, weed: 0x6cc25a },
-  summer: { leaf: 0x55b254, leaf_d: 0x3b9049, leaf_l: 0x86d570, bloom: 0x5fb95a, bloom_d: 0x43964d, bloom_l: 0x8fd975, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0x52ae52, big_d: 0x398d48, big_l: 0x84d36e, weed: 0x5fb04a },
-  autumn: { leaf: 0x98b853, leaf_d: 0x759a45, leaf_l: 0xc4d268, bloom: 0xb9c45a, bloom_d: 0x95a548, bloom_l: 0xd8dc78, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0xe6b53e, big_d: 0xc58a30, big_l: 0xf7dd62, weed: 0xb3b05a },
-  winter: { leaf: 0x5fae62, leaf_d: 0x42894f, leaf_l: 0x8ccf8a, bloom: 0xb7a58c, bloom_d: 0x93806a, bloom_l: 0xd0c2ac, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0xb7a58c, big_d: 0x93806a, big_l: 0xd3c6b0, weed: 0xb9b49c },
+  spring: { leaf: 0x6cc25a, leaf_d: 0x4fa551, leaf_l: 0x93da76, bloom: 0x80cf68, bloom_d: 0x5aae58, bloom_l: 0xb4ea8c, pine: 0x3f9a63, pine_d: 0x2f7f55, pine_l: 0x5cba7a, big: 0x74c860, big_d: 0x50a652, big_l: 0xa9e584, weed: 0x6cc25a, tuft: 0x7fd06a, tuft_l: 0xa4e486 },
+  summer: { leaf: 0x55b254, leaf_d: 0x3b9049, leaf_l: 0x86d570, bloom: 0x5fb95a, bloom_d: 0x43964d, bloom_l: 0x8fd975, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0x52ae52, big_d: 0x398d48, big_l: 0x84d36e, weed: 0x5fb04a, tuft: 0x5cb658, tuft_l: 0x80cf6c },
+  autumn: { leaf: 0x98b853, leaf_d: 0x759a45, leaf_l: 0xc4d268, bloom: 0xb9c45a, bloom_d: 0x95a548, bloom_l: 0xd8dc78, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0xe6b53e, big_d: 0xc58a30, big_l: 0xf7dd62, weed: 0xb3b05a, tuft: 0xa9b65e, tuft_l: 0xc6cf74 },
+  winter: { leaf: 0x5fae62, leaf_d: 0x42894f, leaf_l: 0x8ccf8a, bloom: 0xb7a58c, bloom_d: 0x93806a, bloom_l: 0xd0c2ac, pine: 0x3a9862, pine_d: 0x2a7b52, pine_l: 0x57b877, big: 0xb7a58c, big_d: 0x93806a, big_l: 0xd3c6b0, weed: 0xb9b49c, tuft: 0xa9b65e, tuft_l: 0xc6cf74 },
 };
 const BLOSSOM = { bloom: 0xf9b3cb, bloom_d: 0xe88aae, bloom_l: 0xffe1ea };
 const FOLIAGE = { bloom: 0xec8b3e, bloom_d: 0xcd6336, bloom_l: 0xfac457 };
@@ -42,7 +42,7 @@ function fadeOf(mat) {
     m.transparent = true; m.opacity = 0.3;          // 깊이는 그대로 기록해서 겹친 잎이 덧칠되지 않게 한다
     m.onBeforeCompile = null;
     m.customProgramCacheKey = THREE.Material.prototype.customProgramCacheKey;
-    patchMaterial(m);
+    patchMaterial(m, mat.userData.fx);
     fadeCache.set(mat, m);
   }
   m.color.copy(mat.color);
@@ -77,6 +77,7 @@ export class WorldView {
     this.look = null;
     this.night = 0;
     this.buildStatic();
+    this.buildGrass();
     this.buildBuildings();
     village.each((o, x, y, i) => this.refresh(i, x, y));
     for (const k of Object.keys(village.buried)) this.refreshMark(+k);
@@ -128,12 +129,68 @@ export class WorldView {
         rocks.push(m4.compose(p, q, s).clone());
       }
     }
-    this.forest = this.instanced('tree_pine', mats);
+    this.chunks = [];
+    this.forest = this.chunked('tree_pine', mats, 3);
     this.root.add(this.forest);
-    if (rocks.length) this.root.add(this.instanced('boulder1', rocks));
+    if (rocks.length) this.root.add(this.chunked('boulder1', rocks, 1.5));
   }
 
-  /** 모델 하나를 여러 자리에 한꺼번에 그린다 */
+  /** 풀밭 곳곳에 풀포기를 심는다(길·모래·건물 자리는 비운다). 장식일 뿐 걸리지 않는다. */
+  buildGrass() {
+    const v = this.v, T = this.terrain;
+    const lists = { grass_a: [], grass_b: [], grass_f: [] };
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      if (v.terrainAt(x, y) !== G.GRASS) continue;
+      const o = v.obj(x, y);
+      if (o && o.t === 'bld') continue;
+      for (let k = 0; k < 3; k++) {
+        const h = hash01(x, y, 70 + k);
+        if (h > 0.3) continue;
+        const px = x + 0.5 + (hash01(x, y, 73 + k) - 0.5) * 0.92, pz = y + 0.5 + (hash01(x, y, 76 + k) - 0.5) * 0.92;
+        if (Math.hypot(px - x - 0.5, pz - y - 0.5) < 0.3) continue;      // 칸 한가운데는 꽃·나무 자리
+        if (T.grassAt(px, pz) < 0.97) continue;
+        const kind = h < 0.03 ? 'grass_f' : h < 0.16 ? 'grass_a' : 'grass_b';
+        const sc = 0.8 + hash01(x, y, 79 + k) * 0.45;
+        p.set(px, T.heightAt(px, pz), pz); q.setFromAxisAngle(up, h * 40); s.set(sc, sc, sc);
+        lists[kind].push(m4.compose(p, q, s).clone());
+      }
+    }
+    this.grass = new THREE.Group();
+    for (const [name, list] of Object.entries(lists)) {
+      const g = this.chunked(name, list, 0.5, (im) => {     // 잎이 어느 쪽을 보든 땅처럼 환하게 빛을 받게 한다
+        im.geometry = im.geometry.clone();
+        const n = im.geometry.attributes.normal;
+        for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+      });
+      g.userData.kind = name;
+      this.grass.add(g);
+    }
+    this.root.add(this.grass);
+  }
+
+  /** 여러 자리에 놓을 모델을 구역(12칸)별 묶음으로 나눠 만든다. 화면에서 먼 구역은 그리지 않는다. */
+  chunked(name, matrices, margin = 2, each = null) {
+    const SIZE = 12, map = new Map(), root = new THREE.Group();
+    for (const m of matrices) {
+      const cx = Math.floor(m.elements[12] / SIZE), cz = Math.floor(m.elements[14] / SIZE), key = cx + ',' + cz;
+      if (!map.has(key)) map.set(key, { cx, cz, list: [] });
+      map.get(key).list.push(m);
+    }
+    const geoCache = new Map();
+    for (const c of map.values()) {
+      const g = this.instanced(name, c.list);
+      for (const im of g.children) {
+        if (each) { const k = im.name; if (!geoCache.has(k)) { each(im); geoCache.set(k, im.geometry); } else im.geometry = geoCache.get(k); }
+      }
+      g.userData.box = [c.cx * SIZE - margin, c.cz * SIZE - margin, (c.cx + 1) * SIZE + margin, (c.cz + 1) * SIZE + margin];
+      this.chunks.push(g);
+      root.add(g);
+    }
+    return root;
+  }
+
+  /** 모델 하나를 여러 자리에 한꺼번에 그린다(그림자를 받기만 하고 드리우지는 않는다) */
   instanced(name, matrices) {
     const src = MODELS[name], g = new THREE.Group();
     if (!src) return g;
@@ -146,6 +203,7 @@ export class WorldView {
       const m = new THREE.Matrix4();
       matrices.forEach((mm, i) => { m.multiplyMatrices(mm, local); im.setMatrixAt(i, m); });
       im.frustumCulled = false;
+      im.receiveShadow = true;
       im.name = n.name;
       let a = n; while (a && a !== src) { if (a.name.endsWith('__snow')) im.userData.snow = true; a = a.parent; }
       g.add(im);
@@ -212,6 +270,7 @@ export class WorldView {
       if (o.kind === 'mailbox') this.mailbox = g;
     }
     if (!g) return null;
+    if (o.t === 'flower' || o.t === 'weed' || o.t === 'item' || o.t === 'hole' || (o.t === 'tree' && o.stage === 0)) g.traverse((n) => { n.castShadow = false; });   // 자잘한 것은 그림자 생략
     g.position.set(x + 0.5, this.gy(x + 0.5, y + 0.5), y + 0.5);
     if (shadow) { const sh = makeBlobShadow(shadow / g.scale.x, 0.28); sh.userData.noFade = true; g.add(sh); }
     g.userData.o = o;
@@ -258,7 +317,11 @@ export class WorldView {
       const o = g.userData.o;
       if (o.t === 'tree' && o.stage > 0) this.seasonTree(g, o); else this.snowPart(g);
     }
-    if (this.forest) for (const im of this.forest.children) if (im.userData.snow) im.visible = !!look.snow;
+    if (this.forest) for (const g of this.forest.children) for (const im of g.children) if (im.userData.snow) im.visible = !!look.snow;
+    if (this.grass) {
+      this.grass.visible = !look.snow;                 // 눈이 쌓이면 풀포기는 눈에 덮인다
+      for (const g of this.grass.children) if (g.userData.kind === 'grass_f') g.visible = look.season === 'spring' || look.season === 'summer';
+    }
   }
 
   /** night: 0(낮)~1(밤) — 가로등과 창문 불빛 */
@@ -274,6 +337,7 @@ export class WorldView {
   bump(i) { const g = this.objs.get(i); if (g) this.anims.push({ g, t: 0, power: 0, bump: true, sy: g.scale.y }); }
 
   update(dt, time, fx, fz) {
+    FX.time.value = time;
     this.terrain.update(time);
     this.terrain.setLight(this.stage.waterLight);
     for (let k = this.anims.length - 1; k >= 0; k--) {
@@ -284,6 +348,7 @@ export class WorldView {
       if (a.t > 0.7) { a.g.rotation.z = a.base; this.anims.splice(k, 1); }
     }
     // 화면 밖의 것은 그리지 않는다
+    for (const g of this.chunks) { const b = g.userData.box; g.visible = b[2] > fx - 21 && b[0] < fx + 21 && b[3] > fz - 36 && b[1] < fz + 12; }
     for (const [, g] of this.objs) {
       const dx = g.position.x - fx, dz = g.position.z - fz;
       g.visible = dx > -19 && dx < 19 && dz > -34 && dz < 11;
@@ -298,7 +363,8 @@ export class WorldView {
     const p = this.hooks.playerPos ? this.hooks.playerPos() : null;
     for (const [, g] of this.bldObjs) {
       const b = g.userData.b;
-      const on = !!p && b && this.hooks.buildingLook(b) && p.x > b.x - 0.6 && p.x < b.x + b.w + 0.6 && p.z < b.y + 0.4 && p.z > b.y - 3.4;
+      const reach = b.type === 'house' ? 4.4 : 5.2;          // 건물 높이만큼 뒤쪽(북쪽)이 가려진다
+      const on = !!p && b && this.hooks.buildingLook(b) && p.x > b.x - 0.8 && p.x < b.x + b.w + 0.8 && p.z < b.y + 0.4 && p.z > b.y - reach;
       setFade(g, on);
     }
     if (!p) return;

@@ -1,4 +1,4 @@
-"""모든 모델을 다시 만든다:  python3 tools/blender/build.py [분류...]
+"""모든 모델을 다시 만든다:  python3 tools/blender/build.py [분류...]   (예: build.py buildings chars:dalgom,player)
 결과: assets/models/*.glb (게임용), blend/*.blend (블렌더에서 열어 고치는 원본)"""
 import sys, os, importlib
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -17,12 +17,14 @@ def build_cat(cat):
     lib.export(os.path.join(ROOT, 'assets/models', cat + '.glb'), os.path.join(ROOT, 'blend', cat + '.blend'))
 
 
-def build_chars():
+def build_chars(only=None):
     import chars
     importlib.reload(chars)
     import json
     manifest = {}
     for name, fn in chars.ALL.items():
+        if only and not any(k in name for k in only):
+            continue
         lib.reset()
         fn(name)
         lib.export(os.path.join(ROOT, 'assets/chars', name + '.glb'), os.path.join(ROOT, 'blend/chars', name + '.blend'))
@@ -39,8 +41,8 @@ def build_chars():
 if __name__ == '__main__':
     want = sys.argv[1:] or CATS + ['chars']
     for c in want:
-        if c == 'chars':
-            build_chars()
+        if c.startswith('chars'):          # chars 또는 chars:이름,이름 (일부만 다시 만들기)
+            build_chars(c.split(':')[1].split(',') if ':' in c else None)
         elif os.path.exists(os.path.join(HERE, c + '.py')):
             print('[%s]' % c)
             build_cat(c)

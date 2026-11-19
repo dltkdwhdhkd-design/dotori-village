@@ -13,9 +13,57 @@ export const WATER_Y = -0.17;
 export const GROUND_PAL = {
   spring: { g: [143, 209, 108], gd: [120, 189, 90], path: [222, 190, 136], sand: [243, 228, 173], rock: [164, 153, 142] },
   summer: { g: [104, 190, 96], gd: [84, 168, 80], path: [220, 187, 132], sand: [243, 228, 173], rock: [160, 149, 138] },
-  autumn: { g: [194, 185, 96], gd: [172, 162, 80], path: [216, 181, 128], sand: [240, 224, 170], rock: [160, 149, 138] },
+  autumn: { g: [190, 196, 104], gd: [162, 176, 86], path: [216, 181, 128], sand: [240, 224, 170], rock: [160, 149, 138] },
   winter: { g: [238, 243, 249], gd: [214, 224, 236], path: [226, 214, 196], sand: [240, 232, 200], rock: [170, 166, 162] },
 };
+
+const DET = 512, DET_TILES = 4;                   // 잔디 무늬 그림 한 장의 크기(픽셀)와 덮는 칸 수
+
+/** 잔디 무늬: 회색(128)이 '그대로', 밝으면 밝게, 어두우면 어둡게 땅 색에 곱해진다. 이 게임만의 풀포기 무늬. */
+function drawGrassDetail(cv, season) {
+  const S = DET, x = cv.getContext('2d');
+  let seed = 20261119;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  x.fillStyle = 'rgb(128,128,128)'; x.fillRect(0, 0, S, S);
+  // 가장자리에서 끊기지 않게 3×3으로 되풀이해 그린다
+  const wrap = (cx, cy, r, fn) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { const px = cx + ox, py = cy + oy; if (px > -r && px < S + r && py > -r && py < S + r) fn(px, py); } };
+  const snow = season === 'winter';
+  // 1) 큰 얼룩(풀이 짙은 곳, 옅은 곳)
+  for (let i = 0; i < 30; i++) {
+    const cx = rnd() * S, cy = rnd() * S, r = 46 + rnd() * 70, light = rnd() < 0.5;
+    wrap(cx, cy, r, (px, py) => {
+      const g = x.createRadialGradient(px, py, 0, px, py, r);
+      g.addColorStop(0, light ? 'rgba(156,160,146,0.34)' : 'rgba(104,112,104,0.3)'); g.addColorStop(1, light ? 'rgba(156,160,146,0)' : 'rgba(104,112,104,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, 6.3); x.fill();
+    });
+  }
+  if (snow) {       // 눈밭: 잔 반짝임만
+    for (let i = 0; i < 160; i++) { const cx = rnd() * S, cy = rnd() * S, r = 1 + rnd() * 1.6; wrap(cx, cy, r, (px, py) => { x.fillStyle = rnd() < 0.5 ? 'rgba(150,150,154,0.9)' : 'rgba(112,116,126,0.7)'; x.beginPath(); x.arc(px, py, r, 0, 6.3); x.fill(); }); }
+    return;
+  }
+  // 2) 풀포기: 부채꼴로 벌어진 세 갈래 잎 + 밑동의 짙은 그늘
+  x.lineCap = 'round';
+  const tuft = (px, py, sz, rot, light) => {
+    x.save(); x.translate(px, py); x.rotate(rot);
+    x.fillStyle = 'rgba(100,110,98,0.5)'; x.beginPath(); x.ellipse(0, sz * 0.1, sz * 0.62, sz * 0.24, 0, 0, 6.3); x.fill();
+    x.strokeStyle = light; x.lineWidth = sz * 0.2;
+    for (const a of [-0.62, 0, 0.62]) { const l = sz * (a === 0 ? 1 : 0.78); x.beginPath(); x.moveTo(a * sz * 0.22, 0); x.quadraticCurveTo(Math.sin(a) * l * 0.4, -l * 0.6, Math.sin(a) * l, -Math.cos(a) * l); x.stroke(); }
+    x.restore();
+  };
+  const tone = season === 'autumn' ? ['rgba(168,158,120,0.95)', 'rgba(160,160,128,0.9)'] : ['rgba(154,164,138,0.95)', 'rgba(146,156,134,0.9)'];
+  for (let i = 0; i < 150; i++) {
+    const cx = rnd() * S, cy = rnd() * S, sz = 11 + rnd() * 9, rot = (rnd() - 0.5) * 0.7;
+    wrap(cx, cy, sz * 1.3, (px, py) => tuft(px, py, sz, rot, tone[i & 1]));
+  }
+  // 3) 잔 점(작은 잎, 가을에는 낙엽, 봄에는 꽃잎)
+  for (let i = 0; i < 230; i++) {
+    const cx = rnd() * S, cy = rnd() * S, r = 1.4 + rnd() * 1.8, k = rnd();
+    let col = k < 0.5 ? 'rgba(150,158,138,0.85)' : 'rgba(108,116,104,0.7)';
+    if (season === 'autumn' && k > 0.72) col = k > 0.86 ? 'rgba(190,128,84,0.95)' : 'rgba(186,150,84,0.95)';
+    if (season === 'spring' && k > 0.86) col = 'rgba(178,150,160,0.95)';
+    wrap(cx, cy, r * 2, (px, py) => { x.fillStyle = col; x.beginPath(); x.ellipse(px, py, r * 1.5, r, k * 6, 0, 6.3); x.fill(); });
+  }
+}
 
 export class Terrain {
   constructor(village) {
@@ -23,6 +71,7 @@ export class Terrain {
     this.group = new THREE.Group();
     this.buildFields();
     this.buildGroundTexture('spring');
+    this.buildDetail('spring');
     this.buildMesh();
     this.buildWater();
   }
@@ -144,6 +193,32 @@ export class Terrain {
     this.season = season;
   }
 
+  /** 풀밭인 정도(0~1). 길·모래·물·절벽·돌바닥에서는 0 */
+  grassAt(u, v) {
+    const F = this.F;
+    if (this.tt(Math.floor(u), Math.floor(v)) === G.STONE) return 0;
+    const k = Math.max(this.sample(F.path, u, v) * 2.2, this.sample(F.sand, u, v) * 2.2, smooth(0.2, 0.42, this.sample(F.water, u, v)), smooth(0.2, 0.5, this.sample(F.cliff, u, v)));
+    return clamp(1 - k, 0, 1);
+  }
+
+  buildDetail(season) {
+    if (!this.detCanvas) { this.detCanvas = document.createElement('canvas'); this.detCanvas.width = this.detCanvas.height = DET; }
+    drawGrassDetail(this.detCanvas, season);
+    if (!this.detTex) {
+      const t = (this.detTex = new THREE.CanvasTexture(this.detCanvas));
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; t.flipY = false;       // 색 그대로 곱하는 값이라 색공간 변환을 하지 않는다
+      // 풀밭 지도(칸당 4점): 잔디 무늬를 풀밭에만 입힌다
+      const R = 4, mw = PW * R, mh = PH * R, d = new Uint8Array(mw * mh * 4);
+      for (let py = 0; py < mh; py++) for (let px = 0; px < mw; px++) {
+        const o = (py * mw + px) * 4;
+        d[o] = this.grassAt((px + 0.5) / R - PAD.w, (py + 0.5) / R - PAD.n) * 255; d[o + 3] = 255;
+      }
+      const m = (this.maskTex = new THREE.DataTexture(d, mw, mh, THREE.RGBAFormat));
+      m.minFilter = m.magFilter = THREE.LinearFilter; m.needsUpdate = true;
+    }
+    this.detTex.needsUpdate = true;
+  }
+
   buildMesh() {
     const S = 2;                                    // 타일 한 칸을 2×2로 나눈다
     const nx = PW * S, nz = PH * S;
@@ -165,8 +240,22 @@ export class Terrain {
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
     geo.computeVertexNormals();
-    const mat = patchMaterial(new THREE.MeshLambertMaterial({ map: this.groundTex }));
+    const mat = new THREE.MeshLambertMaterial({ map: this.groundTex });
+    // 땅 그림 위에 잔디 무늬를 곱한다(풀밭 지도가 1인 곳에만)
+    const U = { tDetail: { value: this.detTex }, tGrass: { value: this.maskTex }, uOrigin: { value: new THREE.Vector2(-PAD.w, -PAD.n) }, uSize: { value: new THREE.Vector2(PW, PH) } };
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = 'varying vec2 vGxz;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvGxz = position.xz;');
+      sh.fragmentShader = 'uniform sampler2D tDetail;\nuniform sampler2D tGrass;\nuniform vec2 uOrigin;\nuniform vec2 uSize;\nvarying vec2 vGxz;\n' +
+        sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+          float gAmt = texture2D(tGrass, (vGxz - uOrigin) / uSize).r;
+          vec3 gDet = texture2D(tDetail, vGxz / ${DET_TILES}.0).rgb * 2.0;
+          diffuseColor.rgb *= mix(vec3(1.0), gDet, gAmt);`);
+    };
+    mat.userData.cacheKey = 'ground';
+    patchMaterial(mat);
     this.ground = new THREE.Mesh(geo, mat);
+    this.ground.receiveShadow = true;
     this.ground.frustumCulled = false;
     this.group.add(this.ground);
   }
@@ -237,5 +326,5 @@ export class Terrain {
 
   update(time) { this.waterU.uTime.value = time; }
   setLight(color) { this.waterU.uLight.value.copy(color); }
-  setSeason(season) { if (season !== this.season) this.buildGroundTexture(season); }
+  setSeason(season) { if (season !== this.season) { this.buildGroundTexture(season); this.buildDetail(season); } }
 }

@@ -11,8 +11,9 @@ import { Clock, dayKey, daylight, twilight, weatherAt, seasonLook, dateLabel, ti
 import { Input } from '../core/input.js';
 import { Sound } from '../core/audio.js';
 import { UI, Dialog } from '../ui/ui.js';
-import { S, Settings, saveGame, ownedTools } from './state.js';
+import { S, Settings, saveGame, ownedTools, saveSettings } from './state.js';
 import { ITEMS, loadData } from '../data/items.js';
+import { VERSION } from '../core/version.js';
 import { VILLAGERS } from '../data/villagers.js';
 import { clamp, rand } from '../core/util.js';
 
@@ -28,13 +29,14 @@ export const G = {
 export async function loadAssets(onProgress) {
   const bundles = ['nature', 'buildings', 'furniture', 'items', 'critters'];
   let done = 0;
-  const chars = await fetch('./assets/chars/chars.json').then((r) => r.json());
+  const V = '?v=' + VERSION;
+  const chars = await fetch('./assets/chars/chars.json' + V).then((r) => r.json());
   const total = bundles.length + Object.keys(chars).length + 1;
   const tick = (m) => { done++; onProgress(done / total, m); };
   await loadData(); tick('도감을 펼치는 중…');
-  await Promise.all(bundles.map((b) => loadBundle(`./assets/models/${b}.glb`).then(() => tick('마을 물건을 나르는 중…'))));
+  await Promise.all(bundles.map((b) => loadBundle(`./assets/models/${b}.glb${V}`).then(() => tick('마을 물건을 나르는 중…'))));
   await Promise.all(Object.entries(chars).map(([id, c]) => {
-    const url = './assets/chars/' + c.file;
+    const url = './assets/chars/' + c.file + V;
     const p = /\.(png|webp|jpg|jpeg)$/i.test(c.file) ? registerImageChar(id, url) : loadSingle(url, id).catch((e) => console.warn('캐릭터를 불러오지 못했습니다:', id, e));
     return p.then(() => tick('이웃들이 모이는 중…'));
   }));
@@ -45,6 +47,7 @@ export async function loadAssets(onProgress) {
 
 export function initStage(canvas) {
   G.stage = new Stage(canvas);
+  G.stage.setShadows(Settings.shadow !== false);
   return G.stage;
 }
 
@@ -57,11 +60,11 @@ export function buildWorld(village) {
       if (b.type === 'hall') return { model: 'hall' };
       if (b.type === 'shop') return { model: 'shop' };
       if (b.type === 'museum') return { model: 'museum' };
-      if (b.type === 'home') return { model: 'home_' + S.player.houseLv, tint: { roof: 0xd9584a, roof_d: 0xb8443a } };
+      if (b.type === 'home') return { model: 'home_' + S.player.houseLv, tint: { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 } };     // 도토리 깍정이 지붕
       const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot);
       if (!vid) return null;
       const v = VILLAGERS[vid], c = new THREE.Color(v.roof);
-      return { model: v.house, tint: { roof: v.roof, roof_d: c.clone().multiplyScalar(0.8).getHex(), wall: v.wall, door: v.door, door_d: new THREE.Color(v.door).multiplyScalar(0.8).getHex() } };
+      return { model: v.house, tint: { roof: v.roof, roof_d: c.clone().multiplyScalar(0.8).getHex(), wall: v.wall, wall_d: new THREE.Color(v.wall).multiplyScalar(0.88).getHex(), door: v.door, door_d: new THREE.Color(v.door).multiplyScalar(0.8).getHex() } };
     },
     playerPos: () => (G.player && !G.room && G.started ? G.player : null),
     itemModel: (id) => {
@@ -89,7 +92,7 @@ export function refreshTime(force = false) {
   G.weather = weatherAt(now);
   G.dayLight = daylight(now);
   if (G.world) { G.world.setLook(G.look); G.world.setNight(1 - clamp(G.dayLight * 1.4, 0, 1)); }
-  G.stage.setLighting(G.dayLight, twilight(now), G.weather);
+  G.stage.setLighting(G.dayLight, twilight(now), G.weather, hourF(now));
   if (G.started) {
     UI.setClock(dateLabel(now), timeLabel(now), `${SEASON_KO[season(now)]} · ${WEATHER_KO[G.weather]}`);
     const k = dayKey(now);
@@ -165,9 +168,24 @@ let weather = null, saveT = 0, timeT = 0, stepT = 0;
 export function startLoop() {
   weather = new Weather(G.stage.scene);
   let last = performance.now();
+  // 느린 컴퓨터 돌보기: 시작하고 몇 초 동안 화면이 버벅이면 해 그림자를 끄고, 그래도 느리면 해상도를 낮춘다
+  let slowT = 0, slowN = 0, slowSum = 0, slowStep = 0;
   const frame = (t) => {
-    const dt = Math.min(0.05, (t - last) / 1000);
+    const raw = (t - last) / 1000, dt = Math.min(0.05, raw);
     last = t;
+    if (G.started && !G.room && document.visibilityState === 'visible' && raw < 1 && slowStep < 2 && !G.noAutoQuality) {
+      slowT += raw;
+      if (slowT > 3) { slowN++; slowSum += raw; }
+      if (slowN >= 150) {
+        const avg = slowSum / slowN;
+        if (avg > 1 / 27) {
+          if (slowStep === 0 && G.stage.shadows) { G.stage.setShadows(false); Settings.shadow = false; saveSettings(); UI.toast('화면이 느려서 해 그림자를 껐어요. (메뉴에서 다시 켤 수 있어요)'); }
+          else { G.stage.renderer.setPixelRatio(1); G.stage.resize(); slowStep = 1; }
+          slowStep++;
+        } else slowStep = 2;
+        slowN = 0; slowSum = 0; slowT = 0;
+      }
+    }
     update(dt);
     requestAnimationFrame(frame);
   };
@@ -216,6 +234,7 @@ export function update(dt) {
   }
   updateFx(dt);
   Input.endFrame();
+  G.stage.zoomT = G.started && Dialog.active && !UI.panelOpen ? 0.88 : 1;      // 대화하는 동안 살짝 다가간다
   G.stage.render();
 }
 

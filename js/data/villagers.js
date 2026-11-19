@@ -13,18 +13,18 @@ export const PERSONALITY = {
 };
 
 export const VILLAGERS = {
-  dalgom: { name: '달곰', species: '반달곰', p: 'lazy', catch: '곰곰', bday: [2, 14], house: 'house_a', roof: '#f2c230', wall: '#fff3d6', door: '#8a5a3a', set: 'log', likes: ['fruit', 'fish'] },
-  goran: { name: '고란', species: '고라니', p: 'shy', catch: '고란', bday: [5, 8], house: 'house_b', roof: '#6aa5f2', wall: '#fffaf0', door: '#c98a5a', set: 'pastel', likes: ['flower', 'shell'] },
-  nureong: { name: '누렁', species: '누렁이', p: 'jock', catch: '멍', bday: [8, 15], house: 'house_a', roof: '#e8574c', wall: '#fff3d6', door: '#7a5030', set: 'log', likes: ['fish', 'bug'] },
-  beomi: { name: '범이', species: '호랑이', p: 'cranky', catch: '어흥', bday: [11, 3], house: 'house_a', roof: '#5a4a3a', wall: '#ecdcb8', door: '#3a2a22', set: 'hanok', likes: ['fish', 'furniture'] },
-  jangkki: { name: '장끼', species: '꿩', p: 'smug', catch: '꿩', bday: [4, 1], house: 'house_b', roof: '#1f7a5e', wall: '#fff3d6', door: '#8a5a3a', set: 'hanok', likes: ['furniture', 'flower'] },
-  pongdang: { name: '퐁당', species: '개구리', p: 'peppy', catch: '퐁', bday: [6, 21], house: 'house_b', roof: '#84d15e', wall: '#fffbe8', door: '#e88aa8', set: 'pastel', likes: ['flower', 'bug'] },
+  dalgom: { name: '달곰', species: '반달곰', p: 'lazy', catch: '곰곰', bday: [2, 14], house: 'house_b', roof: '#f2c230', wall: '#fff3d6', door: '#8a5a3a', set: 'log', likes: ['fruit', 'fish'] },
+  goran: { name: '고란', species: '고라니', p: 'shy', catch: '고란', bday: [5, 8], house: 'house_a', roof: '#6aa5f2', wall: '#fffaf0', door: '#c98a5a', set: 'pastel', likes: ['flower', 'shell'] },
+  nureong: { name: '누렁', species: '누렁이', p: 'jock', catch: '멍', bday: [8, 15], house: 'house_b', roof: '#e8574c', wall: '#fff3d6', door: '#7a5030', set: 'log', likes: ['fish', 'bug'] },
+  beomi: { name: '범이', species: '호랑이', p: 'cranky', catch: '어흥', bday: [11, 3], house: 'house_c', roof: '#5a4a3a', wall: '#ecdcb8', door: '#3a2a22', set: 'hanok', likes: ['fish', 'furniture'] },
+  jangkki: { name: '장끼', species: '꿩', p: 'smug', catch: '꿩', bday: [4, 1], house: 'house_c', roof: '#1f7a5e', wall: '#fff3d6', door: '#8a5a3a', set: 'hanok', likes: ['furniture', 'flower'] },
+  pongdang: { name: '퐁당', species: '개구리', p: 'peppy', catch: '퐁', bday: [6, 21], house: 'house_a', roof: '#84d15e', wall: '#fffbe8', door: '#e88aa8', set: 'pastel', likes: ['flower', 'bug'] },
   dungdung: { name: '둥둥', species: '청둥오리', p: 'odd', catch: '둥', bday: [9, 9], house: 'house_a', roof: '#3fa39a', wall: '#f0f6f4', door: '#e8a83c', set: 'pastel', likes: ['shell', 'fish'] },
-  sandeul: { name: '산들', species: '염소', p: 'kind', catch: '매', bday: [3, 12], house: 'house_a', roof: '#6fb86a', wall: '#fff3d6', door: '#8a6a4a', set: 'hanok', likes: ['flower', 'fruit'] },
-  dahong: { name: '다홍', species: '여우', p: 'snooty', catch: '홍', bday: [10, 25], house: 'house_b', roof: '#b07be0', wall: '#fff0f4', door: '#7a4a8a', set: 'pastel', likes: ['furniture', 'shell'] },
-  kkokki: { name: '꼬끼', species: '수탉', p: 'jock', catch: '꼬꼬', bday: [1, 1], house: 'house_a', roof: '#d98a3c', wall: '#fff3d6', door: '#96421f', set: 'log', likes: ['bug', 'fruit'] },
+  sandeul: { name: '산들', species: '염소', p: 'kind', catch: '매', bday: [3, 12], house: 'house_c', roof: '#6fb86a', wall: '#fff3d6', door: '#8a6a4a', set: 'hanok', likes: ['flower', 'fruit'] },
+  dahong: { name: '다홍', species: '여우', p: 'snooty', catch: '홍', bday: [10, 25], house: 'house_a', roof: '#b07be0', wall: '#fff0f4', door: '#7a4a8a', set: 'pastel', likes: ['furniture', 'shell'] },
+  kkokki: { name: '꼬끼', species: '수탉', p: 'jock', catch: '꼬꼬', bday: [1, 1], house: 'house_b', roof: '#d98a3c', wall: '#fff3d6', door: '#96421f', set: 'log', likes: ['bug', 'fruit'] },
   dodam: { name: '도담', species: '돼지', p: 'lazy', catch: '꿀', bday: [7, 7], house: 'house_b', roof: '#f8a6b8', wall: '#fff8f0', door: '#c97a86', set: 'log', likes: ['fruit', 'furniture'] },
-  pogeun: { name: '포근', species: '양', p: 'shy', catch: '메', bday: [12, 12], house: 'house_b', roof: '#e9a3b4', wall: '#fffaf0', door: '#8a6a5a', set: 'pastel', likes: ['flower', 'fruit'] },
+  pogeun: { name: '포근', species: '양', p: 'shy', catch: '메', bday: [12, 12], house: 'house_a', roof: '#e9a3b4', wall: '#fffaf0', door: '#8a6a5a', set: 'pastel', likes: ['flower', 'fruit'] },
 };
 export const VILLAGER_IDS = Object.keys(VILLAGERS);
 

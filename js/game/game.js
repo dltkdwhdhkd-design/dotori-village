@@ -229,6 +229,8 @@ export function update(dt) {
     }
     saveT += dt;
     if (saveT > 45 && free && !G.room) { saveT = 0; save(); }
+  } else if (G.title) {
+    G.title.update(dt);
   } else if (G.world) {
     G.world.update(dt, G.time, G.stage.focus.x, G.stage.focus.z);
   }

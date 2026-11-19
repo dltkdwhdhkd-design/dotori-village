@@ -23,12 +23,15 @@
 ### 게임이 이름을 보고 다루는 것
 
 - **부위**: `모델이름__부위` 꼴의 자식 오브젝트. 예) `tree_fruit__canopy`(겨울에 벚나무는 이 부위를 숨김), `…__snow`(눈 쌓이는 철에만 보임), `mailbox__flag`(편지가 오면 세움), `lamp__glass`.
-- **자리 표시(Empty)**: `tree_fruit__fruit1~3`(열매가 달리는 자리).
+- **자리 표시(Empty)**: `tree_fruit__fruit1~3`(열매가 달리는 자리), `tool_rod__tip`(낚싯줄이 나가는 낚싯대 끝).
 - **재질 이름**: 게임이 색을 바꿔 쓰는 재질들.
-  - 계절: `leaf`, `leaf_d`, `leaf_l`(과일나무), `bloom…`(벚나무), `pine…`, `big…`(큰 나무), `weed`
-  - 주민 집: `roof`, `roof_d`, `wall`, `door`, `door_d`
+  - 계절: `leaf`, `leaf_d`, `leaf_l`(과일나무), `bloom…`(벚나무), `pine…`, `big…`(큰 나무), `weed`, `tuft`, `tuft_l`(풀포기)
+  - 주민 집: `roof`, `roof_d`, `wall`, `wall_d`, `door`, `door_d`
   - 꽃잎 `petal`, 두루마리 `roll`
   - 밤에 빛남: `window`, `lampglass`
+  - 이 이름들 말고는 색이 고정된 것으로 보고, 게임이 불러올 때 한 덩어리로 합쳐 그립니다. 새로 '색이 바뀌는 재질'을 만들면 `js/gfx/models.js` 의 `DYNAMIC` 목록에 이름을 넣으세요.
+- **도구**(`tool_net` 등): 쥐는 곳이 원점, 자루는 위(+Z)로, 일하는 쪽(날·주둥이·그물 입구)은 -Y. 게임이 종류별 자세로 쥡니다.
+- **풀포기**(`grass_a`, `grass_b`, `grass_f`): 게임이 풀밭 곳곳에 수천 개를 흩뿌립니다. 작고 단순하게 유지하세요.
 
 ## 2. 스크립트로 다시 만들기
 
@@ -39,10 +42,14 @@ pip install bpy            # 블렌더를 파이썬 모듈로 설치(한 번만)
 python3 tools/blender/build.py              # 전부
 python3 tools/blender/build.py nature       # 한 묶음만
 python3 tools/blender/build.py chars        # 캐릭터만
+python3 tools/blender/build.py chars:dalgom,player   # 이름에 그 글자가 든 캐릭터만
 ```
 
-- `lib.py` — 도형을 만드는 공통 함수(`ball`, `cyl`, `box`, `tube`, `torus`, `poly` …)와 내보내기
+- `lib.py` — 도형을 만드는 공통 함수(`ball`, `cyl`, `box`, `tube`, `torus`, `poly`, 회전체 `lathe`, 반구 `dome`, 고리 조각 `arc` …)와 내보내기. `m.part(이름, 축, parent='head')` 처럼 부위에 부모를 줄 수 있습니다.
+- `bkit.py` — 건물 부품: 겹쳐 얹은 박공지붕 `gable`, 창 `win`(십자·아치·둥근 창, 덧문, 화분 상자), 문 `door`, 계단, 굴뚝, 벽등, 덤불, 화분. `Frame` 으로 부품을 돌려 놓습니다(옆으로 난 지붕, 둥근 벽의 창).
 - `nature.py`, `buildings.py`, `furniture.py`, `items.py`, `critters.py`, `chars.py` — 모델 정의
+  - `buildings.py`: 주민 집 `house_a`(회벽 오두막)·`house_b`(통나무집)·`house_c`(기와집), 주인공의 도토리 집 `home_1~3`, `shop`, `museum`, `hall`, 다리·부두·시설물. 기와지붕은 `giwa_roof`, 도토리 지붕은 `acorn_cap`.
+  - `chars.py`: 캐릭터. 만드는 법은 [characters.md](characters.md) 참고.
 - 물고기·곤충은 `data/fish.json`, `data/bugs.json` 의 `look` 값으로 만들어집니다. 종을 추가하면 모델도 생깁니다.
 
 주의: 블렌더에서 직접 고친 `.blend` 는 스크립트를 다시 돌리면 덮어써집니다. 한쪽 길을 정해 쓰세요.

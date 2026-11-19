@@ -12,8 +12,10 @@ import { UI } from './ui/ui.js';
 import { Sound } from './core/audio.js';
 import { Clock, dayKey } from './core/clock.js';
 import { Input } from './core/input.js';
+import { TitleScene } from './game/titlescene.js';
 
 function start(isNew) {
+  if (G.title) { G.title.dispose(); G.title = null; }
   Clock.seed = S.seed;
   G.player = new Player();
   G.critters = new Critters();
@@ -67,7 +69,11 @@ async function boot() {
   UI.loading(null);
   const q = new URLSearchParams(location.search);
   if (q.get('auto')) onNew({ name: '도토리', village: '솔바람', model: 'player_1', seed: +q.get('seed') || 1234 });   // 개발용: 바로 시작
-  else showTitle({ onNew, onContinue });
+  else {
+    refreshTime(true);                               // 첫 화면도 지금 시각·계절의 빛으로
+    G.title = new TitleScene(G.stage, G.look);
+    showTitle({ onNew, onContinue });
+  }
   window.addEventListener('beforeunload', () => save());
 }
 

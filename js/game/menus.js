@@ -299,7 +299,8 @@ export function showTitle({ onNew, onContinue }) {
   const t = document.getElementById('title');
   t.classList.remove('hidden');
   const main = () => {
-    t.innerHTML = `<h1>도토리 마을</h1><div class="sub">느긋하게 사는 작은 마을 이야기</div>
+    t.classList.add('front');
+    t.innerHTML = `<div class="head"><h1>도토리 마을</h1><div class="sub">느긋하게 사는 작은 마을 이야기</div></div>
       <div class="box">${hasSave() ? '<button class="big" id="t-cont">이어서 하기</button>' : ''}<button class="big ${hasSave() ? 'alt' : ''}" id="t-new">새로 시작하기</button></div>
       <div class="foot">저장은 이 브라우저에 됩니다 · 소리가 납니다 · 판 ${VERSION}</div>`;
     const c = t.querySelector('#t-cont'); if (c) c.onclick = () => { Sound.unlock(); Sound.sfx('open'); t.classList.add('hidden'); onContinue(); };
@@ -307,11 +308,12 @@ export function showTitle({ onNew, onContinue }) {
   };
   const form = () => {
     let model = 'player_1';
+    t.classList.remove('front');
     t.innerHTML = `<h1 style="font-size:54px">이사 준비</h1><div class="sub">이름과 마을 이름을 정해 주세요</div>
       <div class="box"><label>내 이름</label><input type="text" id="t-name" maxlength="6" value="도토리"><label>마을 이름</label><input type="text" id="t-vil" maxlength="6" value="솔바람">
       <label>모습</label><div class="pick" id="t-pick"></div><button class="big" id="t-go">마을로 출발!</button><button class="big alt" id="t-back" style="font-size:17px;padding:6px">돌아가기</button></div>`;
     const pk = t.querySelector('#t-pick');
-    const paint = () => { pk.innerHTML = ''; for (let i = 1; i <= 4; i++) { const id = 'player_' + i; const d = el('div', 'slot' + (model === id ? ' sel' : '')); const im = el('img'); im.src = thumbOfModel(id, { view: 'side' }); d.appendChild(im); d.onclick = () => { model = id; Sound.sfx('ui'); paint(); }; pk.appendChild(d); } };
+    const paint = () => { pk.innerHTML = ''; for (let i = 1; i <= 4; i++) { const id = 'player_' + i; const d = el('div', 'slot' + (model === id ? ' sel' : '')); const im = el('img'); im.src = thumbOfModel(id, { view: 'side' }); d.appendChild(im); d.onclick = () => { model = id; Sound.sfx('ui'); paint(); if (G.title) G.title.setPlayer(id); }; pk.appendChild(d); } };
     paint();
     t.querySelector('#t-back').onclick = main;
     t.querySelector('#t-go').onclick = () => {

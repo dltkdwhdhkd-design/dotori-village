@@ -107,8 +107,10 @@ export class Actor {
       this.root.add(this.model);               // 그림은 방향축에 붙이지 않는다(늘 카메라를 본다)
       this.parts = {};
       this.topY = TARGET_H + 0.15;
+      this.shadow.layers.set(0);               // 그림 캐릭터는 해 그림자가 없으니 둥근 그림자를 늘 보인다
       return;
     }
+    this.shadow.layers.set(1);
     this.model = make(has(id) ? id : 'missing_char');
     this.parts = this.model.userData.parts || {};
     if (!this.parts.head && !this.model.userData.missing) {

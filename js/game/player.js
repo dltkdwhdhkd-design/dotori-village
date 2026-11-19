@@ -92,8 +92,12 @@ export class Player {
   }
 
   // ---------------------------------------------------------------- 매 프레임
+  /** sec초 뒤에 fn을 실행한다(동작 도중의 효과용) */
+  later(sec, fn) { (this.queue || (this.queue = [])).push({ t: sec, fn }); }
+
   update(dt, free) {
     const a = this.actor;
+    if (this.queue && this.queue.length) { for (const q of this.queue) q.t -= dt; const due = this.queue.filter((q) => q.t <= 0); this.queue = this.queue.filter((q) => q.t > 0); for (const q of due) q.fn(); }
     if (this.lock > 0) {
       this.lock -= dt; a.speed = 0;
       if (this.after && this.lock <= (this.afterT || 0)) { const f = this.after; this.after = null; f(); }
@@ -323,10 +327,12 @@ export class Player {
 
   water(f, o) {
     const cx = f.tx + 0.5, cz = f.ty + 0.5;
-    this.do('pour', 0.9, () => {
-      Sound.sfx('water'); burst('splash', cx, 0.5, cz, 7);
+    this.do('pour', 1.0, () => {
+      Sound.sfx('water'); burst('splash', cx, 0.45, cz, 7);
       if (o && o.t === 'flower') { o.w = dayKey(); }
     });
+    // 물뿌리개 주둥이에서 꽃까지 떨어지는 물줄기
+    for (let i = 0; i < 5; i++) this.later(0.3 + i * 0.09, () => { const k = 0.35 + Math.random() * 0.5; burst('splash', this.x + (cx - this.x) * k, 0.75 - k * 0.4, this.z + (cz - this.z) * k, 2); });
   }
 
   swingNet() {

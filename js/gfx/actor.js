@@ -10,36 +10,47 @@ const TARGET_H = 1.42;
 const D = Math.PI / 180;
 
 // ---------------------------------------------------------------- 도구를 쥔 자세
-// a = 오른팔을 앞으로 든 각, b = 도구가 가리키는 방향(0 아래 · 90 앞 · 180 위 · 그보다 크면 등 뒤로 넘어감)
-// s = 팔을 옆으로 벌린 각, t = 도구를 바깥쪽으로 기울인 각, l = 왼팔을 앞으로 든 각   (모두 도)
-const P = (a, b, s = 10, t = 0, l = 0) => ({ a: a * D, b: b * D, s: s * D, t: t * D, l: l * D });
+// 자세 하나는 아래 값들로 이루어진다(각은 모두 도).
+//   a = 오른팔을 앞으로 든 각            b = 도구가 가리키는 방향(0 아래 · 90 앞 · 180 위 · 그보다 크면 등 뒤로 넘어감)
+//   s = 오른팔을 옆으로 벌린 각          t = 도구를 바깥쪽으로 기울인 각
+//   l = 왼팔을 앞으로 든 각(두 손으로 쥔 느낌)
+//   g = 자루의 어디를 쥐는지(0 = 자루 끝, 클수록 날 쪽)
+//   y = 도구를 옆으로 돌린 각(0 = 정면, 음수 = 오른쪽 뒤)   r = 자루를 축으로 돌린 각(도끼날이 휘두르는 쪽을 보게)
+//   w = 몸을 비튼 각(음수 = 오른쪽으로)
+const P = (a, b, o = {}) => ({ a: a * D, b: b * D, s: (o.s ?? 10) * D, t: (o.t || 0) * D, l: (o.l || 0) * D, g: o.g || 0, y: (o.y || 0) * D, r: (o.r || 0) * D, w: (o.w || 0) * D });
 // 동작은 [진행도 0~1, 자세, 'in'(점점 빠르게)] 목록. 사이는 부드럽게 잇는다.
+// 도구마다 몸짓이 다르다: 잠자리채는 머리 위에서 내려찍고, 삽은 두 손으로 땅에 꽂아 퍼 올리고, 도끼는 옆으로 휘두른다.
 const TOOL = {
   net: {
-    idle: P(30, 174, 20, 26),
-    raise: P(112, 220, 36, 4, 30),
-    swing: [[0, P(112, 220, 36, 4, 30)], [0.42, P(58, 79, 6, 0, 44), 'in'], [0.58, P(54, 74, 6, 0, 44)], [1, P(56, 78, 6, 0, 44)]],
-  },
-  axe: {
-    idle: P(30, 172, 20, 24),
-    swing: [[0, P(116, 226, 32, 0, 44)], [0.42, P(66, 98, 6, 0, 50), 'in'], [0.6, P(62, 94, 6, 0, 50)], [1, P(64, 98, 6, 0, 50)]],
+    scale: 0.92,
+    idle: P(30, 174, { s: 20, t: 26 }),
+    raise: P(118, 222, { s: 36, t: 4, l: 34, w: -8 }),
+    swing: [[0, P(118, 222, { s: 36, t: 4, l: 34, w: -8 })], [0.16, P(130, 238, { s: 38, t: 2, l: 38, w: -16 })], [0.42, P(58, 79, { s: 6, l: 46, w: 8 }), 'in'], [0.5, P(54, 73, { s: 6, l: 46, w: 8 })], [0.62, P(56, 79, { s: 6, l: 46, w: 6 })], [1, P(56, 79, { s: 6, l: 44, w: 4 })]],
   },
   shovel: {
-    idle: P(30, 172, 20, 24),
-    dig: [[0, P(98, 146, 24, 0, 56)], [0.45, P(52, 66, 6, 0, 50), 'in'], [0.75, P(58, 84, 6, 0, 52)], [1, P(60, 90, 6, 0, 52)]],
+    scale: 0.86,
+    idle: P(50, 2, { s: 14, t: 14, g: 0.6 }),                                // 날을 땅에 짚고 지팡이처럼 든다
+    dig: [[0, P(84, 6, { s: 8, l: 76, g: 0.55 })], [0.14, P(104, 2, { s: 10, l: 96, g: 0.55 })], [0.34, P(40, 14, { s: 6, l: 40, g: 0.55 }), 'in'], [0.52, P(38, 16, { s: 6, l: 38, g: 0.55 })], [0.78, P(64, 60, { s: 8, l: 60, g: 0.5 })], [1, P(56, 30, { s: 10, l: 30, g: 0.55 })]],
+  },
+  axe: {
+    scale: 0.9,
+    idle: P(30, 172, { s: 20, t: 24 }),
+    swing: [[0, P(40, 100, { s: 62, l: 20, y: -118, r: 90, w: -34 })], [0.14, P(38, 104, { s: 66, l: 18, y: -128, r: 90, w: -40 })], [0.42, P(72, 96, { s: 6, l: 60, y: 18, r: 90, w: 28 }), 'in'], [0.56, P(70, 96, { s: 8, l: 58, y: 4, r: 90, w: 18 })], [1, P(70, 98, { s: 8, l: 56, y: 10, r: 90, w: 20 })]],
   },
   rod: {
-    idle: P(40, 148, 10, 8),
-    cast: [[0, P(126, 232, 28, 0, 30)], [0.6, P(72, 126, 8, 0, 30), 'in'], [1, P(68, 122, 8, 0, 24)]],
-    holdrod: P(66, 122, 6, 0, 26),
-    pull: [[0, P(66, 122, 6, 0, 26)], [0.45, P(110, 198, 24, 0, 50), 'in'], [1, P(106, 190, 24, 0, 50)]],
+    scale: 0.95,
+    idle: P(40, 148, { s: 10, t: 8 }),
+    cast: [[0, P(126, 232, { s: 28, l: 30, w: -14 })], [0.6, P(72, 126, { s: 8, l: 30, w: 8 }), 'in'], [1, P(68, 122, { s: 8, l: 24 })]],
+    holdrod: P(66, 122, { s: 6, l: 26 }),
+    pull: [[0, P(66, 122, { s: 6, l: 26 })], [0.45, P(110, 198, { s: 24, l: 50, w: -8 }), 'in'], [1, P(106, 190, { s: 24, l: 50, w: -6 })]],
   },
   can: {
-    idle: P(38, 180, 10, 0),
-    pour: [[0, P(38, 180, 10, 0)], [0.3, P(66, 128, 8, 0, 34)], [0.82, P(66, 124, 8, 0, 34)], [1, P(46, 172, 10, 0)]],
+    scale: 1,
+    idle: P(38, 180, { s: 10 }),
+    pour: [[0, P(38, 180, { s: 10 })], [0.25, P(68, 124, { s: 8, l: 36 })], [0.82, P(68, 120, { s: 8, l: 36 })], [1, P(46, 172, { s: 10 })]],
   },
 };
-const POSE_KEYS = ['a', 'b', 's', 't', 'l'];
+const POSE_KEYS = ['a', 'b', 's', 't', 'l', 'g', 'y', 'r', 'w'];
 function keyPose(list, k, out) {
   let i = 1;
   while (i < list.length - 1 && k > list[i][0]) i++;
@@ -49,7 +60,7 @@ function keyPose(list, k, out) {
   for (const f of POSE_KEYS) out[f] = A[1][f] + (B[1][f] - A[1][f]) * u;
   return out;
 }
-const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler(), _Z = new THREE.Vector3(0, 0, 1);
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _e = new THREE.Euler(), _Z = new THREE.Vector3(0, 0, 1), _Y = new THREE.Vector3(0, 1, 0);
 const texLoader = new THREE.TextureLoader();
 const IMG = {};      // 캐릭터 id -> 그림(텍스처). 그림 한 장으로 바꾼 캐릭터용
 
@@ -149,6 +160,7 @@ export class Actor {
       const st = model.replace('tool_', '');
       this.style = TOOL[st] ? st : 'net';
       this.cur = { ...TOOL[this.style].idle };
+      this.held.scale.setScalar(TOOL[this.style].scale || 1);
     } else {                                   // 손 위치가 없는 모델(직접 바꾼 모델·그림): 몸 옆에 세워 든다
       this.grip.position.set(-0.42, 0.45, 0.12);
       this.pivot.add(this.grip);
@@ -193,12 +205,24 @@ export class Actor {
       k = Math.min(1, a.t / a.dur);
       const def = tool && tool[a.name];
       if (def) { tp = Array.isArray(def) ? keyPose(def, k, this._tp) : def; hard = true; }
-      if (a.name === 'swing') { bodyRx = Math.sin(Math.min(1, k * 1.5) * Math.PI) * 0.22 + (k > 0.4 ? 0.1 : 0); if (!def) { rxR = lerp(-2.4, 0.3, Math.min(1, k * 2)); rzR = 0.4; armsSet = true; } }
-      else if (a.name === 'raise') { if (!def) { rxR = -2.3; rzR = 0.5; armsSet = true; } }
+      const sty = def ? this.style : null;
+      if (a.name === 'swing' && sty === 'axe') { bodyRx = 0.1 + Math.sin(Math.min(1, k * 2.2) * Math.PI) * 0.08; if (k > 0.4 && k < 0.6) squash = 1 - Math.sin((k - 0.4) * 5 * Math.PI) * 0.04; }
+      else if (a.name === 'swing') {           // 잠자리채: 뒤로 젖혔다가 폴짝 내려찍는다
+        bodyRx = k < 0.2 ? -0.16 * (k / 0.2) : k < 0.42 ? lerp(-0.16, 0.34, (k - 0.2) / 0.22) : lerp(0.34, 0.22, Math.min(1, (k - 0.42) / 0.3));
+        jump = k > 0.14 && k < 0.44 ? Math.sin((k - 0.14) / 0.3 * Math.PI) * 0.12 : 0;
+        if (k > 0.42 && k < 0.62) squash = 1 - Math.sin((k - 0.42) * 5 * Math.PI) * 0.07;
+        if (!def) { rxR = lerp(-2.4, 0.3, Math.min(1, k * 2)); rzR = 0.4; armsSet = true; }
+      }
+      else if (a.name === 'raise') { bodyRx = -0.06; if (!def) { rxR = -2.3; rzR = 0.5; armsSet = true; } }
       else if (a.name === 'cast') { bodyRx = Math.sin(k * Math.PI) * 0.15; if (!def) { rxR = lerp(-2.4, -0.9, k); rzR = 0.4; armsSet = true; } }
       else if (a.name === 'holdrod') { a.t = 0; bodyRx = 0.04; if (!def) { rxR = -0.9; armsSet = true; } }
       else if (a.name === 'pull') { bodyRx = -0.22 * Math.sin(Math.min(1, k * 1.6) * Math.PI * 0.5); if (!def) { rxR = lerp(-0.9, -2.3, k); rzR = 0.4; armsSet = true; } }
-      else if (a.name === 'dig') { bodyRx = Math.sin(Math.min(1, k * 1.4) * Math.PI) * 0.3 + (k > 0.4 ? 0.08 : 0); if (!def) both(lerp(-1.8, 0.2, Math.min(1, k * 1.7))); }
+      else if (a.name === 'dig') {             // 삽: 들어 올렸다가 몸을 숙여 꽂고, 젖히며 퍼 올린다
+        bodyRx = k < 0.12 ? -0.05 : k < 0.34 ? lerp(-0.05, 0.42, (k - 0.12) / 0.22) : k < 0.52 ? 0.42 : lerp(0.42, -0.06, Math.min(1, (k - 0.52) / 0.3));
+        jump = k > 0.3 && k < 0.56 ? -0.05 * Math.sin((k - 0.3) / 0.26 * Math.PI) : 0;
+        if (k > 0.3 && k < 0.5) squash = 1 - Math.sin((k - 0.3) * 5 * Math.PI) * 0.06;
+        if (!def) both(lerp(-1.8, 0.2, Math.min(1, k * 1.7)));
+      }
       else if (a.name === 'pour') { bodyRx = Math.sin(k * Math.PI) * 0.12; if (!def) both(-0.9); }
       else if (a.name === 'shake') { both(-1.5, 0.1); bodyRx = Math.sin(a.t * 30) * 0.08; }
       else if (a.name === 'pick') { bodyRx = Math.sin(k * Math.PI) * 0.6; both(-0.8 * Math.sin(k * Math.PI)); }
@@ -263,8 +287,12 @@ export class Actor {
         if (this.grip && c && P.arm_R) {
           _q1.setFromEuler(_e.set(Math.PI - c.b, 0, 0));
           _q2.setFromAxisAngle(_Z, c.t);
-          this.grip.quaternion.copy(P.arm_R.quaternion).invert().multiply(_q2).multiply(_q1);
+          _q3.setFromAxisAngle(_Y, c.y);
+          this.grip.quaternion.copy(P.arm_R.quaternion).invert().multiply(_q3).multiply(_q2).multiply(_q1);
+          if (c.r) this.grip.quaternion.multiply(_q3.setFromAxisAngle(_Y, c.r));      // 자루를 축으로(날의 방향)
+          this.held.position.y = -c.g * this.held.scale.y;                             // 자루의 어디를 쥐는지
         }
+        this.model.rotation.y = c ? c.w : 0;                                           // 몸 비틀기
       } else {
         // 통짜 모델: 걸을 때 좌우로 뒤뚱거리고 통통 튄다
         this.model.rotation.z = moving ? s * 0.09 : 0;

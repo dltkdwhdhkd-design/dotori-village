@@ -72,7 +72,8 @@ python3 tools/blender/build.py chars:dalgom,player   # 이름에 그 글자가 �
 종을 더하거나 고치는 법
 1. `data/fish.json` (또는 `bugs.json`)에 한 줄을 더한다. 철·시간·값은 다른 줄을 본뜨고, 생김새는 `look` 에 적는다.
 2. `python3 tools/blender/build.py fish` (또는 `bugs`). 그림은 `/tmp/dotori_tex/` 에도 저장되니 열어서 바로 확인할 수 있다.
-3. `viewer.html?b=fish&m=<id>&pitch=0.1` 로 3D 모양을 본다.
+3. `catalog.html?b=fish` (곤충은 `?b=bugs`)로 모든 종을 한 칸씩 늘어놓고 확인한다. 한 종만 볼 때는 `&m=<id>`.
+   **종을 고치면 반드시 이 화면으로 확인할 것.** 그림(텍스처)만 보고 넘어갔다가 둥근 꼬리지느러미가 엉뚱한 자리에 그려지는 오류를 놓친 적이 있다.
 
 물고기 `look` 의 주요 값: `f` 무리, `len` 길이(칸), `dep` 몸높이, `col` [등, 옆구리, 배], `fin` 지느러미 색, `d/d2/a` 지느러미 [시작, 끝, 높이, 모양], `c` 꼬리 [모양, 폭, 파임],
 `pat` 무늬 목록(`bars` 세로띠, `spots` 점, `stripe` 가로줄, `wavy` 물결, `blotch` 얼룩, `scales` 비늘, `parr` 타원 무늬, `ocellus` 눈알 무늬, `dotrows` 점줄, `lines`, `scutes`, `grid` …). 값의 뜻은 `fishkit.py` 맨 위와 `patterns()` 의 주석에 있다.

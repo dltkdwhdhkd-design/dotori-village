@@ -131,8 +131,9 @@ class Top:
             self.ell((rnd.uniform(region[0], region[1]), rnd.uniform(region[2], region[3])), (r * rnd.uniform(0.6, 1.3),) * 2, col)
 
     # --- 3D
-    def shell(self, y0, y1, wf, hf, W, H, col=None, z0=None, n=10, seg=8, px=2.0, mat=None, x0=0.0):
-        """위에서 본 윤곽이 wf(t)*W/2, 높이가 hf(t)*H 인 볼록한 덩어리(t: 앞 0 → 뒤 1). 단면은 반타원."""
+    def shell(self, y0, y1, wf, hf, W, H, col=None, z0=None, n=10, seg=8, px=2.0, mat=None, x0=0.0, full=False):
+        """위에서 본 윤곽이 wf(t)*W/2, 높이가 hf(t)*H 인 볼록한 덩어리(t: 앞 0 → 뒤 1). 단면은 반타원.
+        full=True면 아래쪽도 똑같이 둥글다(헤엄치는 것: z0가 몸 가운데)."""
         z0 = self.z0 if z0 is None else z0
         ts = [i / n for i in range(n + 1)]
         if col is not None:
@@ -140,16 +141,27 @@ class Top:
             L = [(x0 - wf(t) * W / 2, y0 + (y1 - y0) * t) for t in ts]
             self.poly(R + list(reversed(L)), col)
         V, F = [], []
-        for t in ts:
-            w, h, y = max(1e-4, wf(t) * W / 2), max(1e-4, hf(t) * H), y0 + (y1 - y0) * t
-            for j in range(seg + 1):
-                a = -math.pi / 2 + math.pi * j / seg
-                V.append((x0 + w * math.sin(a), y, z0 + h * abs(math.cos(a)) ** (2.0 / px)))
-        k = seg + 1
-        for i in range(n):
-            for j in range(seg):
-                F.append((i * k + j, (i + 1) * k + j, (i + 1) * k + j + 1, i * k + j + 1))
-            F.append((i * k + seg, (i + 1) * k + seg, (i + 1) * k, i * k))
+        if full:
+            k = seg * 2
+            for t in ts:
+                w, h, y = max(1e-4, wf(t) * W / 2), max(1e-4, hf(t) * H), y0 + (y1 - y0) * t
+                for j in range(k):
+                    a = 2 * math.pi * j / k
+                    V.append((x0 + w * math.sin(a), y, z0 + h * math.cos(a)))
+            for i in range(n):
+                for j in range(k):
+                    F.append((i * k + j, (i + 1) * k + j, (i + 1) * k + (j + 1) % k, i * k + (j + 1) % k))
+        else:
+            for t in ts:
+                w, h, y = max(1e-4, wf(t) * W / 2), max(1e-4, hf(t) * H), y0 + (y1 - y0) * t
+                for j in range(seg + 1):
+                    a = -math.pi / 2 + math.pi * j / seg
+                    V.append((x0 + w * math.sin(a), y, z0 + h * abs(math.cos(a)) ** (2.0 / px)))
+            k = seg + 1
+            for i in range(n):
+                for j in range(seg):
+                    F.append((i * k + j, (i + 1) * k + j, (i + 1) * k + j + 1, i * k + j + 1))
+                F.append((i * k + seg, (i + 1) * k + seg, (i + 1) * k, i * k))
         F.append(tuple(range(0, k)))
         F.append(tuple(reversed(range(n * k, n * k + k))))
         cv = self.cv
@@ -437,42 +449,205 @@ def tadpole(m, name, k):
 
 
 def angler(m, name, k):
+    """아귀: 넓적한 머리에 위를 향한 큰 입, 머리 위의 낚싯대"""
     L = k.get('len', 0.9)
     col, c2 = k['col'], k.get('col2', shade(k['col'], 0.6))
-    W = L * 0.62
-    T = Top(m, name, W * 0.66, L * 0.56, L * 0.56, px=192, bg=col, z0=0.012)
+    W = L * 0.7
+    T = Top(m, name, W * 0.66, L * 0.56, L * 0.56, px=224, bg=col, z0=0.012)
     for s in (1, -1):                             # 팔처럼 생긴 가슴지느러미
-        fin = [(s * W * 0.36, L * 0.02), (s * W * 0.62, -L * 0.02), (s * W * 0.66, L * 0.12), (s * W * 0.52, L * 0.2), (s * W * 0.34, L * 0.14)]
-        T.poly(fin, shade(col, 0.88))
-        for i in range(4):
-            T.line([(s * W * 0.38, L * 0.08), (s * W * (0.6 - i * 0.03), L * (0.0 + i * 0.06))], L * 0.006, c2)
+        fin = [(s * W * 0.38, -L * 0.02), (s * W * 0.6, -L * 0.1), (s * W * 0.66, L * 0.06), (s * W * 0.56, L * 0.18), (s * W * 0.36, L * 0.12)]
+        T.poly(fin, shade(col, 0.86))
+        for i in range(5):
+            T.line([(s * W * 0.4, L * 0.04), (s * W * (0.62 - i * 0.02), L * (-0.08 + i * 0.06))], L * 0.006, c2)
         T.plate(fin, T.z0 + L * 0.02)
-    tail = [(-L * 0.05, L * 0.4), (-L * 0.1, L * 0.52), (0, L * 0.5), (L * 0.1, L * 0.52), (L * 0.05, L * 0.4)]
-    T.poly(tail, shade(col, 0.88))
-    for x in (-0.06, -0.02, 0.02, 0.06):
-        T.line([(x * L * 0.6, L * 0.42), (x * L, L * 0.51)], L * 0.006, c2)
+    tail = [(-L * 0.05, L * 0.4), (-L * 0.11, L * 0.53), (0, L * 0.51), (L * 0.11, L * 0.53), (L * 0.05, L * 0.4)]
+    T.poly(tail, shade(col, 0.86))
+    for x in (-0.07, -0.03, 0.03, 0.07):
+        T.line([(x * L * 0.6, L * 0.42), (x * L, L * 0.52)], L * 0.006, c2)
     T.plate(tail, T.z0 + L * 0.03)
-    wf = via([(0, 0.62), (0.1, 0.92), (0.26, 1.0), (0.45, 0.7), (0.7, 0.3), (1, 0.14)])
-    T.shell(-L * 0.5, L * 0.44, wf, via([(0, 0.5), (0.25, 1), (0.6, 0.6), (1, 0.3)]), W, L * 0.16, col, n=14, seg=8, px=1.6)
-    T.blotch(c2, L * 0.07, 0.55, alpha=0.55)
-    T.blotch(shade(col, 1.3), L * 0.05, 0.7, alpha=0.4, seed=11)
-    T.line([(-W * 0.3, -L * 0.44), (-W * 0.16, -L * 0.485), (0, -L * 0.495), (W * 0.16, -L * 0.485), (W * 0.3, -L * 0.44)], L * 0.022, '#2a1e1a')       # 커다란 입
-    for i in range(9):
-        x = -W * 0.26 + W * 0.065 * i
-        T.poly([(x - L * 0.008, -L * 0.47), (x, -L * 0.445), (x + L * 0.008, -L * 0.47)], '#f6f1e2')
+    wf = via([(0, 0.66), (0.07, 0.94), (0.2, 1.0), (0.36, 0.72), (0.5, 0.4), (0.75, 0.24), (1, 0.12)])
+    T.shell(-L * 0.5, L * 0.44, wf, via([(0, 0.45), (0.2, 1), (0.5, 0.62), (1, 0.3)]), W, L * 0.15, col, n=16, seg=8, px=1.6)
+    T.blotch(c2, L * 0.06, 0.56, alpha=0.6)
+    T.blotch(shade(col, 1.35), L * 0.04, 0.72, alpha=0.5, seed=11)
+    T.speck(shade(col, 0.5), 40, L * 0.006, (-W * 0.4, W * 0.4, -L * 0.36, L * 0.3))
     rnd = random.Random(2)
-    for i in range(18):                           # 몸 가장자리의 너덜너덜한 살갗 돌기
-        t = 0.04 + 0.5 * i / 18
+    for i in range(22):                           # 몸 가장자리의 너덜너덜한 살갗 돌기
+        t = 0.05 + 0.55 * i / 22
         for s in (1, -1):
             x, y = s * wf(t) * W * 0.5, -L * 0.5 + L * 0.94 * t
-            T.poly([(x - s * L * 0.01, y - L * 0.012), (x + s * L * 0.03, y + rnd.uniform(-0.01, 0.01) * L), (x - s * L * 0.01, y + L * 0.012)], shade(col, 0.85))
+            T.poly([(x - s * L * 0.012, y - L * 0.012), (x + s * L * 0.03, y + rnd.uniform(-0.01, 0.01) * L), (x - s * L * 0.012, y + L * 0.012)], shade(col, 0.8))
+    # 위를 향해 벌어진 커다란 입: 짙은 초승달과 뾰족한 이
+    lip = [(-W * 0.3 + W * 0.6 * i / 12, -L * 0.468 - L * 0.03 * math.sin(math.pi * i / 12)) for i in range(13)]
+    low = [(-W * 0.3 + W * 0.6 * i / 12, -L * 0.468 + L * 0.05 * math.sin(math.pi * i / 12)) for i in range(13)]
+    T.poly(lip + list(reversed(low)), '#2a1a18')
+    for i in range(1, 12):
+        x = -W * 0.3 + W * 0.6 * i / 12
+        yl = -L * 0.468 + L * 0.05 * math.sin(math.pi * i / 12)
+        T.poly([(x - L * 0.008, yl), (x, yl - L * 0.028), (x + L * 0.008, yl)], '#f8f3e4')
+        yu = -L * 0.468 - L * 0.03 * math.sin(math.pi * i / 12)
+        T.poly([(x - L * 0.006, yu), (x + L * 0.006, yu + L * 0.02), (x + L * 0.012, yu)], '#f8f3e4')
     T.off()
     for s in (1, -1):
-        ball((s * W * 0.14, -L * 0.34, T.z0 + L * 0.15), L * 0.03, k.get('eye', '#d9c06a'), sub=1)
-        ball((s * W * 0.145, -L * 0.345, T.z0 + L * 0.165), L * 0.016, '#1a1a1a', sub=1)
-    chain([(0, -L * 0.4, T.z0 + L * 0.13), (0, -L * 0.5, T.z0 + L * 0.3), (0, -L * 0.62, T.z0 + L * 0.3)], L * 0.008, c2, r2=L * 0.004)     # 낚싯대(유인 돌기)
-    ball((0, -L * 0.63, T.z0 + L * 0.3), L * 0.022, k.get('lure', '#f3ecd6'), sub=1)
+        ball((s * W * 0.15, -L * 0.33, T.z0 + L * 0.145), L * 0.034, k.get('eye', '#d9c06a'), sub=2)
+        ball((s * W * 0.152, -L * 0.338, T.z0 + L * 0.163), 1.0, '#1a1a1a', (L * 0.022, L * 0.012, L * 0.012), sub=1)
+    chain([(0, -L * 0.39, T.z0 + L * 0.13), (0, -L * 0.46, T.z0 + L * 0.3), (0, -L * 0.6, T.z0 + L * 0.33)], L * 0.008, c2, r2=L * 0.004)     # 낚싯대(유인 돌기)
+    ball((0, -L * 0.61, T.z0 + L * 0.33), L * 0.024, k.get('lure', '#f3ecd6'), sub=1)
+    for i in (1, 2):                              # 등의 가시 두 개
+        tube((0, -L * 0.39 + i * L * 0.09, T.z0 + L * 0.14), (0, -L * 0.36 + i * L * 0.09, T.z0 + L * 0.25), L * 0.006, c2, r2=0.002, seg=4)
     T.finish()
+
+
+def squid(m, name, k):
+    """오징어(살오징어): 원뿔 몸통 끝의 세모 지느러미, 다리 여덟에 긴 더듬이팔 둘. 헤엄치는 모습이라 다 만든 뒤 옆으로 눕힌다."""
+    L = k.get('len', 0.9)
+    col, c2 = k['col'], k.get('col2', shade(k['col'], 0.62))
+    T = Top(m, name, L * 0.3, L * 0.52, L * 0.52, px=176, bg=col, z0=0.0)
+    MW = L * 0.2
+    fin = [(0, L * 0.19), (L * 0.2, L * 0.37), (L * 0.05, L * 0.5), (0, L * 0.5), (-L * 0.05, L * 0.5), (-L * 0.2, L * 0.37)]
+    T.poly(fin, shade(col, 1.08))
+    T.plate(fin, 0.0)
+    # 다리: 그림에 먼저 그리고 같은 길로 관을 만든다
+    arms = []
+    for i in range(8):
+        x0 = (i - 3.5) / 3.5 * L * 0.05
+        ln = L * (0.22 + 0.04 * math.sin(i * 1.7))
+        arms.append(([(x0, -L * 0.2), (x0 * 1.8, -L * 0.2 - ln * 0.5), (x0 * 2.2 + L * 0.01 * math.sin(i), -L * 0.2 - ln)], L * 0.018))
+    for s in (1, -1):
+        arms.append(([(s * L * 0.03, -L * 0.2), (s * L * 0.1, -L * 0.36), (s * L * 0.07, -L * 0.5)], L * 0.012))
+    for pts, r in arms:
+        T.line(pts, r * 2.2, shade(col, 1.15))
+    for s in (1, -1):                             # 더듬이팔 끝의 넓적한 부분
+        T.ell((s * L * 0.07, -L * 0.485), (L * 0.022, L * 0.04), shade(col, 1.15))
+    for pts, r in arms:
+        chain([(x, y, 0.0) for x, y in pts], r, T.mat, r2=r * 0.5, seg=5)
+    for s in (1, -1):
+        ball((s * L * 0.07, -L * 0.485, 0.0), 1.0, T.mat, (L * 0.022, L * 0.04, L * 0.012), sub=1)
+    T.shell(-L * 0.22, -L * 0.08, via([(0, 0.7), (0.5, 1), (1, 0.9)]), const(1.0), L * 0.13, L * 0.06, shade(col, 1.05), n=4, seg=5, full=True)
+    wf = via([(0, 0.8), (0.12, 1.0), (0.55, 0.86), (0.85, 0.5), (1, 0.06)])
+    T.shell(-L * 0.1, L * 0.5, wf, wf, MW, MW * 0.5, col, n=12, seg=6, full=True)
+    T.line([(0, -L * 0.08), (0, L * 0.46)], L * 0.03, c2)                       # 등 가운데의 짙은 줄
+    rnd = random.Random(5)
+    for _ in range(90):                           # 색소포(자잘한 점)
+        y = rnd.uniform(-0.08, 0.46) * L
+        x = rnd.uniform(-0.5, 0.5) * MW * wf((y + L * 0.1) / (L * 0.6)) * 0.9
+        T.ell((x, y), (L * 0.005 * rnd.uniform(0.6, 1.5),) * 2, c2)
+    for s in (1, -1):                             # 눈
+        T.ell((s * L * 0.055, -L * 0.15), (L * 0.028, L * 0.03), '#f6f2e6')
+        T.ell((s * L * 0.06, -L * 0.15), (L * 0.016, L * 0.02), '#1a1a22')
+    T.on()
+    for s in (1, -1):
+        ball((s * L * 0.055, -L * 0.15, 0.0), 1.0, T.mat, (L * 0.03, L * 0.032, L * 0.045), sub=1)
+    T.finish()
+    xform(list(cur().bm.faces), Matrix.Rotation(math.radians(90), 4, 'X') @ Matrix.Rotation(math.radians(90), 4, 'Z'))      # 다리가 +X, 등이 앞(-Y)
+
+
+def octopus(m, name, k):
+    """문어: 둥근 몸통 주머니, 툭 불거진 눈, 사방으로 뻗어 끝이 말린 여덟 다리"""
+    L = k.get('len', 0.8)
+    col, c2 = k['col'], k.get('col2', shade(k['col'], 0.66))
+    T = Top(m, name, L * 0.56, L * 0.56, L * 0.56, px=208, bg=col, z0=0.012)
+    arms = []
+    for i, deg in enumerate((-48, -8, 34, 70, 110, 146, 188, 228)):
+        a0 = math.radians(deg)
+        ln = L * (0.4 + 0.06 * math.sin(i * 2.1))
+        curl = math.radians(70 if i % 2 == 0 else -70)
+        pts = []
+        for j in range(7):
+            f = j / 6
+            a = a0 + curl * f * f
+            pts.append((math.cos(a) * (L * 0.06 + ln * f), -math.sin(a) * (L * 0.06 + ln * f) + L * 0.02))
+        arms.append(pts)
+    for pts in arms:                              # 다리: 굵은 데서 가늘어지게
+        for j in range(6):
+            r = L * (0.05 - 0.007 * j)
+            T.line([pts[j], pts[j + 1]], r * 2, col)
+            T.ell(pts[j + 1], (r * 0.95, r * 0.95), col)
+    T.blotch(c2, L * 0.045, 0.55, alpha=0.5)
+    for pts in arms:                              # 다리 가장자리로 비치는 빨판
+        for j in range(1, 6):
+            for f in (0.25, 0.75):
+                x = pts[j][0] + (pts[j + 1][0] - pts[j][0]) * f
+                y = pts[j][1] + (pts[j + 1][1] - pts[j][1]) * f
+                dx, dy = pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]
+                d = math.hypot(dx, dy) or 1
+                r = L * (0.05 - 0.007 * j)
+                T.ell((x - dy / d * r * 0.8, y + dx / d * r * 0.8), (L * 0.008,) * 2, '#f6d8d0')
+    for pts in arms:
+        for j in range(6):
+            r0, r1 = L * (0.05 - 0.007 * j), L * (0.05 - 0.007 * (j + 1))
+            tube((pts[j][0], pts[j][1], T.z0 + r0 * 0.8), (pts[j + 1][0], pts[j + 1][1], T.z0 + r1 * 0.8), r0, T.mat, r2=r1, seg=6)
+    T.shell(-L * 0.12, L * 0.1, sup(2.2), via([(0, 0.6), (0.5, 1), (1, 0.9)]), L * 0.24, L * 0.15, col, n=5, seg=8)
+    T.shell(L * 0.02, L * 0.46, via([(0, 0.6), (0.3, 0.95), (0.6, 1.0), (1, 0.4)]), via([(0, 0.6), (0.4, 1), (1, 0.5)]), L * 0.34, L * 0.24, col, n=9, seg=10)
+    T.blotch(c2, L * 0.05, 0.6, [(-L * 0.2, -L * 0.14), (L * 0.2, -L * 0.14), (L * 0.2, L * 0.48), (-L * 0.2, L * 0.48)], alpha=0.55, seed=8)
+    T.speck('#f3d0c4', 26, L * 0.008, (-L * 0.14, L * 0.14, -L * 0.08, L * 0.42))
+    T.off()
+    for s in (1, -1):                             # 툭 불거진 눈과 가로로 긴 눈동자
+        ball((s * L * 0.09, -L * 0.03, T.z0 + L * 0.13), L * 0.045, shade(col, 1.12), sub=2)
+        ball((s * L * 0.1, -L * 0.045, T.z0 + L * 0.15), 1.0, '#f3e6b8', (L * 0.03, L * 0.026, L * 0.026), sub=1)
+        ball((s * L * 0.105, -L * 0.055, T.z0 + L * 0.155), 1.0, '#1a1a1a', (L * 0.024, L * 0.012, L * 0.009), sub=1)
+    T.finish()
+
+
+def seahorse(m, name, k):
+    """해마: 옆모습. 관처럼 긴 주둥이, 왕관 돌기, 볼록한 배, 앞으로 말린 꼬리, 몸을 두른 마디"""
+    H = k.get('len', 0.6)
+    col, c2 = k['col'], k.get('col2', shade(k['col'], 0.7))
+    cv = Canvas(-H * 0.3, H * 0.4, -H * 0.54, H * 0.56, px=128, bg=col)
+    mname = 'tx_' + name
+    mat = tex_material(mname)
+    register_mat(mname, mat)
+    # 몸의 가운데 줄(x, z)과 굵기
+    key = [((0.02, 0.33), 0.062), ((-0.03, 0.24), 0.07), ((0.03, 0.12), 0.1), ((0.06, -0.01), 0.112), ((0.01, -0.14), 0.08), ((-0.05, -0.26), 0.054),
+           ((-0.04, -0.37), 0.04), ((0.03, -0.44), 0.03), ((0.1, -0.41), 0.022), ((0.11, -0.34), 0.016), ((0.07, -0.31), 0.011)]
+    ctr = smooth([(x * H, z * H) for (x, z), r in key], 3)
+    rad = []
+    n = len(ctr)
+    for i in range(n):
+        f = i / (n - 1) * (len(key) - 1)
+        j = min(len(key) - 2, int(f))
+        rad.append((key[j][1] + (key[j + 1][1] - key[j][1]) * (f - j)) * H)
+    for (x, z), r in zip(ctr, rad):               # 몸
+        cv.ellipse((x, z), (r, r), col)
+    for i in range(0, n - 1):                     # 배 쪽은 밝게
+        cv.ellipse((ctr[i][0] + rad[i] * 0.45, ctr[i][1]), (rad[i] * 0.5, rad[i] * 0.7), shade(col, 1.18))
+    for i in range(1, n - 1, 2):                  # 몸을 두른 마디
+        dx, dz = ctr[i + 1][0] - ctr[i - 1][0], ctr[i + 1][1] - ctr[i - 1][1]
+        d = math.hypot(dx, dz) or 1
+        px_, pz_ = -dz / d * rad[i], dx / d * rad[i]
+        cv.line([(ctr[i][0] - px_, ctr[i][1] - pz_), (ctr[i][0] + px_, ctr[i][1] + pz_)], H * 0.012, c2)
+    # 머리와 주둥이
+    hx, hz = 0.07 * H, 0.38 * H
+    cv.ellipse((hx, hz), (H * 0.085, H * 0.07), col)
+    cv.line([(hx + H * 0.05, hz - H * 0.015), (hx + H * 0.24, hz - H * 0.055)], H * 0.05, col)
+    cv.ellipse((hx + H * 0.245, hz - H * 0.056), (H * 0.03, H * 0.03), shade(col, 0.9))
+    cv.line([(hx - H * 0.02, hz + H * 0.02), (hx + H * 0.1, hz - H * 0.03)], H * 0.012, c2)
+    cv.ellipse((hx + H * 0.03, hz + H * 0.012), (H * 0.03, H * 0.03), '#f6f0d8')
+    cv.ellipse((hx + H * 0.034, hz + H * 0.012), (H * 0.017, H * 0.017), '#1e1a22')
+    rnd = random.Random(3)
+    for _ in range(26):
+        i = rnd.randrange(2, n - 6)
+        cv.ellipse((ctr[i][0] + rnd.uniform(-0.6, 0.6) * rad[i], ctr[i][1] + rnd.uniform(-0.3, 0.3) * rad[i]), (H * 0.007,) * 2, shade(col, 1.3))
+    fin = [(-0.085 * H, 0.1 * H), (-0.2 * H, 0.12 * H), (-0.22 * H, 0.0), (-0.19 * H, -0.1 * H), (-0.06 * H, -0.08 * H)]      # 등지느러미
+    fc = k.get('fin', shade(col, 1.3))
+    cv.poly(fin, fc)
+    for i in range(6):
+        cv.line([(-0.07 * H, (0.08 - i * 0.03) * H), (-0.2 * H, (0.11 - i * 0.04) * H)], H * 0.006, shade(fc, 0.8))
+    tex_image(mat, cv.finish())
+    set_proj(lambda co: cv.uv(co.x, co.z))
+    mesh_uv([(x, 0.0, z) for x, z in fin], [tuple(range(len(fin)))], mname, [cv.uv(x, z) for x, z in fin], smooth=False)
+    for i in range(n - 1):
+        tube((ctr[i][0], 0, ctr[i][1]), (ctr[i + 1][0], 0, ctr[i + 1][1]), rad[i], mname, r2=rad[i + 1], seg=8)
+        ball((ctr[i][0], 0, ctr[i][1]), 1.0, mname, (rad[i], rad[i] * 0.86, rad[i]), sub=1)
+    ball((hx, 0, hz), 1.0, mname, (H * 0.085, H * 0.06, H * 0.07), sub=2)
+    tube((hx + H * 0.05, 0, hz - H * 0.015), (hx + H * 0.24, 0, hz - H * 0.055), H * 0.027, mname, r2=H * 0.022, seg=7)
+    ball((hx + H * 0.245, 0, hz - H * 0.056), H * 0.03, mname, sub=1)
+    for s in (1, -1):
+        ball((hx + H * 0.03, s * H * 0.05, hz + H * 0.012), 1.0, mname, (H * 0.03, H * 0.014, H * 0.03), sub=1)
+    set_proj(None)
+    for dx, hh in ((-0.03, 0.05), (0.0, 0.07), (0.03, 0.05)):        # 왕관 돌기
+        cone((hx - H * 0.02 + dx * H, 0, hz + H * 0.055), H * 0.014, hh * H, c2, seg=5)
+    for s in (1, -1):                             # 작은 가슴지느러미
+        poly([(hx - H * 0.05, s * H * 0.05, hz - H * 0.05), (hx - H * 0.1, s * H * 0.09, hz - H * 0.03), (hx - H * 0.1, s * H * 0.08, hz - H * 0.09)], [(0, 1, 2)], fc)
 
 
 def jelly(m, name, k):
@@ -501,4 +676,4 @@ def jelly(m, name, k):
     T.finish()
 
 
-SEA_FN = {'crab': crab, 'crayfish': crayfish, 'turtle': turtle, 'ray': ray, 'frog': frog, 'tadpole': tadpole, 'angler': angler, 'jelly': jelly}
+SEA_FN = {'crab': crab, 'crayfish': crayfish, 'turtle': turtle, 'ray': ray, 'frog': frog, 'tadpole': tadpole, 'angler': angler, 'jelly': jelly, 'squid': squid, 'octopus': octopus, 'seahorse': seahorse}

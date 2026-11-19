@@ -587,8 +587,8 @@ def hopper(m, name, k):
     fat = k.get('fat', 0.0)
     col = k['col']
     wc = k.get('wingc', col)
-    W = L * (0.17 + 0.1 * fat)
-    H = W * k.get('tall', 1.1)
+    W = L * (0.2 + 0.1 * fat)
+    H = W * k.get('tall', 1.05)
     cone = k.get('head') == 'cone'
     T = Top(m, name, W * k.get('wingw', 1.0) * 0.62 + 0.01, L * 0.56, L * 0.58, px=96, bg=col, z0=L * 0.07)
     wend = -L * 0.2 + L * 0.7 * k.get('wing', 1.0)
@@ -619,7 +619,7 @@ def hopper(m, name, k):
     if cone:
         T.shell(-L * 0.6, -L * 0.36, via([(0, 0.15), (0.6, 0.7), (1, 0.95)]), via([(0, 0.3), (1, 1)]), W * 0.9, H, k.get('headc', col), n=5, seg=6)
     else:
-        T.shell(-L * 0.5, -L * 0.36, via([(0, 0.55), (0.5, 1), (1, 0.95)]), via([(0, 0.7), (0.5, 1), (1, 1)]), W * 0.92, H * 1.02, k.get('headc', col), n=4, seg=6)
+        T.shell(-L * 0.5, -L * 0.36, via([(0, 0.55), (0.5, 1), (1, 0.95)]), via([(0, 0.7), (0.5, 1), (1, 1)]), W * 0.92 * k.get('headw', 1.0), H * 1.02, k.get('headc', col), n=4, seg=6)
     T.off()
     z = T.z0
     for s in (1, -1):
@@ -638,9 +638,9 @@ def hopper(m, name, k):
     hs = k.get('hsize', 1.0)
     for s in (1, -1):
         hip = (s * W * 0.42, -L * 0.04, z + H * 0.35)
-        knee = (s * (W * 0.5 + L * 0.07), L * 0.22 * hs, z + H * 0.9 + L * 0.1 * hs)
-        tube(hip, knee, L * 0.034 * hs, hc, r2=L * 0.014, seg=6)
-        tube(knee, (s * (W * 0.5 + L * 0.13), L * 0.34 * hs, 0.0), L * 0.012, k.get('tibia', lc), r2=L * 0.008, seg=4)
+        knee = (s * (W * 0.5 + L * 0.15 * hs), L * 0.2 * hs, z + H * 0.9 + L * 0.1 * hs)       # 뒷다리는 옆으로 벌어져 위에서도 잘 보인다
+        tube(hip, knee, L * 0.042 * hs, hc, r2=L * 0.016, seg=6)
+        tube(knee, (s * (W * 0.5 + L * 0.2 * hs), L * 0.4 * hs, 0.0), L * 0.013, k.get('tibia', lc), r2=L * 0.008, seg=4)
         ball(knee, L * 0.018, k.get('knee', shade(hc, 0.6)), sub=1)
         for i, y in enumerate((-L * 0.3, -L * 0.17)):
             if k.get('dig') and i == 0:           # 땅강아지의 삽 같은 앞다리
@@ -871,5 +871,53 @@ def hermit(m, name, k):
             chain([(s * L * 0.12, -L * 0.12 + i * L * 0.07, L * 0.07), (s * L * 0.32, -L * 0.18 + i * L * 0.12, L * 0.14), (s * L * 0.42, -L * 0.22 + i * L * 0.2, 0.0)], L * 0.022, col, r2=L * 0.008, seg=5)
 
 
-BUG_FN = {'butterfly': butterfly, 'dragonfly': dragonfly, 'cicada': cicada, 'bee': bee, 'ant': ant, 'beetle': beetle, 'hopper': hopper,
+def snail(m, name, k):
+    """달팽이: 등에 진 둥근 껍데기에 갈색 띠가 소용돌이로 감겨 있다"""
+    L = k.get('len', 0.3)
+    body, sh, band = k.get('body', '#e8d8b8'), k.get('shell', '#c9a06a'), k.get('band', '#7a5232')
+    T = Top(m, name, L * 0.36, L * 0.62, L * 0.5, px=128, bg=body, z0=0.004)
+    T.shell(-L * 0.5, L * 0.42, via([(0, 0.5), (0.2, 0.9), (0.6, 1.0), (1, 0.3)]), via([(0, 0.6), (0.3, 1), (1, 0.4)]), L * 0.2, L * 0.09, body, n=8, seg=6)
+    T.speck(shade(body, 0.86), 20, L * 0.006, (-L * 0.07, L * 0.07, -L * 0.42, L * -0.2))
+    cx, cy, R = L * 0.02, L * 0.1, L * 0.22
+    T.ell((cx, cy), (R, R), sh)
+    for i in range(14):                           # 성장선
+        a = i * math.tau / 14
+        T.line([(cx + math.cos(a) * R * 0.3, cy + math.sin(a) * R * 0.3), (cx + math.cos(a) * R, cy + math.sin(a) * R)], L * 0.006, shade(sh, 0.9))
+    pts = []
+    for i in range(70):                           # 소용돌이
+        f = i / 69
+        a = f * math.pi * 5.4 + 0.5
+        r = R * (0.9 - 0.8 * f)
+        pts.append((cx + R * 0.16 * f + math.cos(a) * r, cy - R * 0.08 * f + math.sin(a) * r))
+    T.line(pts, L * 0.04, band)
+    T.line(pts, L * 0.012, shade(band, 0.65))
+    T.on()
+    ball((cx, cy, T.z0 + L * 0.06 + R * 0.7), 1.0, T.mat, (R, R, R * 0.78), sub=3)
+    T.off()
+    for s in (1, -1):                             # 눈자루와 작은 더듬이
+        tube((s * L * 0.035, -L * 0.44, L * 0.07), (s * L * 0.09, -L * 0.58, L * 0.2), L * 0.012, body, r2=L * 0.008, seg=5)
+        ball((s * L * 0.09, -L * 0.58, L * 0.2), L * 0.016, '#2a2420', sub=1)
+        tube((s * L * 0.03, -L * 0.48, L * 0.04), (s * L * 0.06, -L * 0.57, L * 0.05), L * 0.008, body, seg=4)
+    T.finish()
+
+
+def bagworm(m, name, k):
+    """도롱이벌레(주머니나방 애벌레): 잔가지를 붙여 만든 주머니가 실에 매달려 있다. 세로로 선 모양."""
+    L = k.get('len', 0.34)
+    col = k.get('col', '#8a6a42')
+    lathe([(0.012, 0.0), (L * 0.15, L * 0.16), (L * 0.2, L * 0.5), (L * 0.14, L * 0.84), (0.02, L * 1.0)], col, center=(0, 0, 0), seg=10)
+    rnd = random.Random(4)
+    twig = ['#6a4a2a', '#9a7a4a', '#7a5a34', '#b08a5a']
+    for i in range(18):                           # 세로로 붙인 잔가지
+        a = i * math.tau / 18 + rnd.uniform(-0.15, 0.15)
+        z0 = L * rnd.uniform(0.04, 0.62)
+        r = L * 0.2 * math.sin(math.pi * min(1, z0 / L + 0.12)) ** 0.7
+        ln = L * rnd.uniform(0.24, 0.4)
+        tube((math.cos(a) * r, math.sin(a) * r, z0), (math.cos(a) * (r + L * 0.02), math.sin(a) * (r + L * 0.02), z0 + ln), L * 0.024, twig[i % 4], seg=5)
+        cyl((math.cos(a) * (r + L * 0.02), math.sin(a) * (r + L * 0.02), z0 + ln), L * 0.02, 0.004, '#d9b98a', seg=5)
+    tube((0, 0, L * 0.98), (0, 0, L * 1.6), 0.004, '#f3f0e6', seg=4)           # 매달린 실
+    ball((0, -L * 0.03, L * 0.03), L * 0.05, '#3a2a1e', sub=1)                  # 아래로 빼꼼 내민 머리
+
+
+BUG_FN = {'snail': snail, 'bagworm': bagworm, 'butterfly': butterfly, 'dragonfly': dragonfly, 'cicada': cicada, 'bee': bee, 'ant': ant, 'beetle': beetle, 'hopper': hopper,
           'mantis': mantis, 'stick': stick, 'shield': shield, 'waterbug': waterbug, 'pill': pill, 'spider': spider, 'hermit': hermit}

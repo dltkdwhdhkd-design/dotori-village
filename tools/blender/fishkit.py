@@ -24,26 +24,26 @@ FAMILY = {
     'minnow': dict(dep=0.2, peak=0.36, back=0.5, snout=0.16, ph=0.7, pt=1.3, ped=0.36, wr=0.5, d=[0.42, 0.58, 0.55, 'tri'], a=[0.66, 0.8, 0.45, 'tri'], v=[0.46, 0.3], p=[0.2, 0.42], c=['fork', 1.15, 0.55]),
     'carp': dict(dep=0.3, peak=0.36, back=0.56, snout=0.18, ph=0.72, pt=1.2, ped=0.36, wr=0.5, d=[0.34, 0.8, 0.42, 'long'], a=[0.7, 0.82, 0.42, 'tri'], v=[0.46, 0.34], p=[0.22, 0.42], c=['fork', 1.0, 0.42]),
     'trout': dict(dep=0.22, peak=0.38, back=0.5, snout=0.14, ph=0.7, pt=1.25, ped=0.36, wr=0.52, d=[0.4, 0.56, 0.55, 'tri'], ad=0.8, a=[0.68, 0.82, 0.45, 'tri'], v=[0.5, 0.3], p=[0.2, 0.42], c=['emarg', 1.05, 0.22]),
-    'catfish': dict(dep=0.2, peak=0.22, back=0.5, snout=0.5, ph=0.6, pt=1.0, ped=0.4, wr=0.75, d=[0.26, 0.34, 0.4, 'tri'], a=[0.46, 0.99, 0.5, 'low'], v=[0.4, 0.26], p=[0.18, 0.4], c=['round', 0.9, 0], barb=[2, 0.45]),
-    'loach': dict(dep=0.11, peak=0.3, back=0.5, snout=0.3, ph=0.6, pt=0.9, ped=0.6, wr=0.85, d=[0.5, 0.62, 0.6, 'round'], a=[0.76, 0.86, 0.5, 'round'], v=[0.54, 0.3], p=[0.14, 0.5], c=['round', 1.2, 0], barb=[3, 0.12]),
+    'catfish': dict(dep=0.19, peak=0.2, back=0.46, snout=0.55, ph=0.5, pt=1.1, ped=0.34, wr=0.9, eye=0.011, eyeu=0.07, eyet=0.7, d=[0.26, 0.34, 0.4, 'tri'], a=[0.46, 0.99, 0.5, 'low'], v=[0.4, 0.26], p=[0.18, 0.4], c=['round', 0.9, 0], barb=[2, 0.45]),
+    'loach': dict(dep=0.11, peak=0.3, back=0.5, snout=0.3, ph=0.6, pt=0.9, ped=0.6, wr=0.85, eye=0.014, xb=0.86, d=[0.5, 0.62, 0.6, 'round'], a=[0.76, 0.86, 0.5, 'round'], v=[0.54, 0.3], p=[0.14, 0.5], c=['round', 1.2, 0], barb=[3, 0.12]),
     'perch': dict(dep=0.3, peak=0.34, back=0.56, snout=0.16, ph=0.75, pt=1.2, ped=0.34, wr=0.46, d=[0.3, 0.56, 0.5, 'spiny'], d2=[0.58, 0.8, 0.55, 'round'], a=[0.64, 0.8, 0.45, 'round'], v=[0.36, 0.34], p=[0.26, 0.4], c=['emarg', 1.0, 0.18]),
     'bream': dict(dep=0.42, peak=0.36, back=0.6, snout=0.2, ph=0.8, pt=1.15, ped=0.26, wr=0.36, d=[0.28, 0.84, 0.38, 'spiny'], a=[0.62, 0.84, 0.36, 'round'], v=[0.36, 0.3], p=[0.26, 0.5], c=['fork', 1.0, 0.45]),
-    'snake': dict(dep=0.14, peak=0.3, back=0.5, snout=0.4, ph=0.6, pt=0.9, ped=0.6, wr=0.85, d=[0.3, 0.97, 0.5, 'low'], a=[0.5, 0.97, 0.45, 'low'], v=[0.34, 0.25], p=[0.2, 0.5], c=['round', 1.0, 0]),
+    'snake': dict(dep=0.14, peak=0.3, back=0.5, snout=0.4, ph=0.6, pt=0.9, ped=0.6, wr=0.85, eye=0.014, xb=0.86, d=[0.3, 0.97, 0.36, 'low'], a=[0.5, 0.97, 0.32, 'low'], v=[0.34, 0.25], p=[0.2, 0.5], c=['round', 1.0, 0]),
     'goby': dict(dep=0.18, peak=0.2, back=0.52, snout=0.5, ph=0.6, pt=1.0, ped=0.42, wr=0.8, d=[0.24, 0.4, 0.55, 'round'], d2=[0.46, 0.8, 0.5, 'round'], a=[0.52, 0.8, 0.4, 'round'], v=[0.24, 0.26], p=[0.2, 0.5], c=['round', 1.0, 0]),
-    'eel': dict(dep=0.065, peak=0.18, back=0.5, snout=0.45, ph=0.6, pt=0.7, ped=0.3, wr=0.9, fringe=[0.3, 0.45, 0.34], p=[0.12, 0.6], c=None, wave=0.035),
-    'ribbon': dict(dep=0.085, peak=0.2, back=0.5, snout=0.2, ph=0.8, pt=0.9, ped=0.05, wr=0.3, d=[0.14, 0.99, 0.5, 'low'], p=[0.13, 0.5], c=None, tailpoint=True),
+    'eel': dict(dep=0.075, peak=0.2, back=0.5, snout=0.4, ph=0.6, pt=1.6, ped=0.1, wr=0.92, xb=0.97, eye=0.008, eyeu=0.03, fringe=[0.32, 0.46, 0.42], p=[0.11, 0.55], c=None, wave=0.03),
+    'ribbon': dict(dep=0.085, peak=0.16, back=0.5, snout=0.2, ph=0.8, pt=1.2, ped=0.04, wr=0.3, xb=0.98, eye=0.012, eyeu=0.045, d=[0.14, 0.99, 0.5, 'low'], p=[0.13, 0.5], c=None, tailpoint=True),
     'herring': dict(dep=0.22, peak=0.4, back=0.46, snout=0.14, ph=0.7, pt=1.3, ped=0.3, wr=0.4, d=[0.44, 0.58, 0.5, 'tri'], a=[0.72, 0.86, 0.3, 'low'], v=[0.5, 0.25], p=[0.2, 0.4], c=['fork', 1.2, 0.65]),
     'mackerel': dict(dep=0.21, peak=0.36, back=0.5, snout=0.1, ph=0.8, pt=1.5, ped=0.16, wr=0.6, d=[0.28, 0.42, 0.5, 'tri'], d2=[0.62, 0.72, 0.36, 'tri'], a=[0.64, 0.74, 0.34, 'tri'], finlets=5, v=[0.34, 0.26], p=[0.24, 0.36], c=['fork', 1.3, 0.75]),
-    'tuna': dict(dep=0.28, peak=0.36, back=0.52, snout=0.1, ph=0.8, pt=1.5, ped=0.1, wr=0.68, d=[0.28, 0.5, 0.42, 'spiny'], d2=[0.56, 0.66, 0.6, 'sail'], a=[0.6, 0.7, 0.55, 'sail'], finlets=7, v=[0.34, 0.24], p=[0.26, 0.55], c=['lunate', 1.7, 0.9]),
+    'tuna': dict(eye=0.018, dep=0.28, peak=0.36, back=0.52, snout=0.1, ph=0.8, pt=1.5, ped=0.1, wr=0.68, d=[0.28, 0.5, 0.42, 'spiny'], d2=[0.56, 0.66, 0.6, 'sail'], a=[0.6, 0.7, 0.55, 'sail'], finlets=7, v=[0.34, 0.24], p=[0.26, 0.55], c=['lunate', 1.7, 0.9]),
     'jack': dict(dep=0.26, peak=0.36, back=0.52, snout=0.14, ph=0.8, pt=1.4, ped=0.14, wr=0.5, d=[0.3, 0.44, 0.36, 'spiny'], d2=[0.46, 0.92, 0.4, 'sail'], a=[0.56, 0.92, 0.34, 'sail'], v=[0.34, 0.26], p=[0.26, 0.5], c=['fork', 1.4, 0.75]),
-    'flat': dict(dep=0.5, peak=0.42, back=0.5, snout=0.12, ph=0.9, pt=1.1, ped=0.22, wr=0.16, d=[0.1, 0.95, 0.3, 'low'], a=[0.26, 0.95, 0.3, 'low'], p=[0.24, 0.3], c=['round', 0.8, 0], flat='L'),
-    'puffer': dict(dep=0.36, peak=0.36, back=0.56, snout=0.3, ph=0.6, pt=1.1, ped=0.28, wr=0.78, d=[0.7, 0.8, 0.4, 'round'], a=[0.72, 0.82, 0.38, 'round'], p=[0.34, 0.4], c=['trunc', 0.8, 0]),
-    'file': dict(dep=0.52, peak=0.44, back=0.52, snout=0.1, ph=1.0, pt=1.1, ped=0.2, wr=0.26, d=[0.5, 0.88, 0.3, 'low'], a=[0.56, 0.88, 0.3, 'low'], p=[0.34, 0.3], c=['round', 0.75, 0], spine=0.3),
+    'flat': dict(dep=0.44, peak=0.42, back=0.5, snout=0.12, ph=0.9, pt=1.1, ped=0.2, wr=0.16, eye=0.02, eyeu=0.09, eyet=0.74, d=[0.08, 0.96, 0.2, 'low'], a=[0.22, 0.96, 0.2, 'low'], p=[0.24, 0.3], c=['round', 0.62, 0], flat='L'),
+    'puffer': dict(eye=0.026, dep=0.36, peak=0.36, back=0.56, snout=0.3, ph=0.6, pt=1.1, ped=0.28, wr=0.78, d=[0.7, 0.8, 0.4, 'round'], a=[0.72, 0.82, 0.38, 'round'], p=[0.34, 0.4], c=['trunc', 0.8, 0]),
+    'file': dict(eye=0.024, eyeu=0.2, eyet=0.78, dep=0.52, peak=0.44, back=0.52, snout=0.1, ph=1.0, pt=1.1, ped=0.2, wr=0.26, d=[0.5, 0.88, 0.3, 'low'], a=[0.56, 0.88, 0.3, 'low'], p=[0.34, 0.3], c=['round', 0.75, 0], spine=0.3),
     'cod': dict(dep=0.22, peak=0.3, back=0.5, snout=0.22, ph=0.7, pt=1.2, ped=0.24, wr=0.6, d=[0.26, 0.42, 0.5, 'tri'], d2=[0.45, 0.64, 0.42, 'tri'], d3=[0.67, 0.84, 0.36, 'tri'], a=[0.46, 0.64, 0.38, 'round'], a2=[0.67, 0.84, 0.32, 'round'], v=[0.26, 0.26], p=[0.24, 0.4], c=['trunc', 0.9, 0.05], barb=[1, 0.1]),
-    'shark': dict(dep=0.2, peak=0.34, back=0.5, snout=0.05, ph=0.9, pt=1.3, ped=0.14, wr=0.8, d=[0.36, 0.5, 0.8, 'sail'], d2=[0.76, 0.82, 0.3, 'tri'], a=[0.76, 0.82, 0.25, 'tri'], v=[0.62, 0.3], p=[0.3, 0.8], pect3d=50, c=['shark', 1.6, 0.6]),
-    'sturgeon': dict(dep=0.15, peak=0.32, back=0.52, snout=0.03, ph=1.15, pt=0.9, ped=0.2, wr=0.9, d=[0.74, 0.86, 0.6, 'tri'], a=[0.78, 0.88, 0.5, 'tri'], v=[0.62, 0.3], p=[0.2, 0.5], c=['shark', 1.5, 0.6], barb=[2, 0.05]),
-    'mola': dict(dep=0.66, peak=0.5, back=0.5, snout=0.3, ph=0.7, pt=0.45, ped=0.78, wr=0.28, d=[0.62, 0.82, 0.72, 'sail'], a=[0.62, 0.82, 0.72, 'sail'], p=[0.4, 0.16], c=['round', 1.45, 0]),
-    'bill': dict(dep=0.17, peak=0.3, back=0.52, snout=0.08, ph=0.9, pt=1.3, ped=0.1, wr=0.6, bill=0.2, d=[0.1, 0.72, 1.5, 'sailfin'], d2=[0.8, 0.86, 0.3, 'tri'], a=[0.7, 0.8, 0.5, 'tri'], v=[0.3, 0.9], p=[0.22, 0.6], c=['lunate', 2.3, 0.9]),
+    'shark': dict(dep=0.2, peak=0.34, back=0.5, snout=0.05, ph=0.9, pt=1.3, ped=0.14, wr=0.8, eye=0.011, eyeu=0.09, mouth=0.2, mouthlen=0.1, d=[0.36, 0.5, 0.8, 'sail'], d2=[0.76, 0.82, 0.3, 'tri'], a=[0.76, 0.82, 0.25, 'tri'], v=[0.62, 0.3], p=[0.3, 0.8], pect3d=50, c=['shark', 1.6, 0.6]),
+    'sturgeon': dict(dep=0.15, peak=0.32, back=0.52, snout=0.03, ph=1.15, pt=0.9, ped=0.2, wr=0.9, eye=0.011, eyeu=0.12, mouth=0.14, d=[0.74, 0.86, 0.6, 'tri'], a=[0.78, 0.88, 0.5, 'tri'], v=[0.62, 0.3], p=[0.2, 0.5], c=['shark', 1.5, 0.6], barb=[2, 0.05]),
+    'mola': dict(dep=0.66, peak=0.5, back=0.5, snout=0.3, ph=0.7, pt=0.45, ped=0.78, wr=0.28, eye=0.016, eyeu=0.16, xb=0.86, d=[0.52, 0.86, 0.85, 'tri'], a=[0.52, 0.86, 0.85, 'tri'], p=[0.4, 0.16], c=['round', 1.5, 0]),
+    'bill': dict(eye=0.014, dep=0.17, peak=0.3, back=0.52, snout=0.08, ph=0.9, pt=1.3, ped=0.1, wr=0.6, bill=0.2, d=[0.1, 0.72, 1.5, 'sailfin'], d2=[0.8, 0.86, 0.3, 'tri'], a=[0.7, 0.8, 0.5, 'tri'], v=[0.3, 0.9], p=[0.22, 0.6], c=['lunate', 2.3, 0.9]),
     'flying': dict(dep=0.17, peak=0.36, back=0.5, snout=0.14, ph=0.8, pt=1.3, ped=0.24, wr=0.75, d=[0.72, 0.84, 0.4, 'tri'], a=[0.74, 0.84, 0.3, 'tri'], v=[0.56, 0.9], p=[0.24, 2.3], pect3d=12, c=['fork', 1.5, 0.7]),
     'stickle': dict(dep=0.24, peak=0.36, back=0.52, snout=0.1, ph=0.8, pt=1.4, ped=0.13, wr=0.45, spines=[0.3, 0.4, 0.5], d=[0.56, 0.8, 0.5, 'round'], a=[0.6, 0.8, 0.4, 'round'], v=[0.42, 0.5], p=[0.26, 0.5], c=['trunc', 1.0, 0.05]),
     'needle': dict(dep=0.085, peak=0.4, back=0.5, snout=0.05, ph=1.2, pt=1.2, ped=0.4, wr=0.7, d=[0.78, 0.9, 0.6, 'tri'], a=[0.78, 0.9, 0.6, 'tri'], v=[0.6, 0.3], p=[0.26, 0.5], c=['fork', 1.5, 0.6]),
@@ -61,6 +61,7 @@ class Fish:
         self.name = name
         k = self.k = fam(sp)
         self.L = L = k.get('len', 0.6)
+        self.XB = k.get('xb', XB)                        # 몸통이 차지하는 길이(나머지는 꼬리지느러미)
         self.bill = k.get('bill', 0.0) * L               # 주둥이 앞으로 뻗은 부리(새치류)
         self.Lb = L - self.bill                          # 부리를 뺀 몸길이
         self.xh = L / 2 - self.bill
@@ -73,7 +74,7 @@ class Fish:
         nz = abs(k.get('nose', 0)) * d
         up = max(d * k['back'] + k.get('hump', 0) * d + max(fh(('d', 'd2', 'd3')) * 1.05, k.get('spine', 0) * d, 0.2 * d), tail) + nz
         dn = max(d * (1 - k['back']) + max(fh(('a', 'a2')) * 1.05, (k['v'][1] * d * 0.8 if k.get('v') else 0), 0.2 * d), tail) + nz
-        self.cv = Canvas(-L / 2 - 0.02, L / 2 + 0.03, -dn - 0.02, up + 0.02, px=k.get('px', 256), bg=self.col[1])
+        self.cv = Canvas(-L / 2 - 0.02, L / 2 + 0.03, -dn - 0.02, up + 0.02, px=k.get('px', 320), bg=self.col[1])
         self.polys = []          # 3D로 만들 지느러미 [(점 목록)]
 
     # ---------------------------------------------------------- 윤곽
@@ -98,7 +99,7 @@ class Fish:
         return self.mid(u) - self.dep * (1 - k['back']) * self.f(u, k.get('peak2', k['peak']))
 
     def x(self, u):
-        return self.xh - u * XB * self.Lb
+        return self.xh - u * self.XB * self.Lb
 
     def pt(self, u, t):
         """몸 위의 점: u=머리에서 꼬리 쪽(0~1), t=배에서 등 쪽(0~1)"""
@@ -179,8 +180,10 @@ class Fish:
             pts = [(xb + 0.01, tb), (xe + (xb - xe) * 0.2, mid + S), (xe, mid + S * 1.05), (xe + (xb - xe) * 0.42, mid + S * 0.1), (xe + (xb - xe) * 0.3, mid - S * 0.5), (xe + (xb - xe) * 0.2, mid - S * 0.55), (xb + 0.01, bb)]
         elif kind == 'point':
             pts = [(xb + 0.01, tb), (xe, mid), (xb + 0.01, bb)]
+        elif kind == 'wedge':                          # 가운데가 뾰족하게 나온 꼬리(조기)
+            pts = [(xb + 0.01, tb), (xe + (xb - xe) * 0.42, mid + S * 0.82), (xe + (xb - xe) * 0.12, mid + S * 0.32), (xe, mid), (xe + (xb - xe) * 0.12, mid - S * 0.32), (xe + (xb - xe) * 0.42, mid - S * 0.82), (xb + 0.01, bb)]
         else:   # round
-            pts = [(xb + 0.01, tb)] + [(xe + (xb - xe) * (0.5 - 0.5 * math.cos(a)) * 0.0 + (xb - (xb - xe) * math.sin(a)), mid + S * math.cos(a)) for a in [math.pi * i / 10 for i in range(1, 10)]] + [(xb + 0.01, bb)]
+            pts = [(xb + 0.01, tb)] + [(xb - (xb - xe) * math.sin(a) ** 0.8, mid + S * math.cos(a)) for a in [math.pi * i / 10 for i in range(1, 10)]] + [(xb + 0.01, bb)]
         cv.poly(pts, col)
         dk = shade(col, 0.78)
         for i in range(1, len(pts) - 1):
@@ -214,10 +217,14 @@ class Fish:
         if k.get('fringe'):                            # 뱀장어처럼 등에서 꼬리를 돌아 배까지 이어진 지느러미
             u0, u1, h = k['fringe']
             H = h * self.dep
-            up = [(self.x(u0 + (1 - u0) * i / 16), self.top(u0 + (1 - u0) * i / 16) + H * min(1, i / 3)) for i in range(17)]
-            tip = [(-self.L / 2, 0)]
-            lo = [(self.x(u1 + (1 - u1) * i / 16), self.bot(u1 + (1 - u1) * i / 16) - H * min(1, i / 3)) for i in reversed(range(17))]
+            taper = lambda i: min(1, i / 3) * (1.0 if i < 12 else 1.0 - 0.5 * (i - 12) / 4)
+            up = [(self.x(u0 + (1 - u0) * i / 16), self.top(u0 + (1 - u0) * i / 16) + H * taper(i)) for i in range(17)]
+            tip = [(-self.L / 2, (self.top(1) + self.bot(1)) / 2)]
+            lo = [(self.x(u1 + (1 - u1) * i / 16), self.bot(u1 + (1 - u1) * i / 16) - H * taper(i)) for i in reversed(range(17))]
             cv.poly(up + tip + lo, fc)
+            dkf = shade(fc, 0.8)
+            for i in range(1, 16, 1):                  # 지느러미 살
+                cv.line([(up[i][0], self.top(u0 + (1 - u0) * i / 16)), up[i]], self.L * 0.004, dkf)
             self.fringe_pts = up + tip + lo
         if k.get('v'):                                 # 배지느러미
             u, ln = k['v']
@@ -265,7 +272,7 @@ class Fish:
         back, side, belly = [np.array(rgb(c), dtype=np.float32) for c in self.col]
         W, H = cv.W, cv.H
         xs = cv.h0 + (np.arange(W) + 0.5) / cv.sx
-        us = np.clip((self.xh - xs) / (XB * self.Lb), 0, 1)
+        us = np.clip((self.xh - xs) / (self.XB * self.Lb), 0, 1)
         tp = np.array([self.top(float(u)) for u in us], dtype=np.float32)
         bt = np.array([self.bot(float(u)) for u in us], dtype=np.float32)
         zs = cv.v1 - (np.arange(H) + 0.5) / cv.sy
@@ -360,7 +367,7 @@ class Fish:
                 self.apply(col, ImageChops.multiply(nm, self.region(u0, u1, t0, t1, 0.06)), alpha)
             elif kind == 'scales':      # 색, 크기, [진하기]
                 col, size = a[0], a[1] * L
-                nu = int(XB * L / size)
+                nu = int(self.XB * L / size)
                 for i in range(2, nu):
                     for j in range(1, 9):
                         u = (i + (0.5 if j % 2 else 0)) / nu
@@ -382,7 +389,7 @@ class Fish:
                 u, t, size, col = a[:4]
                 if len(a) > 4:
                     mr = cv.mask()
-                    cv.ellipse(self.pt(u, t), (size * L * 1.6, size * L * 1.6), 255, ImageDraw.Draw(mr))
+                    cv.ellipse(self.pt(u, t), (size * L * 1.28, size * L * 1.28), 255, ImageDraw.Draw(mr))
                     self.apply(a[4], mr)
                 cv.ellipse(self.pt(u, t), (size * L, size * L), 255, d)
                 self.apply(col, m)
@@ -417,17 +424,26 @@ class Fish:
                 t0, t1, u0, u1 = (list(a[3:7]) + [0.4, 0.95, 0.2, 0.96][len(a[3:7]):])
                 for i in range(rows):
                     t = t0 + (t1 - t0) * i / max(1, rows - 1)
-                    nn = int((u1 - u0) * XB * L / (size * 3.2))
+                    nn = int((u1 - u0) * self.XB * L / (size * 3.2))
                     for j in range(nn):
                         cv.ellipse(self.pt(u0 + (u1 - u0) * (j + 0.5 * (i % 2)) / nn, t), (size, size), 255, d)
                 self.apply(col, m)
             elif kind == 'grid':        # 색, 줄 수: 고래상어의 점과 줄
                 col, n = a[0], a[1]
                 for i in range(n):
-                    u = 0.12 + 0.84 * i / n
-                    d.line(cv.P([self.pt(u, 0.5), self.pt(u, 1.0)]), fill=255, width=max(1, int(cv.px(0.004 * L))))
+                    u = 0.2 + 0.78 * i / n
+                    d.line(cv.P([self.pt(u, 0.46), self.pt(u, 0.98)]), fill=150, width=max(1, int(cv.px(0.003 * L))))
                     for j in range(5):
-                        cv.ellipse(self.pt(u + 0.42 / n, 0.55 + 0.42 * j / 5), (L * 0.008, L * 0.008), 255, d)
+                        cv.ellipse(self.pt(u + 0.39 / n, 0.5 + 0.44 * j / 5), (L * 0.007, L * 0.007), 255, d)
+                for i in range(22):                    # 넓적한 머리 위의 잔 점
+                    cv.ellipse(self.pt(0.02 + 0.17 * ((i * 37) % 22) / 22, 0.55 + 0.4 * ((i * 53) % 17) / 17), (L * 0.004, L * 0.004), 255, d)
+                self.apply(col, m)
+            elif kind == 'gills':       # 색, [개수, u]: 상어의 아가미구멍
+                col, n = a[0], (a[1] if len(a) > 1 else 5)
+                u0 = a[2] if len(a) > 2 else 0.2
+                for i in range(n):
+                    u = u0 + i * 0.016
+                    d.line(cv.P([self.pt(u, 0.36), self.pt(u + 0.006, 0.6)]), fill=255, width=max(1, int(cv.px(0.0035 * L))))
                 self.apply(col, m)
 
     def face(self):
@@ -454,7 +470,8 @@ class Fish:
         k = self.k
         ue, te = k.get('eyeu', 0.1), k.get('eyet', 0.62)
         ex, ez = self.pt(ue, te)
-        er = min(k.get('eye', 0.03) * self.Lb, 0.24 * self.dep)
+        hd = self.top(ue) - self.bot(ue)
+        er = min(k.get('eye', max(0.015, min(0.03, 0.038 - 0.016 * self.Lb))) * self.Lb, 0.3 * hd)
         out = [(ex, ez, er)]
         if k.get('flat'):                                # 넙치·가자미: 두 눈이 한쪽에 몰려 있다
             out.append((ex - er * 1.3, ez - er * 2.5, er))
@@ -542,7 +559,7 @@ class Fish:
         # 눈: 그림에 그려 둔 눈 위로 볼록한 알을 올린다
         set_proj(lambda co: cv.uv(co.x, co.z))
         for n_, (ex, ez, er) in enumerate(self.eye_pos()):
-            ue = (self.xh - ex) / (XB * self.Lb)
+            ue = (self.xh - ex) / (self.XB * self.Lb)
             tp, bt = self.top(ue), self.bot(ue)
             c, h = (tp + bt) / 2, (tp - bt) / 2
             ey = self.width(ue, h) * math.sqrt(max(0.05, 1 - min(1, abs(ez - c) / h) ** 2)) * 0.96

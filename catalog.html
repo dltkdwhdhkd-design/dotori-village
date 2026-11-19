@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>도토리 마을 — 생물 한눈에 보기</title>
+<style>html,body{margin:0;height:100%;background:#cfe8c0;overflow:hidden;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+#bar{position:fixed;left:8px;top:8px;background:#fffc;padding:6px 10px;border-radius:8px;font-size:13px;z-index:2}
+#bar a{margin-right:8px;color:#3b2a1a}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+</head><body>
+<div id="bar"><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a> · 모든 종을 같은 크기 칸에 맞춰 늘어놓은 것(실제 크기 비율이 아님). 물고기는 옆모습, 곤충과 납작한 생물은 위에서 본 모습. <span id="pg"></span></div>
+<script type="module">
+// 생물 모델을 종마다 한 칸씩 벽에 걸듯 늘어놓아 생김새를 확인하는 화면.
+//   ?b=fish|bugs  &from=0&n=24 (몇 번째부터 몇 종)  &cols=6  &m=id,id (그 종만)
+import * as THREE from 'three';
+import { loadBundle, make } from './js/gfx/models.js';
+const q = new URLSearchParams(location.search);
+const b = q.get('b') === 'bugs' ? 'bugs' : 'fish';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe8c0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8e8d0, 2.4));
+const sun = new THREE.DirectionalLight(0xfff6e6, 1.6); sun.position.set(-3, 6, 9); scene.add(sun);
+await loadBundle('./assets/models/' + b + '.glb');
+let list = (await (await fetch('./data/' + b + '.json')).json()).filter((e) => !e.trash);
+const only = q.get('m'); if (only) list = list.filter((e) => only.split(',').includes(e.id));
+const from = +(q.get('from') || 0), n = +(q.get('n') || list.length), cols = +(q.get('cols') || 8);
+const total = list.length; list = list.slice(from, from + n);
+document.getElementById('pg').textContent = `(${from + 1}~${from + list.length} / ${total}종)`;
+const CW = 2.3, CH = b === 'bugs' ? 2.3 : 1.55;
+function label(text) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 64;
+  const x = c.getContext('2d'); x.font = 'bold 34px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans CJK KR",sans-serif'; x.textAlign = 'center'; x.fillStyle = '#2b3a22'; x.fillText(text, 256, 44);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true })); s.scale.set(CW * 0.98, CW * 0.98 / 8, 1); return s;
+}
+list.forEach((e, i) => {
+  const o = make((b === 'bugs' ? 'bug_' : 'fish_') + e.id), g = new THREE.Group();
+  const top = e.look.view ? e.look.view === 'top' : b === 'bugs';
+  if (top) o.rotation.set(Math.PI / 2, Math.PI, 0);       // 등이 화면을 보고 머리가 위로 오게 세운다
+  g.add(o);
+  const box = new THREE.Box3().setFromObject(g), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const s = Math.min((CW - 0.3) / sz.x, (CH - 0.5) / sz.y);
+  o.position.sub(c); g.scale.setScalar(s);
+  const x = (i % cols) * CW, y = -Math.floor(i / cols) * CH;
+  g.position.set(x, y + 0.12, 0); scene.add(g);
+  const l = label(e.name); l.position.set(x, y - CH / 2 + 0.2, 0.5); scene.add(l);
+});
+const rows = Math.ceil(list.length / cols), W = cols * CW, H = rows * CH;
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+function fit() {
+  const a = innerWidth / innerHeight, hw = Math.max(W / 2, H / 2 * a) * 1.02, hh = hw / a;
+  cam.left = -hw; cam.right = hw; cam.top = hh; cam.bottom = -hh; cam.updateProjectionMatrix();
+  cam.position.set((cols - 1) * CW / 2, -(rows - 1) * CH / 2, 30); cam.lookAt((cols - 1) * CW / 2, -(rows - 1) * CH / 2, 0);
+  renderer.setSize(innerWidth, innerHeight);
+}
+fit(); addEventListener('resize', fit);
+renderer.setAnimationLoop(() => renderer.render(scene, cam));
+document.title = 'ready ' + list.length;
+</script></body></html>

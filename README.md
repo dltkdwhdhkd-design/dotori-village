@@ -4,7 +4,7 @@
 
 - **실행**: https://dltkdwhdhkd-design.github.io/dotori-village/
 - **모델 구경**: https://dltkdwhdhkd-design.github.io/dotori-village/viewer.html
-- **물고기·곤충 전 종 펼쳐 보기**: [물고기](https://dltkdwhdhkd-design.github.io/dotori-village/catalog.html?b=fish) · [곤충](https://dltkdwhdhkd-design.github.io/dotori-village/catalog.html?b=bugs)
+- **물고기·곤충 전 종 펼쳐 보기**: [물고기](https://dltkdwhdhkd-design.github.io/dotori-village/catalog.html?b=fish) · [곤충](https://dltkdwhdhkd-design.github.io/dotori-village/catalog.html?b=bugs) · [꾸미기](https://dltkdwhdhkd-design.github.io/dotori-village/catalog.html?b=looks)
 - 캐릭터·이름·대사·그림·음악은 전부 이 게임을 위해 새로 만든 것입니다.
 
 ## 할 수 있는 것
@@ -17,6 +17,7 @@
 - 만물상(사고팔기, 날마다 바뀌는 물건), 박물관(기증·감정, 화석관·곤충관·민물 수족관·바다 수족관), 마을회관(집값·증축)
 - 내 집 꾸미기: 가구 41종, 벽지·바닥재 16종, 창고
 - 도감, 지도, 우체통, 게시판, 저장(브라우저)·내보내기·가져오기
+- **주인공 꾸미기**: 머리 모양 9 · 눈 7 · 입 5 · 옷 6 · 모자 7 · 안경 3과 피부·머리·옷 색. 시작할 때 고르고, 집 안 거울에서 언제든 바꾼다
 - 옷 입은 인형 체형의 캐릭터(눈 깜박임, 말할 때 입 움직임), 해 그림자, 계절마다 바뀌는 잔디
 
 ## 조작

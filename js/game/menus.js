@@ -7,11 +7,12 @@ import { ITEMS, FISH, BUGS, FOSSILS, FISH_BY_ID, BUG_BY_ID, itemName, sellPrice,
 import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
 import { UI, Dialog, slotEl, itemRow, acorns } from '../ui/ui.js';
 import { Sound } from '../core/audio.js';
-import { thumb, thumbOfModel } from '../gfx/thumbs.js';
 import { Clock, dayKey, dateLabel, season, SEASON_KO, WEATHER_KO } from '../core/clock.js';
 import { el, fmt, josa, rand } from '../core/util.js';
 import { museumProgress } from './scripts.js';
 import { track, openNote } from './quests.js';
+import { lookEditor } from './lookui.js';
+import { MODEL as LOOK_MODEL, defaultLook, lookOfModel } from './look.js';
 
 const KIND_KO = { tool: '도구', fruit: '과일', shell: '조개', fish: '물고기', bug: '곤충', fossil: '화석', fossilid: '화석', furniture: '가구', wall: '벽지', floor: '바닥재', seed: '씨앗', sapling: '묘목', flower: '꽃', medicine: '약', misc: '잡동사니', parcel: '부탁받은 물건' };
 const narr = (t) => Dialog.say('', t);
@@ -314,23 +315,38 @@ export function showTitle({ onNew, onContinue }) {
     t.querySelector('#t-new').onclick = () => { Sound.unlock(); Sound.sfx('ui'); if (hasSave() && !confirm('이미 살고 있는 마을이 있습니다. 새로 시작하면 그 마을은 사라져요. 계속할까요?')) return; form(); };
   };
   const form = () => {
-    let model = 'player_1';
     t.classList.remove('front');
-    t.innerHTML = `<h1 style="font-size:54px">이사 준비</h1><div class="sub">이름과 마을 이름을 정해 주세요</div>
-      <div class="box"><label>내 이름</label><input type="text" id="t-name" maxlength="6" value="도토리"><label>마을 이름</label><input type="text" id="t-vil" maxlength="6" value="솔바람">
-      <label>모습</label><div class="pick" id="t-pick"></div><button class="big" id="t-go">마을로 출발!</button><button class="big alt" id="t-back" style="font-size:17px;padding:6px">돌아가기</button></div>`;
-    const pk = t.querySelector('#t-pick');
-    const paint = () => { pk.innerHTML = ''; for (let i = 1; i <= 4; i++) { const id = 'player_' + i; const d = el('div', 'slot' + (model === id ? ' sel' : '')); const im = el('img'); im.src = thumbOfModel(id, { view: 'side' }); d.appendChild(im); d.onclick = () => { model = id; Sound.sfx('ui'); paint(); if (G.title) G.title.setPlayer(id); }; pk.appendChild(d); } };
-    paint();
-    t.querySelector('#t-back').onclick = main;
+    t.innerHTML = `<h1 style="font-size:46px">이사 준비</h1><div class="sub lt" style="margin-bottom:12px">이름과 모습을 정해 주세요. 모습은 나중에 집 안 거울에서 바꿀 수 있어요</div>
+      <div class="box wide"><div class="tf"><label>내 이름</label><input type="text" id="t-name" maxlength="6" value="도토리"><label>마을 이름</label><input type="text" id="t-vil" maxlength="6" value="솔바람"></div>
+      <div id="t-look"></div>
+      <div class="tb"><button class="big alt" id="t-back">돌아가기</button><button class="big" id="t-go">마을로 출발!</button></div></div>`;
+    const ed = lookEditor(defaultLook(), (L) => { if (G.title) G.title.setPlayer(LOOK_MODEL, L, false); });
+    t.querySelector('#t-look').appendChild(ed.el);
+    if (G.title) G.title.setPlayer(LOOK_MODEL, ed.look, false);
+    t.querySelector('#t-back').onclick = () => { ed.dispose(); main(); };
     t.querySelector('#t-go').onclick = () => {
       const name = t.querySelector('#t-name').value.trim() || '도토리', village = t.querySelector('#t-vil').value.trim() || '솔바람';
-      Sound.sfx('open'); t.classList.add('hidden'); onNew({ name, village, model });
+      const look = ed.look; ed.dispose();
+      Sound.sfx('open'); t.classList.add('hidden'); t.innerHTML = ''; onNew({ name, village, model: LOOK_MODEL, look });
     };
   };
   main();
 }
 
+// ---------------------------------------------------------------- 거울: 모습 바꾸기
+export function openMirror() {
+  const box = el('div');
+  const ed = lookEditor(S.player.look || lookOfModel(S.player.model), null, { w: 250, h: 310 });
+  box.appendChild(ed.el);
+  const acts = el('div', 'lk-acts');
+  const ok = el('button', 'btn go', '이 모습으로 할래'), no = el('button', 'btn', '그만둘래');
+  let done = false;
+  ok.onclick = () => { done = true; G.player.setLook(ed.look); Sound.sfx('fanfare'); UI.closePanel(); G.player.actor.play('joy', 0.9); save(); };
+  no.onclick = () => UI.closePanel();
+  acts.appendChild(no); acts.appendChild(ok); box.appendChild(acts);
+  UI.openPanel('거울 — 모습 바꾸기', box, { onClose: () => { ed.dispose(); if (!done) Sound.sfx('close'); } });
+}
+
 export function registerMenus() {
-  Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openNote, openMail, openStorage, board, bigTree, rest });
+  Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openNote, openMail, openStorage, openMirror, board, bigTree, rest });
 }

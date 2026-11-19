@@ -6,7 +6,7 @@
 #bar a{margin-right:8px;color:#3b2a1a}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 </head><body>
-<div id="bar">묶음: <a href="?b=nature">자연</a><a href="?b=buildings">건물</a><a href="?b=furniture">가구</a><a href="?b=items">물건</a><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=chars">캐릭터</a><a href="catalog.html">생물 한눈에 보기</a> · 드래그: 돌리기 / 휠: 확대</div>
+<div id="bar">묶음: <a href="?b=nature">자연</a><a href="?b=buildings">건물</a><a href="?b=furniture">가구</a><a href="?b=items">물건</a><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=chars">캐릭터</a><a href="catalog.html">생물 한눈에 보기</a><a href="catalog.html?b=looks">꾸미기 한눈에 보기</a> · 드래그: 돌리기 / 휠: 확대</div>
 <script type="module">
 import * as THREE from 'three';
 import { loadBundle, loadSingle, make, MODELS } from './js/gfx/models.js';
@@ -28,6 +28,7 @@ function label(text) {
   s.scale.set(3.2, 0.5, 1); return s;
 }
 let names = [];
+const LOOK = await import('./js/game/look.js');
 if (b === 'chars') {
   const list = await (await fetch('./assets/chars/chars.json')).json();
   for (const id of Object.keys(list)) { try { await loadSingle('./assets/chars/' + list[id].file, id); names.push(id); } catch (e) { console.warn(id, e); } }
@@ -41,6 +42,7 @@ names.forEach((n, i) => {
   const o = make(n); const x = (i % cols) * sp, z = Math.floor(i / cols) * sp;
   o.position.set(x, 0, z); scene.add(o);
   if (o.userData.parts.snow && !q.get('snow')) o.userData.parts.snow.visible = false;
+  if (o.userData.parts.hair1) LOOK.dress({ parts: o.userData.parts, model: o }, LOOK.defaultLook());      // 꾸미는 주인공: 기본 모습만 보이게(전부 보려면 catalog.html?b=looks)
   if (o.userData.parts.mouth_open && !q.get('talk')) o.userData.parts.mouth_open.visible = false;
   if (q.get('lab') !== '0') { const l = label(n); l.position.set(x, -0.05, z + sp * 0.42); scene.add(l); }
 });

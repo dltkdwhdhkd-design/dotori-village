@@ -6,14 +6,14 @@
 #bar a{margin-right:8px;color:#3b2a1a}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 </head><body>
-<div id="bar"><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a> · 모든 종을 같은 크기 칸에 맞춰 늘어놓은 것(실제 크기 비율이 아님). 물고기는 옆모습, 곤충과 납작한 생물은 위에서 본 모습. <span id="pg"></span></div>
+<div id="bar"><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=looks">꾸미기</a> · 모든 종을 같은 크기 칸에 맞춰 늘어놓은 것(실제 크기 비율이 아님). 물고기는 옆모습, 곤충과 납작한 생물은 위에서 본 모습. <span id="pg"></span></div>
 <script type="module">
 // 생물 모델을 종마다 한 칸씩 벽에 걸듯 늘어놓아 생김새를 확인하는 화면.
 //   ?b=fish|bugs  &from=0&n=24 (몇 번째부터 몇 종)  &cols=6  &m=id,id (그 종만)
 import * as THREE from 'three';
-import { loadBundle, make } from './js/gfx/models.js';
+import { loadBundle, loadSingle, make } from './js/gfx/models.js';
 const q = new URLSearchParams(location.search);
-const b = q.get('b') === 'bugs' ? 'bugs' : 'fish';
+const b = q.get('b') === 'bugs' ? 'bugs' : q.get('b') === 'looks' ? 'looks' : 'fish';
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
@@ -22,19 +22,54 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xcfe8c0);
 scene.add(new THREE.HemisphereLight(0xffffff, 0xd8e8d0, 2.4));
 const sun = new THREE.DirectionalLight(0xfff6e6, 1.6); sun.position.set(-3, 6, 9); scene.add(sun);
-await loadBundle('./assets/models/' + b + '.glb');
-let list = (await (await fetch('./data/' + b + '.json')).json()).filter((e) => !e.trash);
+let list;
+if (b === 'looks') {
+  // 꾸미기 부위를 하나씩 바꿔 가며 늘어놓는다.  &part=hair|back|face|wear|hat|color 로 한 갈래만 볼 수 있다
+  const LK = await import('./js/game/look.js');
+  await loadSingle('./assets/chars/player_custom.glb', LK.MODEL);
+  const base = { ...LK.defaultLook(), hat: 0 }, L = [];
+  const add = (part, name, look, o = {}) => L.push({ part, name, look: { ...base, ...look }, ...o });
+  LK.HAIR.forEach((n, i) => add('hair', n, { hair: i + 1 }));
+  LK.HAIR.forEach((n, i) => add('back', n + ' (뒤)', { hair: i + 1 }, { yaw: 2.5 }));
+  LK.EYES.forEach((n, i) => add('face', n, { eyes: i + 1, eyec: i % LK.EYEC.length }));
+  LK.MOUTH.forEach((n, i) => add('face', n, { mouth: i + 1 }));
+  LK.CHEEK.forEach((n, i) => add('face', '볼: ' + n, { cheek: i }));
+  LK.GLASS.slice(1).forEach((n, i) => add('face', n, { glass: i + 1 }));
+  LK.OUTFIT.forEach((o, i) => add('wear', o.ko, { outfit: i + 1, top: [0, 5, 2, 9, 4, 8][i], bot: [6, 12, 3, 5, 11, 6][i] }));
+  LK.OUTFIT.forEach((o, i) => add('wear', o.ko + ' (뒤)', { outfit: i + 1, top: [0, 5, 2, 9, 4, 8][i], bot: [6, 12, 3, 5, 11, 6][i] }, { yaw: 2.6 }));
+  LK.HAT.slice(1).forEach((h, i) => add('hat', h.ko, { hat: i + 1, hatc: [3, 0, 5, 7, 8, 8, 4][i], hair: [1, 2, 5, 6, 3, 7, 8][i] }));
+  LK.HAT.slice(1).forEach((h, i) => add('hat', h.ko + ' (옆)', { hat: i + 1, hatc: [3, 0, 5, 7, 8, 8, 4][i], hair: [1, 2, 5, 6, 3, 7, 8][i] }, { yaw: -1.2 }));
+  LK.SKIN.forEach((c, i) => add('color', '피부 ' + (i + 1), { skin: i, hair: 4, hairc: i % 3 }));
+  LK.HAIRC.forEach((c, i) => add('color', '머리색 ' + (i + 1), { hairc: i, hair: 5 }));
+  const part = q.get('part');
+  list = (part ? L.filter((e) => e.part === part) : L).map((e) => ({ ...e, LK }));
+} else {
+  await loadBundle('./assets/models/' + b + '.glb');
+  list = (await (await fetch('./data/' + b + '.json')).json()).filter((e) => !e.trash);
+}
 const only = q.get('m'); if (only) list = list.filter((e) => only.split(',').includes(e.id));
 const from = +(q.get('from') || 0), n = +(q.get('n') || list.length), cols = +(q.get('cols') || 8);
 const total = list.length; list = list.slice(from, from + n);
 document.getElementById('pg').textContent = `(${from + 1}~${from + list.length} / ${total}종)`;
-const CW = 2.3, CH = b === 'bugs' ? 2.3 : 1.55;
+const CW = b === 'looks' ? 1.9 : 2.3, CH = b === 'bugs' ? 2.3 : b === 'looks' ? 2.2 : 1.55;
 function label(text) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 64;
   const x = c.getContext('2d'); x.font = 'bold 34px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans CJK KR",sans-serif'; x.textAlign = 'center'; x.fillStyle = '#2b3a22'; x.fillText(text, 256, 44);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true })); s.scale.set(CW * 0.98, CW * 0.98 / 8, 1); return s;
 }
 list.forEach((e, i) => {
+  if (b === 'looks') {                                        // 꾸민 주인공 한 명
+    const o = make(e.LK.MODEL), g = new THREE.Group();
+    e.LK.dress({ parts: o.userData.parts, model: o }, e.look);
+    if (o.userData.parts.mouth_open) o.userData.parts.mouth_open.visible = false;
+    o.rotation.y = e.yaw ?? 0.3;
+    g.add(o);
+    g.scale.setScalar(1.12);
+    const x = (i % cols) * CW, y = -Math.floor(i / cols) * CH;
+    g.position.set(x, y - CH / 2 + 0.42, 0); scene.add(g);
+    const l = label(e.name); l.position.set(x, y - CH / 2 + 0.2, 3); scene.add(l);
+    return;
+  }
   const o = make((b === 'bugs' ? 'bug_' : 'fish_') + e.id), g = new THREE.Group();
   const top = e.look.view ? e.look.view === 'top' : b === 'bugs';
   if (top) o.rotation.set(Math.PI / 2, Math.PI, 0);       // 등이 화면을 보고 머리가 위로 오게 세운다

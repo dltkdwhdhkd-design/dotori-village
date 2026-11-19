@@ -13,6 +13,9 @@ from mathutils import Matrix, Vector, Euler, noise
 
 # ----------------------------------------------------------------- 재질
 PALETTE = {
+    # 꾸미는 주인공(게임이 색을 입힌다): 살, 코, 머리카락, 눈, 윗옷, 윗옷 포인트, 아래옷, 신발, 모자, 모자 포인트
+    'p_skin': '#ffdcc0', 'p_nose': '#f0b090', 'p_hair': '#6a4530', 'p_eye': '#3b2b28', 'p_top': '#e8574c', 'p_top2': '#c9463c',
+    'p_bot': '#40598f', 'p_shoe': '#8a5a3a', 'p_hat': '#5fae62', 'p_hat2': '#4f9a52',
     # 자연
     'bark': '#8d5c3b', 'bark_d': '#6c4529', 'wood': '#c8925a', 'wood_d': '#a4764a', 'wood_l': '#e0b47c',
     'leaf': '#5fb858', 'leaf_d': '#459a4c', 'leaf_l': '#84d26e',          # 과일나무 잎(계절 따라 게임이 색을 바꿈)

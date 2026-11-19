@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { make, patchMaterial, CURVE } from '../gfx/models.js';
 import { Actor } from '../gfx/actor.js';
+import { MODEL, dress, defaultLook } from './look.js';
 
-const WHO = [['player_1', -1.75, 2.0, 0.18], ['villager_dalgom', 1.95, 2.1, -0.22], ['villager_pongdang', -3.55, 1.3, 0.4], ['villager_goran', 3.7, 1.25, -0.42], ['npc_kkami', 5.2, 0.3, -0.6]];
+const WHO = [[MODEL, -1.75, 2.0, 0.18], ['villager_dalgom', 1.95, 2.1, -0.22], ['villager_pongdang', -3.55, 1.3, 0.4], ['villager_goran', 3.7, 1.25, -0.42], ['npc_kkami', 5.2, 0.3, -0.6]];
 const TINT_HOME = { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 };
 
 export class TitleScene {
@@ -34,6 +35,7 @@ export class TitleScene {
       [[-3.2, 2.6, 'cosmos'], [3.6, 2.9, 'tulip'], [-5.0, 2.2, 'pansy'], [5.6, 1.9, 'cosmos'], [0.3, 3.4, 'mum'], [-1.9, 3.2, 'tulip']].forEach(([x, z, sp], i) => put('flower_' + sp, x, z, { tint: { petal: cols[i % 4] }, ry: i }));
     }
     this.actors = WHO.map(([id, x, z, yaw]) => { const a = new Actor(id); a.setPos(x, 0, z); a.face(yaw, true); this.root.add(a.root); return a; });
+    dress(this.actors[0], defaultLook());
     // 카메라: 집 앞을 살짝 올려다보듯
     this.keep = { cam: stage.camOff.clone(), look: stage.lookOff.clone(), k: CURVE.k.value };
     stage.camOff.set(0, 3.1, 12.6); stage.lookOff.set(0, 1.95, 0); CURVE.k.value = 0;
@@ -52,8 +54,13 @@ export class TitleScene {
     for (const a of this.actors) a.update(dt);
   }
 
-  /** 이사 준비 화면에서 고른 모습으로 주인공을 바꿔 세운다 */
-  setPlayer(id) { this.actors[0].setModel(id); this.actors[0].play('hop', 0.4); }
+  /** 주인공 자리에 그 모습을 세운다. look 이 있으면 꾸민 모습, 없으면 정해진 모델 */
+  setPlayer(id, look = null, hop = true) {
+    const a = this.actors[0];
+    if (a.id !== id) { a.id = id; a.setModel(id); }
+    if (look) dress(a, look);
+    if (hop) a.play('hop', 0.4);
+  }
 
   dispose() {
     this.stage.scene.remove(this.root);

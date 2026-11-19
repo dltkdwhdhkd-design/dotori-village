@@ -177,7 +177,7 @@ export class Room {
     let h = '';
     if (t.it.sale != null) return K('Space', `${def.name} 살펴보기`);
     if (t.it.act) h = K('Space', t.it.actLabel || '살펴보기');
-    else if (def && def.use) h = K('Space', { storage: '창고 열기', bed: '누워서 쉬기(저장)', lamp: '불 켜고 끄기', tv: '켜기', radio: '틀기', piano: '쳐 보기', guitar: '쳐 보기' }[def.use] || '쓰기');
+    else if (def && def.use) h = K('Space', { storage: '창고 열기', bed: '누워서 쉬기(저장)', lamp: '불 켜고 끄기', tv: '켜기', radio: '틀기', piano: '쳐 보기', guitar: '쳐 보기', mirror: '모습 바꾸기' }[def.use] || '쓰기');
     if (this.editable) h += (h ? '　' : '') + K('F', '집어넣기') + '　' + K('Q', '돌리기');
     return h;
   }
@@ -195,6 +195,7 @@ export class Room {
     if (!def || !def.use) return;
     if (def.use === 'storage') return G.hooks.openStorage();
     if (def.use === 'bed') return G.hooks.rest();
+    if (def.use === 'mirror') return G.hooks.openMirror();
     if (def.use === 'lamp') { Sound.sfx('ui'); UI.toast('딸깍.'); return; }
     if (def.use === 'piano' || def.use === 'guitar') { Sound.sfx('fanfare'); p.do('joy', 0.8); return; }
     if (def.use === 'tv' || def.use === 'radio') { Sound.sfx('letter'); UI.toast(def.use === 'tv' ? '화면에서 날씨 예보가 나온다.' : '라디오에서 잔잔한 음악이 흐른다.'); }

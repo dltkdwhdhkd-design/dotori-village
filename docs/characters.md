@@ -7,7 +7,8 @@
 
 | 파일(id) | 이름 | 종 | 성격 |
 | --- | --- | --- | --- |
-| player_1 ~ player_4 | 주인공(시작할 때 고르는 네 가지 모습) | 사람 | |
+| player_custom | 주인공 — 머리·눈·옷·모자를 갈아 끼우는 모델(아래 '주인공 꾸미기') | 사람 | |
+| player_1 ~ player_4 | 예전의 정해진 주인공 네 가지(예전 저장이 쓴다. 거울을 보면 꾸미는 모델로 바뀐다) | 사람 | |
 | villager_dalgom | 달곰 | 반달곰 | 느긋 |
 | villager_goran | 고란 | 고라니 | 수줍 |
 | villager_nureong | 누렁 | 누렁이 | 열혈 |
@@ -92,3 +93,27 @@
 - 그림 캐릭터는 늘 화면을 바라보며, 걸을 때 통통 튀고 가는 방향에 따라 좌우가 뒤집힙니다.
 
 `tools/blender/build.py` 로 모델을 다시 만들어도 `chars.json` 에서 바꿔 둔 항목은 그대로 남습니다.
+
+## 주인공 꾸미기 (`player_custom`)
+
+주인공은 부위를 갈아 끼우는 모델 하나(`assets/chars/player_custom.glb`)를 쓴다. 게임이 고른 부위만 보이게 하고 색을 입힌다.
+시작할 때 '이사 준비' 화면에서, 그 뒤로는 집 안 **거울**(전신 거울, 파스텔 화장대) 앞에서 Space로 바꾼다.
+
+| 고르는 것 | 가짓수 | 모델의 부위 이름 |
+| --- | --- | --- |
+| 머리 모양 | 9 | `hair1`~`hair9` (+ `hairfr1`~ 앞머리, `hairtop1`~ 윗머리) |
+| 눈 | 7 | `eyes1`~`eyes7` |
+| 입 | 5 | `mouth1`~`mouth5` (말할 때 입 `mouth_open` 은 함께 쓴다) |
+| 볼 | 없음·발그레·주근깨·둘 다 | `blush`, `freckle` |
+| 옷 | 6 | `top1`~`top6` + 소매 `sls_L/R`(짧은) `sll_L/R`(긴) + 다리 `pants_L/R` `shorts_L/R` `sock_L/R` |
+| 모자·머리 장식 | 없음 + 7 | `hat1`~`hat7` |
+| 안경 | 없음 + 3 | `glass1`~`glass3` |
+| 색 | 피부 7, 머리색 11, 눈 색 6, 윗옷·아래옷·모자 색 13, 신발 색 6 | 재질 `p_skin p_nose p_hair p_eye p_top p_top2 p_bot p_shoe p_hat p_hat2` |
+
+- 무엇을 고를 수 있는지(이름, 색, 어떤 옷이 긴소매인지, 어떤 모자가 머리를 덮는지)는 `js/game/look.js` 의 표에 있다. 고른 모습은 숫자 묶음으로 저장된다(`S.player.look`).
+- 모델은 `tools/blender/chars.py` 의 `custom()` 이 만든다. 다시 만들기: `python3 tools/blender/build.py chars:player_custom`
+- **가짓수를 늘리려면**: ① `custom()` 에 같은 규칙으로 부위를 더한다(예: `hp('hair10')` 안에 머리카락을 만든다) → ② `look.js` 의 표(`HAIR` 등)에 이름을 한 줄 더한다 → ③ 다시 만들고 `catalog.html?b=looks` 에서 확인한다.
+  - 머리카락은 세 조각으로 나뉜다: 늘 보이는 `hairN`, 푹 눌러쓰는 모자(챙 모자·밀짚모자·털모자)를 쓰면 숨기는 앞머리 `hairfrN`, 모자를 쓰면 숨기는 윗머리 `hairtopN`. 이렇게 해야 모자를 뚫고 나오지 않는다.
+  - 색이 바뀌어야 하는 면은 위의 `p_*` 재질로 만든다. 새 재질을 만들었으면 `tools/blender/lib.py` 의 `PALETTE` 와 `js/gfx/models.js` 의 `DYNAMIC`, `look.js` 의 `tintOf` 에 넣는다.
+- **확인하는 화면**: `catalog.html?b=looks` — 머리 모양(앞·뒤), 눈, 입, 볼, 안경, 옷(앞·뒤), 모자(앞·옆), 색을 전부 늘어놓는다. `&part=hair|back|face|wear|hat|color` 로 한 갈래만 볼 수 있다.
+- 주인공을 통짜 모델이나 그림 한 장으로 바꾸고 싶으면 `chars.json` 의 `player_custom` 항목을 바꾸면 된다. 그 경우 갈아 끼울 부위가 없으므로 꾸미기에서 골라도 모습은 바뀌지 않는다.

@@ -63,13 +63,13 @@ export const FURNITURE = [
   ['f_soban', '소반', 1, 1, 900, 'hanok'], ['f_bangseok', '방석', 1, 1, 500, 'hanok'], ['f_jagaejang', '자개장', 2, 1, 4800, 'hanok'], ['f_byeongpung', '병풍', 2, 1, 3200, 'hanok'],
   ['f_yo', '요와 이불', 1, 2, 1600, 'hanok', 'bed'], ['f_jangdok', '장독', 1, 1, 1100, 'hanok'], ['f_deungjan', '호롱불', 1, 1, 1000, 'hanok', 'lamp'],
   ['f_pastel_bed', '파스텔 침대', 1, 2, 2200, 'pastel', 'bed'], ['f_pastel_sofa', '파스텔 소파', 2, 1, 2400, 'pastel'], ['f_pastel_table', '파스텔 탁자', 1, 1, 1000, 'pastel'],
-  ['f_pastel_chair', '파스텔 의자', 1, 1, 700, 'pastel'], ['f_pastel_vanity', '파스텔 화장대', 1, 1, 1600, 'pastel'], ['f_pastel_lamp', '파스텔 스탠드', 1, 1, 1100, 'pastel', 'lamp'],
+  ['f_pastel_chair', '파스텔 의자', 1, 1, 700, 'pastel'], ['f_pastel_vanity', '파스텔 화장대', 1, 1, 1600, 'pastel', 'mirror'], ['f_pastel_lamp', '파스텔 스탠드', 1, 1, 1100, 'pastel', 'lamp'],
   ['f_monstera', '몬스테라', 1, 1, 800], ['f_cactus', '선인장', 1, 1, 600], ['f_tv', '텔레비전', 1, 1, 2800, '', 'tv'], ['f_radio', '라디오', 1, 1, 1500, '', 'radio'],
   ['f_fridge', '냉장고', 1, 1, 2600], ['f_stove', '가스레인지', 1, 1, 2200], ['f_desk', '책상', 2, 1, 2000], ['f_piano', '피아노', 2, 1, 5600, '', 'piano'],
   ['f_globe', '지구본', 1, 1, 1300], ['f_fishtank', '어항', 1, 1, 1700], ['f_teddy', '곰 인형', 1, 1, 900], ['f_clock', '괘종시계', 1, 1, 2400],
   ['f_bin', '휴지통', 1, 1, 300], ['f_fan', '선풍기', 1, 1, 1200], ['f_heater', '난로', 1, 1, 1400, '', 'lamp'], ['f_chest', '창고 상자', 1, 1, 1500, '', 'storage'],
   ['f_bookpile', '쌓아 둔 책', 1, 1, 500], ['f_easel', '이젤', 1, 1, 1300], ['f_guitar', '기타', 1, 1, 1900, '', 'guitar'], ['f_flowerpot', '꽃 화분', 1, 1, 500],
-  ['f_wintertree', '겨울 트리', 1, 1, 2000], ['f_snowman', '눈사람 장식', 1, 1, 1200],
+  ['f_wintertree', '겨울 트리', 1, 1, 2000], ['f_snowman', '눈사람 장식', 1, 1, 1200], ['f_mirror', '전신 거울', 1, 1, 1200, '', 'mirror'],
 ];
 export const SERIES_KO = { log: '통나무', hanok: '한옥', pastel: '파스텔' };
 for (const [id, name, w, d, buy, series, use] of FURNITURE) def(id, { name, kind: 'furniture', w, d, buy, price: Math.round(buy / 4), series: series || '', use: use || '', model: id, desc: (series ? SERIES_KO[series] + ' 시리즈. ' : '') + '집 안에 놓을 수 있는 가구.' });

@@ -17,7 +17,7 @@ export function loadSettings() {
 }
 export function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(Settings)); } catch (e) { /* 무시 */ } }
 
-export function newState({ name, village, model, seed, villageData, day }) {
+export function newState({ name, village, model, look = null, seed, villageData, day }) {
   const r = RNG(seed ^ 0x51ed);
   const ids = r.shuffle([...VILLAGER_IDS]);
   const residents = ids.slice(0, 2);                 // 처음엔 이웃이 둘뿐이다. 나머지는 마을을 키우면 이사 온다
@@ -26,7 +26,7 @@ export function newState({ name, village, model, seed, villageData, day }) {
   residents.forEach((id, i) => { villagers[id] = { lot: lots[i], friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 }; });
   const st = {
     v: 1, seed,
-    player: { name, model, x: villageData.spawn.x + 0.5, z: villageData.spawn.y + 0.8, money: 0, loan: 0, houseLv: 0, loanStage: 0, tool: null, stung: false },
+    player: { name, model, look, x: villageData.spawn.x + 0.5, z: villageData.spawn.y + 0.8, money: 0, loan: 0, houseLv: 0, loanStage: 0, tool: null, stung: false },
     village: { name: village },
     inv: Array(INV_SIZE).fill(null),
     storage: [],
@@ -36,8 +36,8 @@ export function newState({ name, village, model, seed, villageData, day }) {
     museum: { fish: [], bug: [], fossil: [] },
     shop: { day: 0, stock: [] },
     mail: [],
-    home: { wall: 'wall_cream', floor: 'floor_wood', items: [{ id: 'f_chest', x: 3, y: 0, r: 0 }, { id: 'f_yo', x: 0, y: 0, r: 0 }] },
-    flags: {},
+    home: { wall: 'wall_cream', floor: 'floor_wood', items: [{ id: 'f_chest', x: 3, y: 0, r: 0 }, { id: 'f_yo', x: 0, y: 0, r: 0 }, { id: 'f_mirror', x: 2, y: 0, r: 0 }] },
+    flags: { mirror: true },
     daily: { coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} },
     stats: { fish: 0, bug: 0, days: 1, earned: 0 },
     moveInDay: day + 6,
@@ -49,6 +49,10 @@ export function newState({ name, village, model, seed, villageData, day }) {
 }
 
 export function hasSave() { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } }
+/** 저장을 다 불러오지 않고 주인공의 모습만 본다(첫 화면에 세워 둘 때) */
+export function peekPlayer() {
+  try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); return o && o.player ? { model: o.player.model, look: o.player.look || null } : null; } catch (e) { return null; }
+}
 export function saveGame(village) {
   try {
     S.village.data = village.serialize();

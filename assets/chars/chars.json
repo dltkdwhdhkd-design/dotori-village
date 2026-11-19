@@ -55,5 +55,8 @@
  },
  "player_4": {
   "file": "player_4.glb"
+ },
+ "player_custom": {
+  "file": "player_custom.glb"
  }
 }

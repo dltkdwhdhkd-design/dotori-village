@@ -104,7 +104,8 @@ export function allMats() { return MATS; }
 
 // 게임 도중 색이나 빛이 바뀌는 재질(계절 잎, 집주인마다 다른 지붕·벽·문, 밤에 켜지는 창). 이것들은 따로 둔다.
 const DYNAMIC = new Set(['leaf', 'leaf_d', 'leaf_l', 'bloom', 'bloom_d', 'bloom_l', 'pine', 'pine_d', 'pine_l', 'big', 'big_d', 'big_l', 'weed', 'tuft', 'tuft_l',
-  'roof', 'roof_d', 'wall', 'wall_d', 'door', 'door_d', 'petal', 'roll', 'window', 'lampglass', 'c_eaff8a', 'c_1a2a44', 'missing']);
+  'roof', 'roof_d', 'wall', 'wall_d', 'door', 'door_d', 'petal', 'roll', 'window', 'lampglass', 'c_eaff8a', 'c_1a2a44', 'missing',
+  'p_skin', 'p_nose', 'p_hair', 'p_eye', 'p_top', 'p_top2', 'p_bot', 'p_shoe', 'p_hat', 'p_hat2']);      // p_*: 꾸미는 주인공(look.js)
 let VCOL = null;
 /** 색이 고정된 면들을 한 덩어리로 그릴 때 쓰는 재질(색은 꼭짓점에 들어 있다) */
 export function vcolMat() {

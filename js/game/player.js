@@ -12,6 +12,7 @@ import { ITEMS, FISH_BY_ID, BUG_BY_ID, FURNITURE, itemName } from '../data/items
 import { clamp, rand, josa, hash01 } from '../core/util.js';
 import { dayKey } from '../core/clock.js';
 import { track } from './quests.js';
+import { MODEL as LOOK_MODEL, dress, cleanLook } from './look.js';
 
 const WALK = 3.3, RUN = 5.4, SNEAK = 1.25, R = 0.27;
 const K = (k, t) => `<b>${k}</b>${t}`;
@@ -60,6 +61,7 @@ const _tip = new THREE.Vector3();
 export class Player {
   constructor() {
     this.actor = new Actor(S.player.model);
+    if (S.player.look) dress(this.actor, S.player.look);
     G.stage.scene.add(this.actor.root);
     this.x = S.player.x; this.z = S.player.z; this.yaw = 0;
     this.lock = 0; this.after = null; this.fishing = null; this.netHold = false; this.stepT = 0;
@@ -77,6 +79,17 @@ export class Player {
     if (anim === 'swing' || anim === 'dig') dur = Math.max(dur, 0.5);
     if (at == null) at = anim === 'swing' || anim === 'dig' ? 0.48 : anim === 'pour' ? 0.45 : 1;
     this.actor.play(anim, dur); this.lock = dur; this.after = after || null; this.afterT = dur * (1 - at);
+  }
+
+  /** 거울에서 고른 모습으로 바꾼다 */
+  setLook(look) {
+    S.player.look = cleanLook(look);
+    if (S.player.model !== LOOK_MODEL) {           // 예전의 정해진 모습에서 꾸미는 모습으로
+      S.player.model = LOOK_MODEL;
+      this.actor.id = LOOK_MODEL; this.actor.setModel(LOOK_MODEL);
+      this.actor.hold(S.player.tool ? ITEMS[S.player.tool].model : null);
+    }
+    dress(this.actor, S.player.look);
   }
 
   equip(id, silent = false) {

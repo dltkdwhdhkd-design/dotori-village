@@ -277,15 +277,15 @@ class Char:
                     ball((x + math.sin(math.radians(a)) * 0.1, -math.cos(math.radians(a)) * 0.11, 0.022), 0.019, col, sub=1)
 
     # ------------------------------------------------------------ 얼굴
-    def eyes(self, style='oval', x=0.15, z=None, size=1.0, col=INK, white=False, lid=None, iris=None):
-        """눈. style: oval(기본) big(동그랗고 큼) dot(점) pop(흰자에 작은 눈동자) sleepy(졸린) smile(웃는) lash(속눈썹)
+    def eyes(self, style='oval', x=0.15, z=None, size=1.0, col=INK, white=False, lid=None, iris=None, name='eyes'):
+        """눈. style: oval(기본) big(동그랗고 큼) dot(점) pop(흰자에 작은 눈동자) sleepy(졸린) half(반쯤 감은) smile(웃는) lash(속눈썹)
         white=True면 흰자를 깐다. iris=홍채 색(얼굴이 어두운 캐릭터는 밝은 홍채를 준다).
         lid=눈꺼풀 색(sleepy에서 얼굴색을 준다)"""
         z = self.hc - 0.05 if z is None else z - 0.012
         size *= EYE
         x *= 1.05
         pc, _ = self.hp(0, z)
-        P = self.m.part('eyes', (0, pc.y, z), parent='head')
+        P = self.m.part(name, (0, pc.y, z), parent='head')
         w, h = 0.05 * size, 0.07 * size
         if style == 'big':
             w = h = 0.066 * size
@@ -299,6 +299,11 @@ class Char:
                 if style == 'smile':
                     p, rot = self.hp(ex, z - 0.02 * size, 0.004)
                     arc(tuple(p), w * 1.05, 0.014 * size, col, 18, 162, seg=8, tseg=5, rot=(90 + rot[0], 0, rot[2]))
+                    continue
+                if style == 'half':
+                    self.dot(ex, z - h * 0.2, col, w * 1.02, h * 0.6, thick=0.016, out=0.004)
+                    self.dot(ex, z + h * 0.2, col, w * 1.42, 0.012 * size, thick=0.012, out=0.008)
+                    self.dot(ex - 0.014 * size, z - h * 0.06, WHITE, 0.014 * size, 0.014 * size, thick=0.008, out=0.017)
                     continue
                 if style == 'pop':
                     self.dot(ex, z, WHITE, 0.058 * size, 0.062 * size, thick=0.012)
@@ -335,11 +340,11 @@ class Char:
             for s in (1, -1):
                 self.dot(s * x, z, col, r * 1.15, r * 0.72, thick=0.008, out=0.0)
 
-    def mouth(self, style='smile', z=None, w=0.05, col=INK):
+    def mouth(self, style='smile', z=None, w=0.05, col=INK, name='mouth', open_part=True):
         """입. style: smile(미소) cat(ω) flat(一) o(작은 동그라미) wide(넓은 미소)"""
         z = self.hc - 0.14 if z is None else z
         p, rot = self.hp(0, z, 0.004)
-        P = self.m.part('mouth', tuple(p), parent='head')
+        P = self.m.part(name, tuple(p), parent='head')
         with P:
             if style == 'smile' or style == 'wide':
                 R = w * (2.6 if style == 'wide' else 1.25)
@@ -352,6 +357,8 @@ class Char:
                 self.dot(0, z, col, w * 0.8, 0.0115, thick=0.01, out=0.004)
             elif style == 'o':
                 self.dot(0, z, col, w * 0.36, w * 0.42, thick=0.01, out=0.004)
+        if not open_part:
+            return
         O = self.m.part('mouth_open', tuple(p), parent='head')
         with O:
             self.dot(0, z - 0.004, MOUTH_IN, w * 0.78, w * 0.62, thick=0.011, out=0.005)
@@ -965,6 +972,273 @@ def kid(name, skin, hair, top, bottom, style):
         c.done()
 
 
+# ============================================================ 꾸미는 주인공
+# 부위를 갈아 끼우는 주인공 한 명(player_custom). 게임(js/game/look.js)이 고른 부위만 보이게 하고 색을 입힌다.
+#   머리에 딸린 것: hair1~9(머리 모양) hairfr1~9(앞머리 — 머리를 푹 덮는 모자를 쓰면 숨긴다) hairtop1~9(윗머리 — 모자를 쓰면 숨긴다)
+#                  eyes1~7 mouth1~5 blush freckle hat1~7 glass1~3
+#   몸통: top1~6(옷)    팔: sls_L/R(짧은 소매) sll_L/R(긴 소매)    다리: pants_L/R(긴 바지) shorts_L/R(반바지) sock_L/R(양말)
+#   색이 바뀌는 재질: p_skin p_nose p_hair p_eye p_top p_top2 p_bot p_shoe p_hat p_hat2  (models.js 의 DYNAMIC 에도 있다)
+# 부위를 더하려면 여기서 같은 규칙으로 이름을 붙이고 look.js 의 표에 한 줄 넣는다.
+from contextlib import contextmanager
+
+
+@contextmanager
+def _into(c, attr, part):
+    """Char의 함수(skull, torso, blush …)가 만드는 것을 다른 부위(갈아 끼우는 조각)에 넣는다"""
+    old = getattr(c, attr)
+    setattr(c, attr, part)
+    try:
+        yield part
+    finally:
+        setattr(c, attr, old)
+
+
+def custom(name):
+    SK, NO, HA, EY, TP, TP2, BT, SH, HT, HT2 = 'p_skin', 'p_nose', 'p_hair', 'p_eye', 'p_top', 'p_top2', 'p_bot', 'p_shoe', 'p_hat', 'p_hat2'
+    TIE = '#ff7a8a'
+    with Model(name) as m:
+        c = Char(m)
+        hc, H = c.hc, c.hr
+        hp = lambda n: m.part(n, (0, 0, NECK), parent='head')
+        bp = lambda n: m.part(n, (0, 0, BODY0), parent='body')
+
+        # ---------------- 얼굴
+        c.skull(SK)
+        with c.head:
+            for s in (1, -1):              # 귀
+                ball((s * 0.4, 0.02, hc - 0.03), 1.0, SK, (0.045, 0.05, 0.06), sub=2)
+            c.dot(0, hc - 0.095, NO, 0.02, 0.015, thick=0.012, out=0.004)
+        c.brows(HA, tilt=6, w=0.04, th=0.011, x=0.175, z=hc + 0.11)
+        EYES = (('oval', dict(x=0.175, size=1.02)), ('big', dict(x=0.178, size=0.98)), ('dot', dict(x=0.17, size=1.22)), ('half', dict(x=0.175, size=1.05)),
+                ('smile', dict(x=0.175, size=1.05)), ('lash', dict(x=0.172, size=1.0)), ('pop', dict(x=0.172, size=1.3)))
+        for i, (st, kw) in enumerate(EYES):
+            c.eyes(st, col=EY, name='eyes%d' % (i + 1), **kw)
+        for i, st in enumerate(('smile', 'cat', 'flat', 'o', 'wide')):
+            c.mouth(st, z=hc - 0.158, w=0.045, name='mouth%d' % (i + 1), open_part=(i == 0))
+        with _into(c, 'head', hp('blush')):
+            c.blush(x=0.285, z=hc - 0.125)
+        with hp('freckle'):
+            for s in (1, -1):
+                for dx, dz in ((0.0, 0.0), (0.04, 0.02), (-0.036, 0.022)):
+                    c.dot(s * (0.265 + dx), hc - 0.118 + dz, NO, 0.012, 0.01, thick=0.008, out=0.003)
+
+        # ---------------- 머리 모양
+        def bangs(n, z, w=0.075, hgt=0.085, sp=0.115, drop=0.012, col=HA):
+            for i in range(n):
+                k = i - (n - 1) / 2
+                p, _ = c.hp(k * sp, hc + z - abs(k) * drop)
+                ball((p.x, p.y - 0.004, p.z), 1.0, col, (w, 0.04, hgt), rot=(0, k * 6, 0), sub=2)
+
+        def cap(part, cut, tilt, grow=0.02):
+            with _into(c, 'head', part):
+                c.hair_cap(HA, cut=cut, tilt=tilt, grow=grow)
+
+        P = hp('hair1'); cap(P, 0.62, -20)                 # 1 단발
+        with hp('hairfr1'):
+            bangs(5, 0.215)
+        with P:
+            for s in (1, -1):
+                ball((s * 0.375, -0.05, hc - 0.03), 1.0, HA, (0.085, 0.15, 0.2), sub=2)
+            ball((0, 0.13, hc - 0.09), 1.0, HA, (0.385, 0.285, 0.27), sub=3)      # 목덜미까지 내려오는 뒷머리
+
+        P = hp('hair2'); cap(P, 0.5, -22)                  # 2 삐죽 머리
+        with hp('hairfr2'):
+            bangs(3, 0.245, w=0.07, hgt=0.055, sp=0.13)
+        with hp('hairtop2'):
+            for (x, y, z, rx, ry) in ((0, -0.2, 0.33, -55, 0), (0.15, -0.15, 0.32, -45, 25), (-0.15, -0.15, 0.32, -45, -25), (0.07, 0.0, 0.37, -15, 10), (-0.09, 0.02, 0.37, -10, -14), (0.22, 0.05, 0.3, 5, 35), (-0.22, 0.05, 0.3, 5, -35), (0, 0.2, 0.3, 40, 0)):
+                cone((x, y, hc + z - 0.1), 0.1, 0.2, HA, seg=7, rot=(rx, ry, 0))
+
+        P = hp('hair3'); cap(P, 0.58, -22)                 # 3 양 갈래
+        with hp('hairfr3'):
+            bangs(4, 0.21, w=0.08, hgt=0.075, sp=0.13, drop=0.0)
+        with P:
+            for s in (1, -1):
+                ball((s * 0.43, 0.06, hc + 0.08), 0.045, TIE, sub=2)
+                ball((s * 0.5, 0.08, hc - 0.04), 1.0, HA, (0.1, 0.1, 0.15), rot=(0, s * 20, 0), sub=2)
+
+        P = hp('hair4'); cap(P, 0.6, -12)                  # 4 짧은 머리
+        with hp('hairfr4'):
+            bangs(3, 0.24, w=0.095, hgt=0.05, sp=0.14, drop=0.01)
+
+        P = hp('hair5'); cap(P, 0.62, -20)                 # 5 긴 머리
+        with hp('hairfr5'):
+            bangs(5, 0.215)
+        with P:
+            ball((0, 0.17, hc - 0.2), 1.0, HA, (0.37, 0.22, 0.38), sub=3)
+            for s in (1, -1):
+                ball((s * 0.375, -0.03, hc - 0.15), 1.0, HA, (0.085, 0.14, 0.31), sub=2)
+
+        P = hp('hair6'); cap(P, 0.56, -20)                 # 6 곱슬머리
+        with P:
+            for j in range(11):
+                a = math.radians(-12 + j * 20.4)
+                ball((math.cos(a) * 0.4, math.sin(a) * 0.37 + 0.02, hc + 0.0 + 0.04 * math.sin(j * 1.7)), 0.108, HA, sub=2)
+        with hp('hairfr6'):
+            for k in (-1.5, -0.5, 0.5, 1.5):
+                p, _ = c.hp(k * 0.125, hc + 0.235 - abs(k) * 0.012)
+                ball((p.x, p.y - 0.01, p.z), 0.082, HA, sub=2)
+        with hp('hairtop6'):
+            for j in range(7):
+                a = math.radians(j * 360 / 7 + 12)
+                ball((math.cos(a) * 0.21, math.sin(a) * 0.2 + 0.02, hc + 0.285), 0.112, HA, sub=2)
+            ball((0, 0.02, hc + 0.36), 0.115, HA, sub=2)
+
+        P = hp('hair7'); cap(P, 0.6, -18)                  # 7 올림머리
+        with hp('hairfr7'):
+            bangs(5, 0.215)
+        with hp('hairtop7'):
+            ball((0, 0.1, hc + 0.41), 0.128, HA, sub=2)
+            torus((0, 0.085, hc + 0.325), 0.075, 0.02, TIE, seg=12, tseg=5, rot=(-12, 0, 0))
+
+        P = hp('hair8'); cap(P, 0.6, -18)                  # 8 뒤로 묶은 머리
+        with hp('hairfr8'):
+            bangs(4, 0.21, w=0.08, hgt=0.075, sp=0.13, drop=0.0)
+        with P:
+            ball((0, 0.37, hc + 0.14), 1.0, TIE, (0.07, 0.06, 0.07), sub=2)
+            ball((0, 0.47, hc - 0.0), 1.0, HA, (0.095, 0.105, 0.25), rot=(-20, 0, 0), sub=2)
+
+        cap(hp('hair9'), 0.5, -16, grow=0.009)             # 9 아주 짧은 머리
+
+        # ---------------- 모자·머리 장식
+        with hp('hat1'):                                   # 1 도토리 깍정이 모자
+            lathe([(0.3, 0.0), (0.305, 0.03), (0.27, 0.09), (0.18, 0.14), (0.0, 0.165)], '#a8703c', center=(0, 0.05, hc + 0.27), seg=16, rot=(-14, 0, 0))
+            lathe([(0.305, 0.0), (0.315, 0.015), (0.305, 0.03)], '#8a5a2e', center=(0, 0.05, hc + 0.27), seg=16, rot=(-14, 0, 0), caps=False)
+            cyl((0, 0.085, hc + 0.42), 0.022, 0.07, '#6c4529', seg=6, rot=(-14, 0, 0))
+        with hp('hat2'):                                   # 2 챙 모자
+            c.fit(dome((0, 0.0, hc + 0.012), 1.0, HT, (H[0] + 0.035, H[1] + 0.035, H[2] + 0.035), aim=(-16, 0, 0), seg=24, rings=7, cut=0.42))
+            ball((0, -0.36, hc + 0.19), 1.0, HT2, (0.24, 0.17, 0.028), rot=(-10, 0, 0), sub=2)
+            ball((0, 0.02, hc + 0.39), 0.035, '#fff3d6', sub=1)
+        with hp('hat3'):                                   # 3 밀짚모자(뒤로 젖혀 써서 얼굴이 보인다)
+            STRAW, STRAW_D = '#ecd08a', '#d6b46a'
+            cz = hc + 0.02
+            c.fit(dome((0, 0.02, cz), 1.0, STRAW, (H[0] + 0.03, H[1] + 0.03, H[2] + 0.045), aim=(-16, 0, 0), seg=24, rings=7, cut=0.4))
+            lathe([(0.3, 0.012), (0.52, -0.02), (0.535, -0.008), (0.52, 0.006), (0.3, 0.04)], STRAW_D, center=(0, 0.045, cz + 0.2), seg=24, scale=(1, 0.95), rot=(-16, 0, 0), caps=False)
+            lathe([(0.392, 0.0), (0.398, 0.03), (0.372, 0.062)], HT, center=(0, 0.04, cz + 0.2), seg=24, scale=(1, 0.95), rot=(-16, 0, 0), caps=False)
+        with hp('hat4'):                                   # 4 털모자
+            cz = hc + 0.03
+            c.fit(dome((0, 0.0, cz), 1.0, HT, (H[0] + 0.04, H[1] + 0.04, H[2] + 0.07), aim=(-14, 0, 0), seg=24, rings=8, cut=0.47))
+            torus((0, 0.008, cz + 0.048), 0.445, 0.04, HT2, seg=24, tseg=6, rot=(-14, 0, 0), scale=(1, 0.95, 1.25))
+            ball((0, 0.115, hc + 0.5), 0.09, '#fffaf0', sub=2)
+        with hp('hat5'):                                   # 5 리본
+            cx, cy, cz = 0.19, -0.03, hc + 0.345
+            for s in (1, -1):
+                ball((cx + s * 0.085, cy, cz + 0.01), 1.0, HT, (0.085, 0.04, 0.065), rot=(0, -s * 24 + 14, 0), sub=2)
+            ball((cx, cy - 0.01, cz), 0.04, HT2, sub=2)
+        with hp('hat6'):                                   # 6 꽃 머리핀
+            x, z = 0.3, hc + 0.17
+            q = max(0.0, 1 - (x / H[0]) ** 2 - ((z - hc) / H[2]) ** 2)
+            y = -H[1] * math.sqrt(q)
+            n = Vector((x / H[0] ** 2, y / H[1] ** 2, (z - hc) / H[2] ** 2)).normalized()
+            u = n.cross(Vector((0, 0, 1))).normalized(); v = n.cross(u)
+            o = Vector((x, y, z)) + n * 0.045
+            for i in range(5):
+                a = math.radians(90 + i * 72)
+                ball(tuple(o + (u * math.cos(a) + v * math.sin(a)) * 0.05), 0.038, HT, sub=2)
+            ball(tuple(o + n * 0.02), 0.03, '#ffd84a', sub=2)
+        with hp('hat7'):                                   # 7 머리띠
+            arc((0, -0.03, hc), 0.448, 0.024, HT, 12, 168, seg=20, tseg=6, rot=(90, 0, 0), scale=(1, 0.86, 1))
+
+        # ---------------- 안경
+        ez, ex = hc - 0.05, 0.184
+        RIM = '#4a3a34'
+
+        def bridge(out=0.034, col=RIM, r=0.009, w=0.092):
+            a, _ = c.hp(w, ez + 0.012, out); b, _ = c.hp(-w, ez + 0.012, out)
+            tube(tuple(a), tuple(b), r, col, seg=5)
+
+        with hp('glass1'):                                 # 1 동그란 안경
+            for s in (1, -1):
+                p, rot = c.hp(s * ex, ez, 0.03)
+                torus(tuple(p), 0.094, 0.0105, RIM, seg=18, tseg=5, rot=(90 + rot[0], 0, rot[2]))
+            bridge()
+        with hp('glass2'):                                 # 2 네모 안경
+            for s in (1, -1):
+                p, rot = c.hp(s * ex, ez, 0.03)
+                R = Euler([math.radians(a) for a in (rot[0], 0, rot[2])], 'XYZ').to_matrix()
+                ux, uz = R @ Vector((1, 0, 0)), R @ Vector((0, 0, 1))
+                w, h, t = 0.098, 0.072, 0.02
+                for sg in (1, -1):
+                    box(tuple(p + uz * (sg * h)), (2 * w + t, 0.018, t), '#3a4a6a', rot=(rot[0], 0, rot[2]), bevel=0.004)
+                    box(tuple(p + ux * (sg * w)), (t, 0.018, 2 * h + t), '#3a4a6a', rot=(rot[0], 0, rot[2]), bevel=0.004)
+            bridge(col='#3a4a6a', r=0.011, w=0.088)
+        with hp('glass3'):                                 # 3 색안경
+            for s in (1, -1):
+                c.dot(s * ex, ez, '#2a2a34', 0.105, 0.08, thick=0.016, out=0.03)
+                c.dot(s * ex - 0.03, ez + 0.03, '#6a6a7a', 0.03, 0.014, thick=0.008, out=0.044, roll=-30)
+            bridge(out=0.036, col='#2a2a34', r=0.012, w=0.09)
+
+        # ---------------- 옷(몸통)
+        with _into(c, 'body', bp('top1')):                 # 1 반소매 티
+            c.torso(TP, BT, collar=TP)
+            c.emblem('acorn', '#fff3d6', z=0.53, s=1.0, col2='#8a5a34')
+        with _into(c, 'body', bp('top2')) as P:            # 2 후드티
+            c.torso(TP, BT, collar=TP)
+            with P:
+                box(c.front(0.44, 0.014), (0.19, 0.02, 0.09), TP2, bevel=0.008)
+                for s in (1, -1):
+                    tube(c.front(0.66, 0.01, s * 0.04), c.front(0.56, 0.016, s * 0.045), 0.009, WHITE, seg=4)
+                ball((0, 0.13, 0.66), 1.0, TP, (0.16, 0.1, 0.09), sub=2)
+        with _into(c, 'body', bp('top3')):                 # 3 원피스
+            c.torso(TP, kind='dress', hem=WHITE, collar=WHITE)
+            c.emblem('acorn', '#fff3d6', z=0.53, s=0.95, col2='#8a5a34')
+        with _into(c, 'body', bp('top4')) as P:            # 4 멜빵바지
+            c.torso(TP, BT, collar=TP)
+            with P:
+                box(c.front(0.47, 0.012), (0.2, 0.02, 0.17), BT, bevel=0.008)
+                for s in (1, -1):
+                    tube(c.front(0.55, 0.014, s * 0.08), (s * 0.115, -0.05, 0.69), 0.02, BT, seg=6)
+                    tube((s * 0.115, -0.05, 0.69), (s * 0.1, 0.13, 0.6), 0.02, BT, seg=6)
+                    ball(c.front(0.54, 0.024, s * 0.078), 0.02, '#ffd84a', (1, 0.6, 1), sub=1)
+            c.emblem('acorn', '#f2c06a', z=0.455, s=0.8)
+        with _into(c, 'body', bp('top5')) as P:            # 5 줄무늬 긴소매
+            c.torso(TP, BT, collar=WHITE)
+            with P:
+                for z0 in (0.425, 0.505, 0.585):
+                    c.band(z0, z0 + 0.036, WHITE, 0.0125)
+        with _into(c, 'body', bp('top6')) as P:            # 6 저고리와 치마
+            c.torso(BT, kind='dress', collar=WHITE)
+            with P:
+                c.band(0.47, 0.7, TP, 0.014, 0.004, n=7)
+                a = c.front(0.69, 0.02, -0.085); b = c.front(0.69, 0.02, 0.085)
+                tube(a, c.front(0.535, 0.022, 0.045), 0.017, WHITE, seg=6)            # 깃(동정): 왼쪽이 오른쪽을 덮는다
+                tube(b, c.front(0.575, 0.02, -0.005), 0.017, WHITE, seg=6)
+                k = c.front(0.53, 0.03, 0.05)
+                ball(k, 0.024, TP2, sub=2)                                             # 고름
+                tube(k, c.front(0.385, 0.03, 0.02), 0.017, TP2, r2=0.013, seg=6)
+                tube(k, c.front(0.41, 0.03, 0.105), 0.017, TP2, r2=0.013, seg=6)
+
+        # ---------------- 팔
+        r = 0.06
+        for part, s, sd in ((c.armL, 1, 'L'), (c.armR, -1, 'R')):
+            a = Vector((s * SHX, 0, SHZ)); b = Vector((s * HAND[0], HAND[1], HAND[2]))
+            with part:
+                ball(a, r + 0.004, SK, sub=2)
+                tube(a, b, r, SK, r2=r - 0.004, seg=10)
+                ball(b, r + 0.02, SK, (1, 1, 1.05), sub=2)
+            for nm, sl in (('sls_', 0.3), ('sll_', 0.72)):
+                with m.part(nm + sd, tuple(a), parent='arm_' + sd):
+                    ball(a, r + 0.016, TP, sub=2)
+                    tube(a, a.lerp(b, sl), r + 0.014, TP, r2=r + 0.024, seg=10)
+
+        # ---------------- 다리
+        lr = 0.078
+        for part, s, sd in ((c.legL, 1, 'L'), (c.legR, -1, 'R')):
+            x = s * LEGX
+            piv = (x, 0, HIP)
+            with part:
+                tube((x, 0, HIP + 0.03), (x, 0, 0.08), lr - 0.007, SK, r2=(lr - 0.007) * 0.94, seg=10)
+                ball((x, -0.032, 0.066), 1.0, SH, (0.094, 0.128, 0.066), sub=2)
+            with m.part('pants_' + sd, piv, parent='leg_' + sd):
+                tube((x, 0, HIP + 0.03), (x, 0, 0.08), lr, BT, r2=lr * 0.94, seg=10)
+            with m.part('shorts_' + sd, piv, parent='leg_' + sd):
+                tube((x, 0, HIP + 0.03), (x, 0, 0.2), lr + 0.004, BT, r2=lr + 0.01, seg=10)
+            with m.part('sock_' + sd, piv, parent='leg_' + sd):
+                tube((x, 0, 0.155), (x, 0, 0.08), lr - 0.002, WHITE, r2=lr * 0.92, seg=10)
+
+        c.top = hc + 0.52
+        c.done()
+
+
 ALL = {}
 for _n, _f in (('dalgom', dalgom), ('goran', goran), ('nureong', nureong), ('beomi', beomi), ('jangkki', jangkki), ('pongdang', pongdang),
                ('dungdung', dungdung), ('sandeul', sandeul), ('dahong', dahong), ('kkokki', kkokki), ('dodam', dodam), ('pogeun', pogeun)):
@@ -975,3 +1249,4 @@ ALL['player_1'] = lambda n: kid(n, '#ffdcc0', '#6a4530', '#e8574c', '#40598f', '
 ALL['player_2'] = lambda n: kid(n, '#f5cba8', '#2e2a36', '#4a90d9', '#7a6a52', 'spiky')
 ALL['player_3'] = lambda n: kid(n, '#ffdcc0', '#b8682e', '#ffd04a', '#5fae62', 'pony')
 ALL['player_4'] = lambda n: kid(n, '#e8b890', '#3a2a22', '#6fb86a', '#4f7fc0', 'cap')
+ALL['player_custom'] = custom

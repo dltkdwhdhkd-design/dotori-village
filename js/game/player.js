@@ -79,6 +79,7 @@ export class Player {
     if (anim === 'swing' || anim === 'dig') dur = Math.max(dur, 0.5);
     if (at == null) at = anim === 'swing' || anim === 'dig' ? 0.48 : anim === 'pour' ? 0.45 : 1;
     this.actor.play(anim, dur); this.lock = dur; this.after = after || null; this.afterT = dur * (1 - at);
+    if (G.net && G.net.role) G.net.anim(anim, dur);
   }
 
   /** 거울에서 고른 모습으로 바꾼다 */
@@ -90,6 +91,7 @@ export class Player {
       this.actor.hold(S.player.tool ? ITEMS[S.player.tool].model : null);
     }
     dress(this.actor, S.player.look);
+    if (G.net && G.net.role) G.net.refresh();
   }
 
   equip(id, silent = false) {
@@ -98,6 +100,7 @@ export class Player {
     this.actor.hold(id ? ITEMS[id].model : null);
     this.netHold = false; this.actor.sneak = false;
     if (!silent) Sound.sfx(id ? 'pick' : 'drop');
+    if (G.net && G.net.role) G.net.refresh();
   }
   cycleTool() {
     const list = ownedTools(); if (!list.length) return;
@@ -220,6 +223,10 @@ export class Player {
     const door = this.doorInFront();
     if (door) return G.hooks.enter(door);
     const v = G.village, f = this.front(), o = v.obj(f.tx, f.ty), tool = S.player.tool;
+    if (G.visit) {                                // 놀러 온 마을: 그 마을 것은 건드리지 않는다
+      if (o && o.t === 'fix' && ['mailbox', 'board', 'bigtree'].includes(o.kind)) { UI.toast(o.kind === 'mailbox' ? '남의 우체통이다.' : '이 마을 사람들이 쓰는 것이다.'); return; }
+      if (tool === 'tool_shovel' || tool === 'tool_axe') { UI.toast('놀러 온 마을에서는 삽과 도끼를 쓰지 않는다.'); Sound.sfx('fail'); return; }
+    }
     if (o && o.t === 'fix') {
       if (o.kind === 'mailbox') return G.hooks.openMail();
       if (o.kind === 'board') return G.hooks.board();
@@ -239,6 +246,7 @@ export class Player {
     const v = G.village, f = this.front();
     let tx = f.tx, ty = f.ty, o = v.obj(tx, ty);
     if (!o || !['item', 'flower', 'weed'].includes(o.t)) { tx = Math.floor(this.x); ty = Math.floor(this.z); o = v.obj(tx, ty); if (!o || !['item', 'weed'].includes(o.t)) return; }
+    if (G.visit && o.t === 'flower') { UI.toast('남의 마을 꽃은 꺾지 않는다.'); return; }
     let id = o.t === 'item' ? o.id : o.t === 'flower' ? `flower_${o.sp}_${o.col}` : 'weed';
     const it = ITEMS[id];
     if (it && it.kind === 'coin') {

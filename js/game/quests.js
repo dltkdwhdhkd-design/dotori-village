@@ -146,7 +146,7 @@ export function checkAch() {
 
 // ---------------------------------------------------------------- 화면 위의 '할 일' 한 줄
 export function goalText() {
-  const P = S.prog; if (!P || P.done || P.step >= STORY.length) return '';
+  const P = S.prog; if (!P || P.done || P.step >= STORY.length || G.visit) return '';
   const s = STORY[P.step], p = s.prog ? s.prog() : null;
   return `할 일 · ${s.title}` + (Array.isArray(p) ? ` (${p[0]}/${p[1]})` : '');
 }

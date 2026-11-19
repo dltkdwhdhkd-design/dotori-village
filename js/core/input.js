@@ -4,7 +4,7 @@ let enabled = true;
 const MAP = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   run: ['ShiftLeft', 'ShiftRight'], act: ['Space', 'KeyZ', 'Enter'], pick: ['KeyF', 'KeyX'], bag: ['KeyE', 'KeyI', 'Tab'],
-  map: ['KeyM'], dex: ['KeyC'], note: ['KeyN'], menu: ['Escape'], cycle: ['KeyQ'], put: ['Backquote', 'Digit0'],
+  map: ['KeyM'], dex: ['KeyC'], note: ['KeyN'], chat: ['KeyT'], menu: ['Escape'], cycle: ['KeyQ'], put: ['Backquote', 'Digit0'],
   t1: ['Digit1'], t2: ['Digit2'], t3: ['Digit3'], t4: ['Digit4'], t5: ['Digit5'],
 };
 const BLOCK = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab']);

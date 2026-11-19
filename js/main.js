@@ -12,6 +12,7 @@ import { Village } from './world/village.js';
 import { G as TT, WK, MAP_W } from './world/mapgen.js';
 import { newProg, ensureProg, refreshGoal, openNote } from './game/quests.js';
 import { UI } from './ui/ui.js';
+import { openNet, openChat, setBaseMenu, closeNet } from './game/net.js';
 import { Sound } from './core/audio.js';
 import { Clock, dayKey } from './core/clock.js';
 import { Input } from './core/input.js';
@@ -32,7 +33,7 @@ function start(isNew) {
   G.stage.setMode(false);
   G.stage.setFocus(G.player.x, 0, G.player.z, true);
   UI.showHud(true);
-  UI.setMenu([['수첩', 'N', openNote], ['가방', 'E', openBag], ['도감', 'C', openDex], ['지도', 'M', openMap], ['메뉴', 'Esc', openMenu]]);
+  setBaseMenu([['수첩', 'N', openNote], ['가방', 'E', openBag], ['도감', 'C', openDex], ['지도', 'M', openMap], ['메뉴', 'Esc', openMenu]]);
   refreshGoal();
   refreshTime(true);
   updateMailFlag();
@@ -72,6 +73,7 @@ async function boot() {
   initStage(document.getElementById('game'));
   registerScripts(); registerMenus();
   G.hooks.newDay = (k) => newDay(k);
+  G.hooks.openNet = openNet; G.hooks.openChat = openChat;
   G.hooks.rebuildWorld = () => { buildWorld(G.village); if (G.critters) G.critters._water = null; };   // 다리를 놓는 등 땅 모양이 바뀌었을 때
   window.addEventListener('pointerdown', () => Sound.unlock(), { once: false });
   window.addEventListener('keydown', () => Sound.unlock());
@@ -93,7 +95,7 @@ async function boot() {
     if (me) G.title.setPlayer(me.model, me.look, false);
     showTitle({ onNew, onContinue });
   }
-  window.addEventListener('beforeunload', () => save());
+  window.addEventListener('beforeunload', () => { save(); closeNet(true); });
 }
 
 // 개발·점검용 도구 (브라우저 콘솔에서 DV.* 로 쓴다)

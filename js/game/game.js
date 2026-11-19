@@ -52,19 +52,28 @@ export function initStage(canvas) {
 }
 
 // ---------------------------------------------------------------- 마을 만들기
+/** 지금 서 있는 마을의 건물 겉모습을 정하는 정보(내 마을이면 내 저장에서, 놀러 간 마을이면 방장이 보내 준 것) */
+export function worldInfo() {
+  if (G.visit) return G.visit.info;
+  const P = S.prog || { shop: 2, museum: 2, pend: {} }, lots = {};
+  for (const [id, v] of Object.entries(S.villagers)) lots[v.lot] = id;
+  return { shop: P.shop, museum: P.museum, pm: !!P.pend.museum, sites: P.pend.sites || [], lv: S.player.houseLv, lots };
+}
+
 export function buildWorld(village) {
   if (G.world) { G.stage.scene.remove(G.world.root); }
+  village.listeners = village.listeners.filter((f) => f.keep);      // 앞서 그렸던 화면이 걸어 둔 것은 떼어 낸다
   G.village = village;
   G.world = new WorldView(G.stage, village, {
     buildingLook: (b) => {
       if (b.type === 'hall') return { model: 'hall' };
-      const P = S.prog || { shop: 2, museum: 2, pend: {} };
-      if (b.type === 'shop') return { model: P.shop >= 2 ? 'shop' : 'tent_shop' };
-      if (b.type === 'museum') return P.museum >= 2 ? { model: 'museum' } : P.museum === 1 ? { model: 'tent_museum' } : P.pend.museum ? { model: 'site' } : null;
-      if (b.type === 'home' && S.player.houseLv < 1) return { model: 'tent_home' };
-      if (b.type === 'home') return { model: 'home_' + S.player.houseLv, tint: { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 } };     // 도토리 깍정이 지붕
-      const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot);
-      if (!vid) return (P.pend.sites || []).includes(b.lot) ? { model: 'site' } : null;        // 새 이웃을 맞으려고 다듬어 둔 터
+      const I = worldInfo();
+      if (b.type === 'shop') return { model: I.shop >= 2 ? 'shop' : 'tent_shop' };
+      if (b.type === 'museum') return I.museum >= 2 ? { model: 'museum' } : I.museum === 1 ? { model: 'tent_museum' } : I.pm ? { model: 'site' } : null;
+      if (b.type === 'home' && I.lv < 1) return { model: 'tent_home' };
+      if (b.type === 'home') return { model: 'home_' + I.lv, tint: { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 } };     // 도토리 깍정이 지붕
+      const vid = I.lots[b.lot];
+      if (!vid) return I.sites.includes(b.lot) ? { model: 'site' } : null;        // 새 이웃을 맞으려고 다듬어 둔 터
       const v = VILLAGERS[vid], c = new THREE.Color(v.roof);
       return { model: v.house, tint: { roof: v.roof, roof_d: c.clone().multiplyScalar(0.8).getHex(), wall: v.wall, wall_d: new THREE.Color(v.wall).multiplyScalar(0.88).getHex(), door: v.door, door_d: new THREE.Color(v.door).multiplyScalar(0.8).getHex() } };
     },
@@ -98,7 +107,7 @@ export function refreshTime(force = false) {
   if (G.started) {
     UI.setClock(dateLabel(now), timeLabel(now), `${SEASON_KO[season(now)]} · ${WEATHER_KO[G.weather]}`);
     const k = dayKey(now);
-    if (S.day !== k && G.hooks.newDay && !G.busy && !UI.blocking()) G.hooks.newDay(k);
+    if (S.day !== k && G.hooks.newDay && !G.busy && !UI.blocking() && !G.visit) G.hooks.newDay(k);      // 놀러 가 있을 때는 돌아와서 넘긴다
     if (G.hooks.minute) G.hooks.minute(now);
     const h = hourF(now);
     Sound.music(G.room ? 'indoor' : h < 5 || h >= 21 ? 'night' : h < 10 ? 'morning' : h < 17 ? 'day' : 'evening');
@@ -212,6 +221,9 @@ export function update(dt) {
     else {
       for (const n of G.npcs) n.update(dt);
       if (G.extras) for (const a of G.extras) a.update(dt);      // 연출 때만 잠깐 나오는 인물(잔치의 이장·까미·두루)
+    }
+    if (G.net && G.net.update) G.net.update(dt);                 // 같이 하기: 다른 사람들
+    if (!G.room) {
       if (G.critters) G.critters.update(dt);
     }
     if (free) {
@@ -219,6 +231,7 @@ export function update(dt) {
       else if (Input.take('dex')) G.hooks.openDex();
       else if (Input.take('map')) G.hooks.openMap();
       else if (Input.take('note')) G.hooks.openNote();
+      else if (Input.take('chat')) { if (G.net && G.net.role) G.hooks.openChat(); }
       else if (Input.take('menu')) G.hooks.openMenu();
     }
     const p = G.player;
@@ -246,6 +259,12 @@ export function update(dt) {
 
 export function save() {
   if (!G.started || !G.village) return false;
+  if (G.visit) {                                 // 놀러 가 있는 동안에는 내 마을만 저장한다(자리와 오늘의 기록도 떠나기 전 것)
+    const d = S.daily; S.daily = G.visit.daily;
+    const ok = saveGame(G.visit.home);
+    S.daily = d;
+    return ok;
+  }
   if (G.player && !G.room) { S.player.x = G.player.x; S.player.z = G.player.z; }
   return saveGame(G.village);
 }

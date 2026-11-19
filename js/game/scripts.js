@@ -520,6 +520,13 @@ function mailLetter() {
   S.mail.unshift({ from: 'ujik', name: '우직 이장', text: `${S.player.name}에게.\n\n이사를 축하하네.\n농사지은 것 조금 넣었으니 요긴하게 쓰게.\n모르는 건 마을회관으로 물으러 오고.\n\n이장 우직`, item: 'tool_shovel', read: false, day: S.day });
 }
 
+/** 놀러 간 마을의 이웃과는 가볍게 인사만 나눈다 */
+async function talkVisit(n) {
+  const def = VILLAGERS[n.id], who = { name: def.name, pitch: PERSONALITY[def.p].pitch, actor: n.actor };
+  n.talking = true;
+  try { await say(who, pick(['어, 처음 보는 얼굴이네! {v} 마을에 놀러 왔구나.', '놀러 왔어? 천천히 구경하다 가!', '{v} 마을 어때? 살기 좋은 곳이야.', '손님이구나! 여기 물고기가 잘 잡혀.']), { v: G.visit ? G.visit.name : S.village.name }); } finally { n.talking = false; }
+}
+
 // ---------------------------------------------------------------- 건물 드나들기
 function wrapNpc(id) { const def = VILLAGERS[id]; return { id, name: def.name, pitch: PERSONALITY[def.p].pitch }; }
 function roomSpec(b) {
@@ -560,6 +567,7 @@ function roomSpec(b) {
 
 export async function enter(b) {
   await runScript(async () => {
+    if (G.visit) { await narr('놀러 온 마을에서는 건물에 들어가지 않는다. 밖에서 같이 놀자!'); return; }
     const h = hourF();
     if (b.type === 'museum' && S.prog.museum < 1) { await narr(S.prog.pend.museum ? '말뚝과 줄이 쳐져 있다. 내일이면 두루의 조사 천막이 선다고 한다.' : '아직 빈 터다. 팻말에 "박물관 자리"라고 적혀 있다.'); return; }
     if (b.type === 'shop' && (h < 8 || h >= 22)) { Sound.sfx('fail'); await narr('문이 잠겨 있다. 팻말에 "아침 8시부터 밤 10시까지"라고 적혀 있다.'); return; }
@@ -637,6 +645,7 @@ export function caughtFish(sp) {
     await UI.card({ id, title: sp.say, sub: sp.trash ? '' : `${cm}cm${d && cm > d.max ? ' · 내 최고 기록!' : ''}`, isNew });
     done();
     S.stats.fish++;
+    if (!sp.trash && G.net) G.net.got('fish', sp.id);
     if (!sp.trash) { track('fish'); track(sp.water === 'sea' ? 'seafish' : 'freshfish'); if (isNew) track('newsp'); }
     if (!addItem(id)) UI.toast(sp.trash ? '가방이 가득 차서 그냥 두고 왔다.' : '가방이 가득 차서 놓아주었다.');
   });
@@ -650,6 +659,7 @@ export function caughtBug(b) {
     await UI.card({ id, title: sp.say, sub: '', isNew });
     done();
     S.stats.bug++;
+    if (G.net) G.net.got('bug', sp.id);
     track('bug'); if (isNew) track('newsp');
     if (!addItem(id)) UI.toast('가방이 가득 차서 놓아주었다.');
   });
@@ -664,7 +674,7 @@ export function stung() {
 
 export function registerScripts() {
   Object.assign(G.hooks, {
-    talk: (n) => runScript(() => talkVillager(n)),
+    talk: (n) => runScript(() => (n.remote ? talkVisit(n) : talkVillager(n))),
     enter, exit: exitRoom, portal, caughtFish, caughtBug, stung,
     talkDuru: () => runScript(talkDuru),
     exhibit: (name, text) => runScript(async () => { await Dialog.say(name, text); }), buyDisplay: (room, i) => runScript(() => buyDisplay(room, i)),

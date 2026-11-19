@@ -1,5 +1,5 @@
 // 창: 가방, 도감, 지도, 설정, 우체통, 창고, 게시판, 타이틀 화면
-import { G, runScript, save, burst, refreshTime } from './game.js';
+import { G, runScript, save, burst, refreshTime, worldInfo } from './game.js';
 import { VERSION } from '../core/version.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, INV_SIZE, hasSave } from './state.js';
@@ -19,7 +19,7 @@ const narr = (t) => Dialog.say('', t);
 
 // ---------------------------------------------------------------- 가방
 function frontTile() { const f = G.player.front(0.8); return { ...f, idx: f.ty * MAP_W + f.tx, o: G.village.obj(f.tx, f.ty) }; }
-function canPlantAt(f) { const v = G.village; return (!f.o && v.terrainAt(f.tx, f.ty) === T.GRASS && v.buried[f.idx] == null && !v.doorAt(f.tx, f.ty - 1)) || (f.o && f.o.t === 'hole' && v.terrainAt(f.tx, f.ty) === T.GRASS); }
+function canPlantAt(f) { if (G.visit) return false; const v = G.village; return (!f.o && v.terrainAt(f.tx, f.ty) === T.GRASS && v.buried[f.idx] == null && !v.doorAt(f.tx, f.ty - 1)) || (f.o && f.o.t === 'hole' && v.terrainAt(f.tx, f.ty) === T.GRASS); }
 
 function bagActions(i, close, redraw) {
   const s = S.inv[i], it = ITEMS[s.id], p = G.player, acts = [];
@@ -179,21 +179,22 @@ export function openMap() {
   x.font = 'bold 13px "Jua","Malgun Gothic",sans-serif'; x.textAlign = 'center';
   for (const b of v.buildings) {
     let label = { hall: '마을회관', shop: '만물상', museum: '박물관', home: '우리 집' }[b.type], col = { hall: '#4a5568', shop: '#3fa39a', museum: '#7c93b0', home: '#d9584a' }[b.type];
-    const Q = S.prog;
-    if (b.type === 'house') { const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot); if (!vid) { label = (Q.pend.sites || []).includes(b.lot) ? '공사 중' : '빈터'; col = '#b9a98a'; } else { label = S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
-    else if (b.type === 'shop' && Q.shop < 2) label = '천막 가게';
-    else if (b.type === 'museum' && Q.museum < 2) { label = Q.museum === 1 ? '조사 천막' : '박물관 터'; if (Q.museum < 1) col = '#b9a98a'; }
-    else if (b.type === 'home' && S.player.houseLv < 1) label = '내 천막';
+    const I = worldInfo();
+    if (b.type === 'house') { const vid = I.lots[b.lot]; if (!vid) { label = I.sites.includes(b.lot) ? '공사 중' : '빈터'; col = '#b9a98a'; } else { label = G.visit || S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
+    else if (b.type === 'shop' && I.shop < 2) label = '천막 가게';
+    else if (b.type === 'museum' && I.museum < 2) { label = I.museum === 1 ? '조사 천막' : '박물관 터'; if (I.museum < 1) col = '#b9a98a'; }
+    else if (b.type === 'home') label = G.visit ? `${G.visit.host}네 ${I.lv < 1 ? '천막' : '집'}` : I.lv < 1 ? '내 천막' : '우리 집';
     x.fillStyle = col; x.fillRect(b.x * SC + 1, b.y * SC + 1, b.w * SC - 2, b.d * SC - 2);
     x.strokeStyle = '#4a3220'; x.lineWidth = 1.5; x.strokeRect(b.x * SC + 1, b.y * SC + 1, b.w * SC - 2, b.d * SC - 2);
     x.fillStyle = '#fff'; x.strokeStyle = '#3a2a1a'; x.lineWidth = 3; x.strokeText(label, (b.x + b.w / 2) * SC, (b.y + b.d / 2) * SC + 5); x.fillText(label, (b.x + b.w / 2) * SC, (b.y + b.d / 2) * SC + 5);
   }
   for (const n of G.npcs) if (n.visible) { x.fillStyle = VILLAGERS[n.id].roof; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(n.x * SC, n.z * SC, 5, 0, 7); x.fill(); x.stroke(); }
+  for (const r of (G.net ? G.net.peers.values() : [])) if (r.known && r.placed && !r.inside) { x.fillStyle = '#4a90d9'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.arc(r.x * SC, r.z * SC, 6, 0, 7); x.fill(); x.stroke(); }
   const px = S.player.x, pz = S.player.z, P = G.room ? { x: px, z: pz } : G.player;
   x.fillStyle = '#e8463c'; x.strokeStyle = '#fff'; x.lineWidth = 3; x.beginPath(); x.arc(P.x * SC, P.z * SC, 7, 0, 7); x.fill(); x.stroke();
   box.appendChild(cv);
-  box.appendChild(el('div', 'note', `<b style="color:#e8463c">●</b> 나　·　작은 색 점은 밖에 나와 있는 이웃　·　${S.village.name} 마을의 특산 과일은 ${FRUIT_KO[v.fruit]}`));
-  UI.openPanel(`${S.village.name} 마을 지도`, box);
+  box.appendChild(el('div', 'note', `<b style="color:#e8463c">●</b> 나　·　<b style="color:#4a90d9">●</b> 같이 있는 친구　·　작은 색 점은 밖에 나와 있는 이웃　·　${G.visit ? G.visit.name : S.village.name} 마을의 특산 과일은 ${FRUIT_KO[v.fruit]}`));
+  UI.openPanel(`${G.visit ? G.visit.name : S.village.name} 마을 지도`, box);
 }
 
 // ---------------------------------------------------------------- 우체통
@@ -275,7 +276,7 @@ export function openMenu() {
       <span>해 그림자</span><span><label><input type="checkbox" id="st-shadow" ${Settings.shadow !== false ? 'checked' : ''}> 켜기</label> <span class="note">느린 컴퓨터에서는 끄면 가벼워진다.</span></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 6px">
-      <button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
+      <button class="btn go" id="st-net">같이 하기</button><button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
     </div>
     <textarea id="st-text" class="hidden" style="width:100%;height:90px;font-size:12px"></textarea>
     <div class="note">${S.village.name} 마을에서 ${S.stats.days}일째 · 낚은 물고기 ${S.stats.fish}마리 · 잡은 곤충 ${S.stats.bug}마리 · 번 도토리 ${fmt(S.stats.earned)}</div>
@@ -286,12 +287,14 @@ export function openMenu() {
       <span><b>F</b> / X</span><span>줍기, 꽃 꺾기 (집에서는 가구 집어넣기)</span>
       <span><b>E</b> / I / Tab</span><span>가방</span>
       <span><b>1</b>~<b>5</b>, <b>Q</b>, <b>0</b></span><span>도구 꺼내기, 차례로 바꾸기(집에서는 가구 돌리기), 집어넣기</span>
-      <span><b>C</b> <b>M</b> <b>Esc</b></span><span>도감, 지도, 이 창</span>
+      <span><b>N</b> <b>C</b> <b>M</b> <b>Esc</b></span><span>수첩, 도감, 지도, 이 창</span>
+      <span><b>T</b></span><span>말하기(같이 하는 동안)</span>
     </div>`;
   UI.openPanel('메뉴', box);
   const $ = (id) => box.querySelector('#' + id);
   const off = $('st-off');
   for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '실제 시간 그대로' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Settings.offsetMin) o.selected = true; off.appendChild(o); }
+  $('st-net').onclick = () => G.hooks.openNet();
   $('st-bgm').oninput = (e) => { Settings.bgm = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); };
   $('st-sfx').oninput = (e) => { Settings.sfx = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); Sound.sfx('ui'); };
   off.onchange = () => { Settings.offsetMin = +off.value; Clock.offsetMin = Settings.offsetMin; saveSettings(); refreshTime(true); UI.toast('게임 시계를 바꿨다.'); };

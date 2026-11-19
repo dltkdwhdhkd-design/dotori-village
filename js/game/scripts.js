@@ -1,8 +1,9 @@
 // 대본: 주민과의 대화, 가게·박물관·마을회관, 건물 드나들기, 잡았을 때의 연출
 import * as THREE from 'three';
-import { G, runScript, save, refreshTime, burst } from './game.js';
+import { G, runScript, save, refreshTime, burst, groundY } from './game.js';
 import { Room } from './rooms.js';
 import { museumSpec } from './museum.js';
+import { COST, stepId, advance, canPay, costText, donated, species, greeted, festivalReady, track, refreshGoal } from './quests.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
 import { S, addItem, canAdd, takeItem, hasItem, countItem, freeSlots, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
 import { ITEMS, FISH, BUGS, FISH_BY_ID, BUG_BY_ID, FOSSILS, FURNITURE, WALLS, FLOORS, FRUIT_KO, SHELL_IDS, itemName, sellPrice, isDonatable } from '../data/items.js';
@@ -11,6 +12,7 @@ import { TALK, NPC_TALK } from '../data/talk.js';
 import { UI, Dialog, fill, itemRow, acorns } from '../ui/ui.js';
 import { Sound } from '../core/audio.js';
 import { make } from '../gfx/models.js';
+import { Actor } from '../gfx/actor.js';
 import { dayKey, hourF, inMonths, inHours, season } from '../core/clock.js';
 import { rand, fmt, josa, el, wait } from '../core/util.js';
 
@@ -18,6 +20,19 @@ const pick = (a) => a[Math.floor(rand() * a.length)];
 const narr = (t) => Dialog.say('', t);
 const say = (who, text, vars = {}) => Dialog.say(who.name, fill(text, { p: S.player.name, v: S.village.name, ...vars }), { pitch: who.pitch || 1, actor: who.actor || null });
 const npcOf = (k) => ({ name: NPCS[k].name, pitch: NPCS[k].pitch });
+const haveMat = (c) => Object.entries(c).map(([k, n]) => `${{ wood: '나무', stone: '돌', money: '도토리' }[k]} ${fmt(Math.min(n, k === 'money' ? S.player.money : countItem('mat_' + k)))}/${fmt(n)}`).join(', ');
+function payCost(c) { for (const [k, n] of Object.entries(c)) { if (k === 'money') addMoney(-n); else takeItem('mat_' + k, n); } }
+const refreshBld = (type) => { const b = G.village.buildings.find((x) => x.type === type); if (b && G.world) G.world.refreshBuilding(b); };
+/** 새 이웃이 들어올 집터를 하나 잡아 둔다(다음 날 그 자리에 집이 선다) */
+function reserveLot() {
+  const used = new Set(Object.values(S.villagers).map((v) => v.lot)), pd = S.prog.pend;
+  pd.sites = pd.sites || [];
+  const lot = [...Array(G.village.lots.length).keys()].find((l) => !used.has(l) && !pd.sites.includes(l));
+  if (lot == null) return;
+  pd.sites.push(lot);
+  const b = G.village.buildings.find((x) => x.lot === lot);
+  if (b && G.world) G.world.refreshBuilding(b);
+}
 
 // ---------------------------------------------------------------- 주민과 대화
 function vvars(n, extra = {}) { const def = VILLAGERS[n.id]; return { me: def.name, c: def.catch, f: FRUIT_KO[G.village.fruit], ...extra }; }
@@ -96,7 +111,8 @@ export async function talkVillager(n) {
   try {
     let h = hourF(); if (h < 5) h += 24;
     const sleepy = h > PERSONALITY[def.p].sleep - 0.5;
-    if (!st.met) { st.met = true; st.friend += 3; st.talkDay = today; n.actor.play('wave', 0.9); await say(n, pick(L.hello), V()); }
+    if (st.talkT !== today) { st.talkT = today; track('talk'); }
+    if (!st.met) { st.met = true; refreshGoal(); st.friend += 3; st.talkDay = today; n.actor.play('wave', 0.9); await say(n, pick(L.hello), V()); }
     else {
       const par = (S.parcels || []).find((q) => q.to === id);
       if (par && hasItem('parcel')) {
@@ -171,12 +187,13 @@ function shopBuyPanel() {
     const box = el('div');
     const draw = () => {
       box.innerHTML = '';
-      box.appendChild(el('div', 'note', `가진 도토리: ${acorns(S.player.money)}　·　가구는 가게 안에 진열돼 있어요. 다가가서 살펴보세요.`));
+      const tent = S.prog.shop < 2;
+      box.appendChild(el('div', 'note', `가진 도토리: ${acorns(S.player.money)}　·　${tent ? '가게를 번듯하게 지으면 가구와 벽지도 들여놓는대요.' : '가구는 가게 안에 진열돼 있어요. 다가가서 살펴보세요.'}`));
       const list = el('div', 'list');
       const stock = [];
       for (const t of ['tool_shovel', 'tool_can', 'tool_axe', 'tool_net', 'tool_rod']) if (!hasItem(t)) stock.push(t);
-      stock.push(...S.shop.seeds, 'sapling_blossom', 'sapling_pine', 'medicine', S.shop.wall, S.shop.floor);
-      if (S.shop.fruit && !S.shop.sold.includes(S.shop.fruit)) stock.push(S.shop.fruit);
+      stock.push(...S.shop.seeds, 'sapling_blossom', 'sapling_pine', 'medicine');
+      if (!tent) { stock.push(S.shop.wall, S.shop.floor); if (S.shop.fruit && !S.shop.sold.includes(S.shop.fruit)) stock.push(S.shop.fruit); }
       for (const id of stock) {
         const it = ITEMS[id], price = it.kind === 'fruit' ? 900 : it.buy;
         const row = itemRow(id, it.desc, acorns(price));
@@ -212,7 +229,7 @@ function shopSellPanel() {
       const all = el('button', 'btn', '채집한 것 모두 고르기');
       all.onclick = () => { S.inv.forEach((s, i) => { if (s && ['fish', 'bug', 'shell', 'fruit', 'misc', 'flower'].includes(ITEMS[s.id].kind)) picked.add(i); }); draw(); };
       const go = el('button', 'btn go', '팔기'); go.disabled = !picked.size; go.style.marginLeft = '6px';
-      go.onclick = () => { for (const i of picked) { S.inv[i] = null; } addMoney(total); sold += total; picked.clear(); Sound.sfx('coin'); draw(); };
+      go.onclick = () => { for (const i of picked) { S.inv[i] = null; } addMoney(total); sold += total; track('sell', total); picked.clear(); Sound.sfx('coin'); draw(); };
       head.appendChild(all); head.appendChild(go);
       box.appendChild(head); box.appendChild(list);
     };
@@ -221,13 +238,25 @@ function shopSellPanel() {
   });
 }
 async function talkKkami() {
-  const k = npcOf('kkami');
-  await say(k, pick(['어서 와요, 어서 와! 까치네 만물상입니다. 오늘은 뭘 도와드릴까?', '{p} 손님 오셨네! 반짝이는 건 못 드려도 쓸 만한 건 다 있어요.', '까악! 아니, 어서 오세요. 천천히 둘러봐요.']));
+  const k = npcOf('kkami'), P = S.prog, tent = P.shop < 2;
+  if (!P.met.kkami) {
+    P.met.kkami = true; refreshGoal();
+    await say(k, '까악! 새로 이사 온 {p} 맞죠? 난 까미예요. 이 마을에서 장사를 맡고 있답니다.');
+    await say(k, tent ? '지금은 천막 좌판이지만, 언젠가는 번듯한 가게를 차릴 거예요. 물고기든 과일이든 뭐든 사 드릴게요!' : '필요한 건 뭐든 말해요. 물고기든 과일이든 뭐든 사 드릴게요!');
+  } else await say(k, pick(tent ? ['어서 와요! 아직은 좌판뿐이지만 쓸 만한 건 다 있어요.', '{p} 손님 오셨네! 오늘은 뭘 도와드릴까?'] : ['어서 와요, 어서 와! 까치네 만물상입니다. 오늘은 뭘 도와드릴까?', '{p} 손님 오셨네! 반짝이는 건 못 드려도 쓸 만한 건 다 있어요.', '까악! 아니, 어서 오세요. 천천히 둘러봐요.']));
   for (;;) {
-    const c = await Dialog.choose(['물건을 사고 싶어', '팔 물건이 있어', '그냥 구경할게'], { cancel: 2 });
+    const build = stepId() === 'shop' && tent && !P.pend.shop;
+    const opts = ['물건을 사고 싶어', '팔 물건이 있어'].concat(build ? ['가게 지을 재료를 가져왔어'] : [], ['그냥 구경할게']);
+    const c = await Dialog.choose(opts, { cancel: opts.length - 1 });
     if (c === 0) { Dialog.close(); await shopBuyPanel(); await say(k, '더 필요한 건 없어요?'); }
     else if (c === 1) { Dialog.close(); const sold = await shopSellPanel(); await say(k, sold > 0 ? `전부 해서 도토리 ${fmt(sold)}개! 좋은 물건 고마워요.` : '팔 게 생기면 언제든 가져와요.'); }
-    else break;
+    else if (build && c === 2) {
+      if (!canPay(COST.shop)) { await say(k, `정말요?! 가게를 지으려면 <b>${costText(COST.shop)}</b>가 있어야 해요. 지금은 ${haveMat(COST.shop)}이네요. 조금만 더 부탁해요!`); continue; }
+      payCost(COST.shop); P.pend.shop = dayKey() + 1; Sound.sfx('fanfare');
+      await say(k, '까악! 이거면 충분해요! 내일이면 번듯한 가게가 설 거예요.');
+      await say(k, '가게가 서면 가구랑 벽지도 들여놓을게요. 날마다 물건이 바뀌니까 자주 들러요!');
+      advance();
+    } else break;
   }
   await say(k, pick(['또 와요! 내일은 물건이 바뀐답니다.', '고마워요, 살펴 가요!']));
 }
@@ -250,9 +279,23 @@ function isDonated(id) { const [c, k] = museumKey(id); return S.museum[c].includ
 function factOf(id) { const it = ITEMS[id]; return it.kind === 'fish' ? FISH_BY_ID[it.sp].fact : it.kind === 'bug' ? BUG_BY_ID[it.sp].fact : it.fact; }
 export function museumProgress() { return { fish: [S.museum.fish.length, FISH.filter((f) => !f.trash).length], bug: [S.museum.bug.length, BUGS.length], fossil: [S.museum.fossil.length, FOSSILS.length] }; }
 
+/** 기증품이 넉넉히 모이면 천막을 박물관 건물로 */
+async function museumGrow(d) {
+  const P = S.prog;
+  if (stepId() !== 'museum' || P.museum !== 1 || P.pend.museum || donated() < COST.museum) return;
+  P.pend.museum = { day: dayKey() + 1, to: 2 }; Sound.sfx('fanfare');
+  await say(d, `기증품이 ${donated()}점이 되었습니다! 이만하면 천막으로는 좁지요.`);
+  await say(d, '이장님께 말씀드려 박물관 건물을 짓겠습니다. 내일이면 문을 엽니다. 전시관에서 기증하신 것을 직접 보실 수 있을 겁니다.');
+  advance();
+}
 async function talkDuru() {
-  const d = npcOf('duru');
-  await say(d, pick(['어서 오세요. 마을 박물관의 두루입니다. 오늘은 어떤 걸 가져오셨는지요?', '흠흠, {p} 님이시군요. 조용히 둘러보셔도 좋고, 기증은 언제나 환영입니다.']));
+  const d = npcOf('duru'), P = S.prog;
+  if (P.museum < 2 && !P.met.duru) {
+    P.met.duru = true;
+    await say(d, '처음 뵙겠습니다. 두루라고 합니다. 우직 이장님의 부름을 받고 이 마을의 생물을 조사하러 왔지요.');
+    await say(d, `물고기든 곤충이든 화석이든, 처음 보는 것이 있으면 가져다주십시오. <b>${COST.museum}점</b>이 모이면 박물관을 지을 수 있습니다.`);
+  } else await say(d, pick(P.museum < 2 ? ['어서 오세요. 조사 천막의 두루입니다. 오늘은 어떤 걸 가져오셨는지요?'] : ['어서 오세요. 마을 박물관의 두루입니다. 오늘은 어떤 걸 가져오셨는지요?', '흠흠, {p} 님이시군요. 조용히 둘러보셔도 좋고, 기증은 언제나 환영입니다.']));
+  await museumGrow(d);
   for (;;) {
     const c = await Dialog.choose(['기증할게요', '화석을 감정해 주세요', '전시 현황이 궁금해요', '안녕히 계세요'], { cancel: 3 });
     if (c === 0) {
@@ -266,7 +309,9 @@ async function talkDuru() {
         await say(d, `오오, <b>${itemName(id)}</b>! 귀한 걸 주셨습니다.`);
         const f = factOf(id); if (f) await say(d, f);
       }
-      await say(d, `덕분에 전시가 ${idxs.length}점 늘었습니다. 고맙습니다.`);
+      await say(d, `덕분에 ${P.museum < 2 ? '표본' : '전시'}이 ${idxs.length}점 늘었습니다. 고맙습니다.`);
+      track('donate', idxs.length);
+      await museumGrow(d);
     } else if (c === 1) {
       const n = countItem('fossil');
       if (!n) { await say(d, '감정할 화석이 없으시군요. 땅에 별 모양으로 갈라진 자리가 보이면 삽으로 파 보십시오.'); continue; }
@@ -281,7 +326,7 @@ async function talkDuru() {
         await say(d, `이건… <b>${f[1]}</b>입니다!`);
         if (!S.museum.fossil.includes(f[0])) {
           const a = await Dialog.choose(['기증할게요', '제가 가질게요'], { cancel: 1 });
-          if (a === 0) { S.museum.fossil.push(f[0]); await say(d, f[3]); continue; }
+          if (a === 0) { S.museum.fossil.push(f[0]); track('donate'); await say(d, f[3]); continue; }
         } else await say(d, '이미 전시하고 있는 것이니 가져가셔도 좋습니다.');
         addItem(id);
       }
@@ -292,16 +337,144 @@ async function talkDuru() {
       await say(d, tot === 0 ? '아직은 텅 비어 있지요. 첫 기증의 주인공이 되어 주시겠습니까?' : tot < 30 ? '갈 길이 멀지만, 박물관은 원래 천천히 채우는 곳입니다.' : '이만하면 어디 내놓아도 부끄럽지 않은 박물관입니다. 전부 {p} 님 덕분이지요.');
     } else break;
   }
-  await say(d, '또 오십시오. 기증하신 것은 뒤쪽 전시관에서 직접 보실 수 있습니다.');
+  await museumGrow(d);
+  await say(d, P.museum >= 2 ? '또 오십시오. 기증하신 것은 뒤쪽 전시관에서 직접 보실 수 있습니다.' : P.pend.museum ? '또 오십시오. 내일부터는 박물관에서 뵙겠습니다.' : '또 오십시오. 기증품이 모이면 박물관을 지을 수 있습니다.');
 }
 
 // ---------------------------------------------------------------- 마을회관
+/** 마을 키우기: 이장에게 지금 할 일을 알리거나 다음 일을 받는다 */
+async function storyUjik(u) {
+  const Q = S.prog, id = stepId(), P = S.player, tm = dayKey() + 1;
+  if (id === 'hello') {
+    await say(u, '오, 왔구먼. 천막에서 하룻밤은 지낼 만하던가?');
+    await say(u, '보다시피 우리 마을은 이제 막 시작이라네. 사는 이는 자네까지 셋, 가게는 까미의 천막 좌판 하나가 전부지.');
+    await say(u, '자네가 조금만 거들어 주면 번듯한 마을이 될 걸세. 할 일은 <b>수첩(N)</b>에 적어 두었으니 틈틈이 펴 보게.');
+    addMoney(500); Sound.sfx('coin');
+    await say(u, '자, 이사 축하금으로 <b>도토리 500개</b>를 주지. 우선 이웃 둘하고 까미한테 인사부터 다녀오게. 다녀와서 내게 알려 주고.');
+    advance();
+  } else if (id === 'greet') {
+    if (greeted() < 3) { await say(u, `아직 인사를 다 못 다녔구먼. 이웃 둘과 천막 가게의 까미, 이렇게 셋일세. 지금까지 ${greeted()}명을 만났군.`); return; }
+    await say(u, '다들 반가워하던가? 좋아, 좋아. 이웃끼리 얼굴을 알아야 마을이지.');
+    if (!hasItem('tool_can') && canAdd('tool_can')) { addItem('tool_can'); Sound.sfx('pick'); await say(u, '이 <b>물뿌리개</b>를 받게. 꽃에 물을 주면 다음 날 옆에 새 꽃이 피기도 한다네.'); }
+    await say(u, `다음은 이 마을에 어떤 생물이 사는지 알아봐 주게. 물고기든 곤충이든 <b>${COST.five}종</b>만 잡아 보고 오면 되네.`);
+    advance();
+  } else if (id === 'five') {
+    if (species() < COST.five) { await say(u, `아직 ${species()}종이로구먼. ${COST.five}종이 되면 다시 오게. 강과 바다, 꽃밭과 나무를 두루 살펴보게나.`); return; }
+    await say(u, `벌써 ${species()}종이나! 이만하면 내 오랜 벗 두루를 부를 만하겠어.`);
+    await say(u, '두루는 생물을 연구하는 학자라네. 내일이면 마을에 조사 천막을 칠 걸세. 잡은 것을 가져다주면 무척 좋아할 거야.');
+    Q.pend.museum = { day: tm, to: 1 }; refreshBld('museum');
+    addMoney(1000); Sound.sfx('coin');
+    await say(u, '수고비로 <b>도토리 1,000개</b>를 주지.');
+    await say(u, `그리고 자네도 언제까지 천막에서 살 수는 없지. <b>${costText(COST.house)}</b>를 구해 오면 집을 지어 주겠네. 도끼는 까미네 좌판에서 판다네.`);
+    advance();
+  } else if (id === 'house') {
+    if (!canPay(COST.house)) { await say(u, `집을 지으려면 <b>${costText(COST.house)}</b>가 있어야 하네. 지금 가진 건 ${haveMat(COST.house)}일세.`); await say(u, '도끼로 나무를 찍으면 나무가 나온다네. 한 그루를 세 번 찍으면 쓰러지니, 두 번씩만 찍으면 숲이 남아나지.'); return; }
+    await say(u, `나무를 다 구해 왔구먼! 집값은 <b>도토리 ${fmt(LOANS[0])}개</b>일세. 먼저 짓고, 벌리는 대로 와서 갚으면 되네.`);
+    if (await Dialog.choose(['집을 지어 주세요', '조금 더 있다가요'], { cancel: 1 }) !== 0) return;
+    payCost(COST.house); Q.pend.home = tm; Sound.sfx('fanfare');
+    await say(u, '좋아, 맡겨 두게! 내일 아침이면 천막 자리에 집이 서 있을 걸세.');
+    await say(u, '그동안 까미를 좀 도와주게. 좌판 대신 번듯한 가게를 짓고 싶다더군.');
+    advance();
+  } else if (id === 'shop') {
+    await say(u, `까미가 가게 지을 재료를 모으고 있다네. <b>${costText(COST.shop)}</b>라던가. 돌은 삽으로 바위를 두드리면 나온다네.`);
+  } else if (id === 'museum') {
+    await say(u, Q.museum < 1 ? '두루의 천막은 내일이면 설 걸세. 그동안 물고기랑 곤충을 넉넉히 잡아 두게.' : `두루에게 기증한 것이 ${donated()}점이로구먼. ${COST.museum}점이 되면 박물관 건물을 지을 수 있다더군.`);
+  } else if (id === 'lots') {
+    await say(u, `마을이 자라려면 식구가 늘어야지. 새 식구가 살 집터를 세 곳 다듬으려 하네. 한 곳에 <b>${costText(COST.lot)}</b>가 드네. 지금까지 ${Q.lots}곳을 마련했지.`);
+    while (Q.lots < 3) {
+      if (!canPay(COST.lot)) { await say(u, `재료가 모자라는구먼. 지금은 ${haveMat(COST.lot)}일세. 모이면 다시 오게.`); return; }
+      if (await Dialog.choose(['집터를 마련해 주세요', '다음에요'], { cancel: 1 }) !== 0) return;
+      payCost(COST.lot); Q.lots++; Q.pend.movein.push(tm); reserveLot(); refreshGoal(); Sound.sfx('coin');
+      await say(u, `좋아! ${Q.lots}번째 집터를 다듬어 두겠네. 내일이면 새 식구가 이사 올 걸세.`);
+    }
+    await say(u, '이걸로 세 곳이 다 찼구먼! 마을이 북적북적해지겠어.');
+    await say(u, `이제 강에 다리를 하나 더 놓으면 오가기가 한결 편할 걸세. <b>${costText(COST.bridge)}</b>가 든다네.`);
+    advance();
+  } else if (id === 'bridge') {
+    if (!canPay(COST.bridge)) { await say(u, `다리를 놓으려면 <b>${costText(COST.bridge)}</b>가 드네. 지금은 ${haveMat(COST.bridge)}일세.`); return; }
+    await say(u, `재료와 돈이 다 모였구먼! <b>${costText(COST.bridge)}</b>로 둘째 다리를 놓겠는가?`);
+    if (await Dialog.choose(['다리를 놓아 주세요', '다음에요'], { cancel: 1 }) !== 0) return;
+    payCost(COST.bridge); Q.pend.bridge = tm; Sound.sfx('fanfare');
+    await say(u, '좋아! 내일 아침이면 다리가 놓여 있을 걸세.');
+    await say(u, '가게와 박물관, 다리가 다 서고 이웃이 다섯이 되면… 다 같이 <b>마을 잔치</b>를 여세!');
+    advance();
+  } else if (id === 'festival') {
+    if (!festivalReady()) { await say(u, `잔치는 가게와 박물관, 다리가 다 서고 이웃이 다섯이 되면 열자꾸나. 지금 이웃은 ${S.residents.length}명일세.${Q.shop < 2 ? ' 가게가 아직이고.' : ''}${Q.museum < 2 ? ' 박물관이 아직이고.' : ''}${Q.bridge < 2 ? ' 다리가 아직이군.' : ''}`); return; }
+    await say(u, '가게도, 박물관도, 다리도 다 섰구먼. 이웃도 다섯이나 되고! 이제 잔치를 열 때가 됐네.');
+    if (await Dialog.choose(['잔치를 열어요!', '조금 있다가요'], { cancel: 1 }) !== 0) return;
+    await festival(u);
+  }
+}
+
+/** 마을 잔치: 광장에 모두 모여 축하한다. 이야기의 끝. */
+async function festival(u) {
+  const pz = G.village.plaza;
+  Sound.sfx('door');
+  await UI.fade(true);
+  G.room.dispose(); G.room = null;
+  G.world.setVisible(true); G.critters.setVisible(true);
+  G.stage.setMode(false);
+  // 기념사진처럼 선다: 앞줄에 두루·이장·나·까미, 뒷줄에 이웃들. 모두 앞을 본다.
+  const cx = pz.x + 4.5, zf = pz.y + 6.45, zb = pz.y + 5.3;
+  G.player.setPos(cx, zf); G.player.yaw = 0; G.player.actor.face(0, true);
+  const guests = G.npcs.filter((n) => S.villagers[n.id]);
+  guests.forEach((n, i) => {
+    const k = guests.length, t = (i - (k - 1) / 2) * 1.2 + (k % 2 ? 0.6 : 0);      // 앞줄 사이사이로 얼굴이 보이게 반 칸 어긋나게
+    n.show(true); n.x = cx + t; n.z = zb + 0.04 * t * t; n.path = null; n.state = 'idle'; n.staged = true;
+    n.actor.face(0, true); n.place();
+  });
+  const front = [['ujik', -1.25], ['kkami', 1.25], ['duru', -2.5]].map(([k, dx]) => {
+    const a = new Actor('npc_' + k);
+    G.stage.scene.add(a.root);
+    a.setPos(cx + dx, groundY(cx + dx, zf - 0.12), zf - 0.12); a.face(0, true);
+    return a;
+  });
+  G.extras = front;
+  const mayor = { ...u, actor: front[0] };
+  setVillagersVisible(true);
+  G.stage.setFocus(cx, 0, zf, true);
+  refreshTime(true);
+  await UI.fade(false);
+  const everyone = guests.map((n) => n.actor).concat(front, [G.player.actor]);
+  const pop = () => { for (let i = 0; i < 6; i++) burst(i % 2 ? 'petal' : 'spark', cx + (Math.random() - 0.5) * 7, 2.2 + Math.random() * 1.5, zf - 0.6 + (Math.random() - 0.5) * 3, 10); };
+  Sound.sfx('fanfare'); pop();
+  for (const a of everyone) a.play('joy', 1.2);
+  await say(mayor, `자, 다들 모였는가! 오늘은 우리 ${S.village.name} 마을의 잔칫날일세!`);
+  pop();
+  await say(mayor, '천막 하나로 시작한 마을에 가게가 서고, 박물관이 서고, 다리가 놓였네. 이게 다 {p|이/가} 발로 뛰어 준 덕분이지.');
+  for (const n of guests) n.actor.play('wave', 1.0);
+  const lines = ['{p}, 정말 고마워! 덕분에 살기 좋은 마을이 됐어.', '처음 왔을 땐 허허벌판이었는데… 이제 제법 마을 같지?', '오늘은 실컷 놀자! 잔치니까!'];
+  for (const [i, n] of guests.slice(0, 3).entries()) { const def = VILLAGERS[n.id]; n.actor.play('wave', 1.0); await say({ name: def.name, pitch: PERSONALITY[def.p].pitch, actor: n.actor }, lines[i]); }
+  front[1].play('joy', 1.0);
+  await say({ ...npcOf('kkami'), actor: front[1] }, '까악! 우리 가게도 잔치 기념으로 좋은 물건 많이 들여놓을게요!');
+  front[2].play('wave', 1.0);
+  await say({ ...npcOf('duru'), actor: front[2] }, '박물관도 잊지 마십시오. 전시관은 이제부터 채워 가는 것이니까요.');
+  Sound.sfx('fanfare'); pop();
+  for (const a of everyone) a.play('joy', 1.2);
+  addMoney(10000);
+  await say(mayor, '마을 사람들이 조금씩 모은 <b>도토리 10,000개</b>일세. 받아 두게. 그리고 앞으로도 잘 부탁하네!');
+  await narr('마을 잔치를 마쳤다. 이제 마음 가는 대로 지내면 된다. 빈 집터가 남아 있는 동안에는 새 이웃이 계속 이사 온다.');
+  S.prog.done = true; S.prog.step = 99; S.moveInDay = dayKey() + 3;
+  await UI.fade(true);
+  for (const a of front) G.stage.scene.remove(a.root);
+  G.extras = null;
+  for (const n of guests) { n.staged = false; n.wait = 1 + rand() * 4; }
+  syncVillagers();
+  await UI.fade(false);
+  refreshGoal(); save();
+}
+
 async function talkUjik() {
-  const u = npcOf('ujik'), P = S.player;
+  const u = npcOf('ujik'), P = S.player, Q = S.prog;
+  if (stepId() === 'hello') { await storyUjik(u); await say(u, '그럼 살펴 가게!'); return; }
   await say(u, pick(['어서 오게, {p}! 마을 살림은 할 만한가?', '오, 왔는가. 무슨 일로 왔나?']));
   for (;;) {
-    const c = await Dialog.choose(['집 문제로 왔어요', '마을 소식이 궁금해요', '아니에요'], { cancel: 2 });
+    const story = !Q.done;
+    const opts = (story ? ['마을 일로 왔어요'] : []).concat(['집 문제로 왔어요', '마을 소식이 궁금해요', '아니에요']);
+    let c = await Dialog.choose(opts, { cancel: opts.length - 1 });
+    if (story) { if (c === 0) { await storyUjik(u); if (!G.room) return; continue; } c--; }
     if (c === 0) {
+      if (P.houseLv < 1) { await say(u, Q.pend.home ? '집은 내일 아침이면 다 지어진다네. 하룻밤만 더 천막에서 자게.' : `아직 천막에 살고 있지 않은가. <b>${costText(COST.house)}</b>를 가져오면 집을 지어 주겠네.`); continue; }
       if (P.loan > 0) {
         await say(u, `남은 집값이 <b>도토리 ${fmt(P.loan)}개</b>일세. 자네 주머니엔 ${fmt(P.money)}개가 있구먼.`);
         const opts = ['전부 갚을게요', '1,000개만 갚을게요', '5,000개만 갚을게요', '다음에 갚을게요'];
@@ -351,8 +524,16 @@ function mailLetter() {
 function wrapNpc(id) { const def = VILLAGERS[id]; return { id, name: def.name, pitch: PERSONALITY[def.p].pitch }; }
 function roomSpec(b) {
   if (b.type === 'home') {
-    const [w, h] = ROOM_SIZE[S.player.houseLv];
-    return { id: 'home', w, h, wall: S.home.wall, floor: S.home.floor, items: S.home.items, editable: true };
+    const lv = S.player.houseLv, [w, h] = ROOM_SIZE[lv];
+    return { id: 'home', w, h, wall: lv < 1 ? 'wall_tent' : S.home.wall, floor: lv < 1 ? 'floor_mat' : S.home.floor, items: S.home.items, editable: true };
+  }
+  if (b.type === 'shop' && S.prog.shop < 2) {       // 천막 좌판
+    return { id: 'shop', w: 6, h: 4, wall: 'wall_tent', floor: 'floor_mat', items: [{ id: 'p_counter', x: 2, y: 1, w: 2, d: 1, r: 0 }],
+      npcDefs: [{ model: 'npc_kkami', name: NPCS.kkami.name, x: 3, z: 0.6, fixed: true, talk: () => runScript(talkKkami) }] };
+  }
+  if (b.type === 'museum' && S.prog.museum < 2) {   // 두루의 조사 천막
+    return { id: 'museum', w: 6, h: 4, wall: 'wall_tent', floor: 'floor_mat', items: [{ id: 'p_desk', x: 2, y: 1, w: 2, d: 1, r: 0 }, { id: 'p_bugcase', x: 5, y: 0, r: 0 }, { id: 'p_plant', x: 0, y: 0, r: 0 }],
+      npcDefs: [{ model: 'npc_duru', name: NPCS.duru.name, x: 3, z: 0.6, fixed: true, talk: () => runScript(talkDuru) }] };
   }
   if (b.type === 'shop') {
     const spots = [[0, 0], [6, 0], [0, 2], [6, 2], [1, 4]];
@@ -380,10 +561,11 @@ function roomSpec(b) {
 export async function enter(b) {
   await runScript(async () => {
     const h = hourF();
+    if (b.type === 'museum' && S.prog.museum < 1) { await narr(S.prog.pend.museum ? '말뚝과 줄이 쳐져 있다. 내일이면 두루의 조사 천막이 선다고 한다.' : '아직 빈 터다. 팻말에 "박물관 자리"라고 적혀 있다.'); return; }
     if (b.type === 'shop' && (h < 8 || h >= 22)) { Sound.sfx('fail'); await narr('문이 잠겨 있다. 팻말에 "아침 8시부터 밤 10시까지"라고 적혀 있다.'); return; }
     if (b.type === 'house') {
       const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot);
-      if (!vid) { await narr('아직 빈 집터다. 언젠가 새 이웃이 이사 올 자리.'); return; }
+      if (!vid) { await narr((S.prog.pend.sites || []).includes(b.lot) ? '집 지을 채비가 한창이다. 내일이면 새 이웃이 이사 온다고 한다.' : '아직 빈 집터다. 언젠가 새 이웃이 이사 올 자리.'); return; }
       const npc = G.npcs.find((n) => n.id === vid);
       if (!villagerAwake(vid)) { Sound.sfx('fail'); await narr('불이 꺼져 있다. 자고 있는 모양이다.'); return; }
       if (npc && npc.visible) { Sound.sfx('fail'); await narr(`문을 두드려 봤지만 대답이 없다. ${josa(VILLAGERS[vid].name, '은/는')} 밖에 나가 있는 모양이다.`); return; }
@@ -455,6 +637,7 @@ export function caughtFish(sp) {
     await UI.card({ id, title: sp.say, sub: sp.trash ? '' : `${cm}cm${d && cm > d.max ? ' · 내 최고 기록!' : ''}`, isNew });
     done();
     S.stats.fish++;
+    if (!sp.trash) { track('fish'); track(sp.water === 'sea' ? 'seafish' : 'freshfish'); if (isNew) track('newsp'); }
     if (!addItem(id)) UI.toast(sp.trash ? '가방이 가득 차서 그냥 두고 왔다.' : '가방이 가득 차서 놓아주었다.');
   });
 }
@@ -467,6 +650,7 @@ export function caughtBug(b) {
     await UI.card({ id, title: sp.say, sub: '', isNew });
     done();
     S.stats.bug++;
+    track('bug'); if (isNew) track('newsp');
     if (!addItem(id)) UI.toast('가방이 가득 차서 놓아주었다.');
   });
 }

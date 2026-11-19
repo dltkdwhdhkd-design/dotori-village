@@ -58,11 +58,13 @@ export function buildWorld(village) {
   G.world = new WorldView(G.stage, village, {
     buildingLook: (b) => {
       if (b.type === 'hall') return { model: 'hall' };
-      if (b.type === 'shop') return { model: 'shop' };
-      if (b.type === 'museum') return { model: 'museum' };
+      const P = S.prog || { shop: 2, museum: 2, pend: {} };
+      if (b.type === 'shop') return { model: P.shop >= 2 ? 'shop' : 'tent_shop' };
+      if (b.type === 'museum') return P.museum >= 2 ? { model: 'museum' } : P.museum === 1 ? { model: 'tent_museum' } : P.pend.museum ? { model: 'site' } : null;
+      if (b.type === 'home' && S.player.houseLv < 1) return { model: 'tent_home' };
       if (b.type === 'home') return { model: 'home_' + S.player.houseLv, tint: { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 } };     // 도토리 깍정이 지붕
       const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot);
-      if (!vid) return null;
+      if (!vid) return (P.pend.sites || []).includes(b.lot) ? { model: 'site' } : null;        // 새 이웃을 맞으려고 다듬어 둔 터
       const v = VILLAGERS[vid], c = new THREE.Color(v.roof);
       return { model: v.house, tint: { roof: v.roof, roof_d: c.clone().multiplyScalar(0.8).getHex(), wall: v.wall, wall_d: new THREE.Color(v.wall).multiplyScalar(0.88).getHex(), door: v.door, door_d: new THREE.Color(v.door).multiplyScalar(0.8).getHex() } };
     },
@@ -209,12 +211,14 @@ export function update(dt) {
     if (G.room) G.room.update(dt);
     else {
       for (const n of G.npcs) n.update(dt);
+      if (G.extras) for (const a of G.extras) a.update(dt);      // 연출 때만 잠깐 나오는 인물(잔치의 이장·까미·두루)
       if (G.critters) G.critters.update(dt);
     }
     if (free) {
       if (Input.take('bag')) G.hooks.openBag();
       else if (Input.take('dex')) G.hooks.openDex();
       else if (Input.take('map')) G.hooks.openMap();
+      else if (Input.take('note')) G.hooks.openNote();
       else if (Input.take('menu')) G.hooks.openMenu();
     }
     const p = G.player;

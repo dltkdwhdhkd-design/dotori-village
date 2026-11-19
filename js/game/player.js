@@ -11,6 +11,7 @@ import { S, addItem, canAdd, ownedTools, addMoney, hasItem } from './state.js';
 import { ITEMS, FISH_BY_ID, BUG_BY_ID, FURNITURE, itemName } from '../data/items.js';
 import { clamp, rand, josa, hash01 } from '../core/util.js';
 import { dayKey } from '../core/clock.js';
+import { track } from './quests.js';
 
 const WALK = 3.3, RUN = 5.4, SNEAK = 1.25, R = 0.27;
 const K = (k, t) => `<b>${k}</b>${t}`;
@@ -233,6 +234,7 @@ export class Player {
     }
     if (!canAdd(id)) { UI.toast('가방이 가득 찼다.'); Sound.sfx('fail'); return; }
     addItem(id); v.set(tx, ty, null);
+    if (o.t === 'weed') track('weed'); else if (it && it.kind === 'shell') track('shell');
     Sound.sfx('pick'); this.do('pick', 0.3);
     if (o.t !== 'item') burst(o.t === 'weed' ? 'leaf' : 'petal', tx + 0.5, 0.2, ty + 0.5, 5);
   }
@@ -256,14 +258,14 @@ export class Player {
       if (o.kind === 'fruit' && o.stage === 3 && o.fruits > 0) {
         let n = 0;
         for (let i = 0; i < o.fruits; i++) if (this.dropNear(f.tx, f.ty, 'fruit_' + o.fruit)) n++;
-        o.fruits = 0; o.picked = dayKey();
+        o.fruits = 0; o.picked = dayKey(); track('fruit', n); track('shake');
         v.touch(f.tx, f.ty); Sound.sfx('plop'); burst('leaf', cx, 2, cz, 8);
         return;
       }
       burst(G.look && G.look.blossom && o.kind === 'blossom' ? 'petal' : G.look && G.look.snow ? 'snow' : 'leaf', cx, 2.2, cz, 7);
       const D = S.daily;
       if (D.shaken.includes(idx)) return;
-      D.shaken.push(idx);
+      D.shaken.push(idx); track('shake');
       if (D.coinTrees.includes(idx)) { this.dropNear(f.tx, f.ty, 'coin'); Sound.sfx('coin'); return; }
       if (D.furnTrees.includes(idx)) { const fu = FURNITURE[Math.floor(rand() * FURNITURE.length)][0]; this.dropNear(f.tx, f.ty, fu); Sound.sfx('plop'); UI.toast('나무에서 보따리가 떨어졌다!'); return; }
       if (D.nestTrees.includes(idx)) { this.dropNear(f.tx, f.ty, 'nest'); Sound.sfx('plop'); G.critters.wasps(cx, cz); return; }
@@ -281,7 +283,13 @@ export class Player {
         Sound.sfx('bonk'); G.world.bump(idx); G.stage.shake = 0.08;
         const D = S.daily;
         if (D.moneyRock === idx && D.rockHits < 8) { D.rockHits++; const n = 100 * D.rockHits; addMoney(n); Sound.sfx('coin'); burst('spark', cx, 0.6, cz, 6); UI.toast(`돌에서 도토리 ${n}개가 나왔다!`); }
-        else if (!D.shaken.includes(-idx - 1) && rand() < 0.25) { D.shaken.push(-idx - 1); G.critters.rockBug(cx, cz + 0.6); }
+        else {
+          D.stones = D.stones || {};
+          if ((D.stones[idx] || 0) < 3) {            // 바위 하나에서 하루에 돌 세 개까지
+            if (canAdd('mat_stone')) { D.stones[idx] = (D.stones[idx] || 0) + 1; addItem('mat_stone'); track('stone'); burst('dirt', cx, 0.5, cz, 5); Sound.sfx('pick'); UI.toast('돌을 얻었다.', 1200); }
+            else UI.toast('가방이 가득 차서 돌을 줍지 못했다.');
+          } else if (!D.shaken.includes(-idx - 1)) { D.shaken.push(-idx - 1); if (rand() < 0.5) G.critters.rockBug(cx, cz + 0.6); else UI.toast('이 바위에서는 오늘 더 나올 돌이 없다.', 1600); }
+        }
       });
       return;
     }
@@ -294,13 +302,13 @@ export class Player {
       return;
     }
     if (o && o.t === 'tree' && o.stage === 0) { this.do('dig', 0.4, () => { v.set(f.tx, f.ty, null); Sound.sfx('dig'); }); return; }
-    if (o && o.t === 'weed') { this.do('dig', 0.35, () => { v.set(f.tx, f.ty, null); addItem('weed'); Sound.sfx('dig'); }); return; }
+    if (o && o.t === 'weed') { this.do('dig', 0.35, () => { v.set(f.tx, f.ty, null); addItem('weed'); track('weed'); Sound.sfx('dig'); }); return; }
     if (o) return;
     if (v.buried[idx] != null) {
       const id = v.buried[idx];
       if (!canAdd(id)) { UI.toast('가방이 가득 차서 캐낼 수 없다.'); Sound.sfx('fail'); return; }
       this.do('dig', 0.45, () => {
-        delete v.buried[idx]; addItem(id);
+        delete v.buried[idx]; addItem(id); if (id === 'fossil') track('fossil');
         v.set(f.tx, f.ty, { t: 'hole' });
         Sound.sfx('dig'); burst('dirt', cx, 0.1, cz, 8); Sound.sfx('pick');
         UI.toast(`${josa(itemName(id), '을/를')} 캐냈다!`);
@@ -317,6 +325,8 @@ export class Player {
     this.do('swing', 0.5, () => {
       Sound.sfx('chop'); G.world.shake(idx, 1.4); burst('leaf', cx, 1.6, cz, 4);
       o.chop = (o.chop || 0) + 1;
+      const got = o.stage < 3 ? 0 : o.chop >= 3 ? 2 : 1;       // 다 자란 나무를 찍을 때마다 나무가 나온다(쓰러질 때는 둘)
+      if (got) { if (canAdd('mat_wood')) { addItem('mat_wood', got); track('wood', got); UI.toast(`나무를 ${got}개 얻었다.${o.chop === 2 ? ' 한 번 더 찍으면 쓰러진다.' : ''}`, 1500); } else UI.toast('가방이 가득 차서 나무를 줍지 못했다.'); }
       if (o.chop >= 3) {
         if (o.kind === 'fruit') for (let i = 0; i < (o.fruits || 0); i++) this.dropNear(f.tx, f.ty, 'fruit_' + o.fruit);
         v.set(f.tx, f.ty, { t: 'stump' });
@@ -329,7 +339,7 @@ export class Player {
     const cx = f.tx + 0.5, cz = f.ty + 0.5;
     this.do('pour', 1.0, () => {
       Sound.sfx('water'); burst('splash', cx, 0.45, cz, 7);
-      if (o && o.t === 'flower') { o.w = dayKey(); }
+      if (o && o.t === 'flower') { if (o.w !== dayKey()) track('water'); o.w = dayKey(); }
     });
     // 물뿌리개 주둥이에서 꽃까지 떨어지는 물줄기
     for (let i = 0; i < 5; i++) this.later(0.3 + i * 0.09, () => { const k = 0.35 + Math.random() * 0.5; burst('splash', this.x + (cx - this.x) * k, 0.75 - k * 0.4, this.z + (cz - this.z) * k, 2); });

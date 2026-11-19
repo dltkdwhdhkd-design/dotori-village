@@ -19,6 +19,7 @@ export const UI = {
       <div id="hud-money" class="hud hidden"><i class="acorn"></i><span></span></div>
       <div id="hud-tools" class="hud hidden"></div>
       <div id="hud-hint" class="hud hidden"></div>
+      <div id="hud-goal" class="hud hidden"></div>
       <div id="hud-menu" class="hud hidden"></div>
       <div id="toasts"></div>
       <div id="card" class="hidden"></div>
@@ -33,10 +34,12 @@ export const UI = {
     $('dlg').onclick = () => Dialog.click();
     $('shade').onclick = () => { if (this.panelOpen && !this.panelSticky) this.closePanel(); };
   },
-  showHud(v) { for (const id of ['hud-clock', 'hud-money', 'hud-tools', 'hud-menu']) $(id).classList.toggle('hidden', !v); if (!v) $('hud-hint').classList.add('hidden'); },
+  showHud(v) { for (const id of ['hud-clock', 'hud-money', 'hud-tools', 'hud-menu']) $(id).classList.toggle('hidden', !v); if (!v) { $('hud-hint').classList.add('hidden'); $('hud-goal').classList.add('hidden'); } },
   loading(p, msg) { const L = $('loading'); if (p == null) { L.classList.add('hidden'); return; } L.classList.remove('hidden'); L.querySelector('i').style.width = Math.round(p * 100) + '%'; if (msg) L.querySelector('.msg').textContent = msg; },
 
   setClock(date, time, wx) { const c = $('hud-clock'); c.querySelector('.date').textContent = date; c.querySelector('.time').textContent = time; c.querySelector('.wx').textContent = wx; },
+  /** 화면 위쪽의 '할 일' 한 줄(빈 글이면 숨긴다) */
+  setGoal(text) { const g = $('hud-goal'); g.textContent = text || ''; g.classList.toggle('hidden', !text || $('hud-clock').classList.contains('hidden')); },
   setMoney(n) { $('hud-money').querySelector('span').textContent = fmt(n); },
   setTools(list, current, onPick) {
     const key = list.join(',') + '|' + current;

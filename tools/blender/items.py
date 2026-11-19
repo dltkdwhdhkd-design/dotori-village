@@ -157,5 +157,19 @@ def fossils():
         box((0, 0, 0.08), (0.24, 0.05, 0.05), '#3a3a44')
 
 
+def materials():
+    """재료: 도끼질로 얻는 나무, 바위를 두드려 얻는 돌"""
+    with Model('mat_wood'):
+        for i, (y, z) in enumerate(((-0.09, 0.07), (0.09, 0.07), (0.0, 0.2))):
+            tube((-0.2, y, z), (0.2, y, z), 0.085, 'bark', seg=8)
+            for sx in (-1, 1):
+                cyl((sx * 0.2, y, z), 0.07, 0.006, 'wood_l', seg=8, rot=(0, 90, 0))
+        torus((0, 0, 0.12), 0.17, 0.016, '#e9d9a8', seg=10, tseg=4, rot=(0, 90, 0), scale=(1, 1.15, 1.0))
+    with Model('mat_stone'):
+        lump((0, 0, 0.11), 1.0, 'rock', (0.17, 0.15, 0.12), seed=11, amp=0.22, smooth=True)
+        lump((0.16, -0.08, 0.07), 1.0, 'rock_d', (0.1, 0.09, 0.07), seed=13, amp=0.22, smooth=True)
+        lump((-0.12, 0.1, 0.06), 1.0, 'rock_l', (0.08, 0.08, 0.06), seed=17, amp=0.2, smooth=True)
+
+
 def build():
-    tools(); misc(); fossils()
+    tools(); misc(); fossils(); materials()

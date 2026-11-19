@@ -117,3 +117,11 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 #loading .pbar i { display:block; height:100%; width:0; background:#fff; transition:width .2s; }
 #fade { position:absolute; inset:0; background:#1a140e; opacity:0; pointer-events:none; transition:opacity .28s; }
 #fade.on { opacity:1; pointer-events:auto; }
+
+#hud-goal { position:absolute; left:16px; top:112px; max-width:300px; padding:6px 12px; background:rgba(255,243,214,.92); border:3px solid var(--line); border-radius:14px; font-size:15px; color:var(--brown-d); box-shadow:0 3px 0 rgba(0,0,0,.12); }
+.li.q { align-items:flex-start; padding:8px 14px 8px 10px; }
+.li.q .mk { width:28px; font-size:19px; text-align:center; color:var(--green); flex:none; }
+.li.q .mk.star { width:84px; text-align:left; color:#e0a020; letter-spacing:1px; }
+.li.q .sub { margin-top:3px; line-height:1.4; color:#8a6a48; }
+.li.q .bar { margin:6px 0 2px; }
+.li.q .pr { align-self:center; }

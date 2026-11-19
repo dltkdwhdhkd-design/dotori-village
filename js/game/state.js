@@ -7,7 +7,7 @@ const KEY = 'dotori-village-save-v1';
 const SET_KEY = 'dotori-village-settings';
 export const INV_SIZE = 20;
 export const LOANS = [5000, 30000, 80000];          // 처음 집값, 1차 증축, 2차 증축
-export const ROOM_SIZE = { 1: [6, 5], 2: [8, 6], 3: [10, 8] };
+export const ROOM_SIZE = { 0: [4, 4], 1: [6, 5], 2: [8, 6], 3: [10, 8] };   // 0은 천막
 
 export const S = {};                                // 현재 진행 상태
 export const Settings = { bgm: 0.5, sfx: 0.7, offsetMin: 0, shadow: true };
@@ -20,25 +20,25 @@ export function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.string
 export function newState({ name, village, model, seed, villageData, day }) {
   const r = RNG(seed ^ 0x51ed);
   const ids = r.shuffle([...VILLAGER_IDS]);
-  const residents = ids.slice(0, 6);
+  const residents = ids.slice(0, 2);                 // 처음엔 이웃이 둘뿐이다. 나머지는 마을을 키우면 이사 온다
   const villagers = {};
   const lots = r.shuffle([...Array(villageData.lots.length).keys()]);
   residents.forEach((id, i) => { villagers[id] = { lot: lots[i], friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 }; });
   const st = {
     v: 1, seed,
-    player: { name, model, x: villageData.spawn.x + 0.5, z: villageData.spawn.y + 0.8, money: 0, loan: LOANS[0], houseLv: 1, loanStage: 0, tool: null, stung: false },
+    player: { name, model, x: villageData.spawn.x + 0.5, z: villageData.spawn.y + 0.8, money: 0, loan: 0, houseLv: 0, loanStage: 0, tool: null, stung: false },
     village: { name: village },
     inv: Array(INV_SIZE).fill(null),
     storage: [],
     day,
-    villagers, residents, waiting: ids.slice(6),
+    villagers, residents, waiting: ids.slice(2),
     dex: { fish: {}, bug: {}, fossil: {} },
     museum: { fish: [], bug: [], fossil: [] },
     shop: { day: 0, stock: [] },
     mail: [],
-    home: { wall: 'wall_cream', floor: 'floor_wood', items: [{ id: 'f_chest', x: 5, y: 0, r: 0 }, { id: 'f_log_bed', x: 0, y: 0, r: 0 }] },
+    home: { wall: 'wall_cream', floor: 'floor_wood', items: [{ id: 'f_chest', x: 3, y: 0, r: 0 }, { id: 'f_yo', x: 0, y: 0, r: 0 }] },
     flags: {},
-    daily: { coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [] },
+    daily: { coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} },
     stats: { fish: 0, bug: 0, days: 1, earned: 0 },
     moveInDay: day + 6,
   };
@@ -64,7 +64,7 @@ export function loadGame() {
     for (const k of Object.keys(S)) delete S[k];
     Object.assign(S, st);
     // 옛 저장에 없는 항목 채우기
-    S.daily = Object.assign({ coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [] }, S.daily || {});
+    S.daily = Object.assign({ coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} }, S.daily || {});
     S.stats = Object.assign({ fish: 0, bug: 0, days: 1, earned: 0 }, S.stats || {});
     S.flags = S.flags || {}; S.mail = S.mail || []; S.storage = S.storage || []; S.waiting = S.waiting || [];
     while (S.inv.length < INV_SIZE) S.inv.push(null);

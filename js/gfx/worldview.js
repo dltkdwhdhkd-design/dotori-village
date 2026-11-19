@@ -91,6 +91,7 @@ export class WorldView {
     const v = this.v;
     // 다리
     for (const b of v.bridges) {
+      if (b.built === false) continue;                 // 아직 놓지 않은 다리
       for (let dx = 0; dx < b.w; dx++) {
         for (const [dy, nm] of [[0, 'bridge_n'], [1, 'bridge_s']]) {
           const o = make(nm); o.position.set(b.x + dx + 0.5, 0, b.y + dy + 0.5); this.root.add(o);

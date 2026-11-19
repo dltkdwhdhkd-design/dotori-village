@@ -83,6 +83,7 @@ export class Villager {
     if (!this.visible) return;
     const a = this.actor, p = G.player;
     const dp = Math.hypot(p.x - this.x, p.z - this.z);
+    if (this.staged) { a.speed = 0; a.update(dt); return; }                 // 잔치 같은 연출: 세워 둔 자리에서 그대로
     if (this.talking) { a.speed = 0; a.faceTo(p.x, p.z); a.update(dt); return; }
     if (this.state === 'idle') {
       a.speed = 0;

@@ -20,6 +20,8 @@ const DRAW = {
   floor_dark(x, w, h) { for (let i = 0; i < 4; i++) { x.fillStyle = i % 2 ? '#8a5a3a' : '#7e5032'; x.fillRect(0, i * h / 4, w, h / 4); x.fillStyle = '#5e3a24'; x.fillRect(0, i * h / 4, w, 2); x.fillRect(((i * 83 + 20) % w), i * h / 4, 2, h / 4); } },
   floor_pastel(x, w, h) { for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { x.fillStyle = (i + j) % 2 ? '#c4eadc' : '#fff0f4'; x.fillRect(i * w / 2, j * h / 2, w / 2, h / 2); } },
   floor_stone(x, w, h) { x.fillStyle = '#b8b4ac'; x.fillRect(0, 0, w, h); x.strokeStyle = '#8f8a82'; x.lineWidth = 3; x.strokeRect(1, 1, w / 2, h / 2); x.strokeRect(w / 2, 1, w / 2, h / 2); x.strokeRect(-w / 4, h / 2, w / 2, h / 2); x.strokeRect(w / 4, h / 2, w / 2, h / 2); x.strokeRect(w * 3 / 4, h / 2, w / 2, h / 2); },
+  wall_tent(x, w, h) { x.fillStyle = '#f0c877'; x.fillRect(0, 0, w, h); x.strokeStyle = '#d8a850'; x.lineWidth = 4; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * w / 4, 0); x.lineTo(i * w / 4 + (i % 2 ? 10 : -10), h); x.stroke(); } x.fillStyle = '#fff3d6'; x.fillRect(0, h - 22, w, 8); },
+  floor_mat(x, w, h) { x.fillStyle = '#b8a070'; x.fillRect(0, 0, w, h); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { x.fillStyle = (i + j) % 2 ? '#c4ac7c' : '#ac9464'; x.fillRect(i * w / 8 + 1, j * h / 8 + 1, w / 8 - 2, h / 8 - 2); } },
   floor_grass(x, w, h) { x.fillStyle = '#7fce5a'; x.fillRect(0, 0, w, h); x.fillStyle = '#6ab84a'; for (let i = 0; i < 120; i++) x.fillRect((i * 29) % w, (i * 71) % h, 2, 5); x.fillStyle = '#ffffff'; for (let i = 0; i < 6; i++) x.fillRect((i * 97 + 20) % w, (i * 59 + 30) % h, 4, 4); },
 };
 

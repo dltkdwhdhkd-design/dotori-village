@@ -33,6 +33,8 @@ def('sapling_blossom', { name: '벚나무 묘목', kind: 'sapling', tree: 'bloss
 def('sapling_pine', { name: '소나무 묘목', kind: 'sapling', tree: 'pine', buy: 300, price: 75, model: 'sapling', scale: 1.5, desc: '심으면 며칠에 걸쳐 소나무로 자란다.' });
 def('medicine', { name: '약', kind: 'medicine', buy: 200, price: 50, model: 'medicine', desc: '벌에 쏘였을 때 먹는다.' });
 def('weed', { name: '잡초', kind: 'misc', price: 10, stack: 99, model: 'weedbit', desc: '뽑아 온 잡초. 헐값이지만 팔 수는 있다.' });
+def('mat_wood', { name: '나무', kind: 'material', price: 30, stack: 30, model: 'mat_wood', desc: '집과 다리를 지을 때 쓰는 재료. 도끼로 나무를 찍으면 나온다.' });
+def('mat_stone', { name: '돌', kind: 'material', price: 40, stack: 30, model: 'mat_stone', desc: '집과 다리를 지을 때 쓰는 재료. 삽으로 바위를 두드리면 나온다.' });
 def('nest', { name: '벌집', kind: 'misc', price: 300, model: 'nest', desc: '말벌이 떠난 빈 집.' });
 def('coin', { name: '도토리 주머니', kind: 'coin', value: 100, model: 'bag', desc: '' });
 def('parcel', { name: '꾸러미', kind: 'parcel', price: 0, model: 'bundle', desc: '부탁받은 물건. 받을 이웃에게 전해 주자.' });

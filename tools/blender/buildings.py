@@ -512,8 +512,119 @@ def fixtures():
         box((0, 0, 0.02), (0.9, 0.44, 0.03), '#e58a6a')
 
 
+def tents():
+    """마을이 자라기 전의 천막들과 공사 터. 건물과 같은 자리에 놓이므로 집터(5×4, 6×4칸) 안에 들어가야 한다."""
+    trim, pole, dark = '#fff3d6', '#8a5a34', '#4a3626'
+
+    def a_tent(cy, w, d, h, cloth, cloth_d, door_w=1.0):
+        """앞뒤가 세모난 천막. 입구는 앞(-Y)"""
+        prism((0, cy, 0), d, w, h, cloth, rot=(0, 0, 90))
+        fy = cy - d / 2
+        dh = h * 0.68
+        poly([(-door_w / 2, fy - 0.012, 0), (door_w / 2, fy - 0.012, 0), (0, fy - 0.012, dh)], [(0, 1, 2)], dark)
+        for sx in (-1, 1):                                # 양옆으로 걷어 올린 문
+            poly([(sx * door_w / 2, fy - 0.022, 0), (sx * door_w * 0.28, fy - 0.022, 0), (0, fy - 0.022, dh)], [(0, 1, 2)], cloth_d)
+            tube((sx * w / 2, fy - 0.012, 0.0), (0, fy - 0.012, h), 0.035, trim, seg=5)
+        tube((0, fy - 0.08, h + 0.01), (0, cy + d / 2 + 0.06, h + 0.01), 0.04, pole, seg=6)
+        for sx in (-1, 1):                                # 버팀줄과 말뚝
+            for yy in (fy + 0.25, cy + d / 2 - 0.25):
+                tube((sx * w * 0.33, yy, h * 0.34), (sx * (w / 2 + 0.42), yy, 0.0), 0.012, trim, seg=4)
+                cyl((sx * (w / 2 + 0.42), yy, 0), 0.03, 0.14, pole, seg=5)
+        return fy
+
+    def campfire(x, y):
+        for i in range(6):
+            a = math.radians(i * 60)
+            ball((x + math.cos(a) * 0.2, y + math.sin(a) * 0.2, 0.04), 0.07, 'rock', (1, 1, 0.7), sub=1)
+        for a in (20, 80, 140):
+            r = math.radians(a)
+            tube((x - math.cos(r) * 0.16, y - math.sin(r) * 0.16, 0.05), (x + math.cos(r) * 0.16, y + math.sin(r) * 0.16, 0.1), 0.035, 'bark', seg=5)
+        cone((x, y, 0.08), 0.1, 0.3, '#f2903c', seg=6)
+        cone((x, y, 0.08), 0.055, 0.2, 'lampglass', seg=6)
+
+    with Model('tent_home'):                              # 내 천막 (5×4칸 자리)
+        fy = a_tent(0.15, 2.7, 2.9, 1.85, '#f0b24a', '#d8943a')
+        ball((0, fy - 0.1, 1.9), 0.08, '#b8763c')
+        cyl((0, fy - 0.1, 1.94), 0.02, 0.07, pole, seg=5)
+        campfire(1.7, fy - 0.2)
+        boxb((-1.7, fy + 0.3, 0), (0.44, 0.38, 0.32), '#c9945a', bevel=0.02)          # 짐 상자
+        box((-1.7, fy + 0.3, 0.33), (0.46, 0.4, 0.03), '#a4764a')
+        cyl((-1.7, fy - 0.2, 0), 0.07, 0.2, 'metal', seg=8)                            # 등불
+        cyl((-1.7, fy - 0.2, 0.2), 0.06, 0.14, 'lampglass', seg=8)
+        cone((-1.7, fy - 0.2, 0.34), 0.08, 0.07, 'metal', seg=8)
+
+    with Model('tent_shop'):                              # 까미의 천막 가게 (5×4칸 자리): 줄무늬 차양 아래 좌판
+        cy, W, D = 0.2, 3.6, 2.4
+        fy = cy - D / 2
+        for sx in (-1, 1):
+            for yy, hh in ((fy, 1.75), (cy + D / 2, 2.15)):
+                cyl((sx * W / 2, yy, 0), 0.05, hh, pole, seg=6)
+        n = 9
+        for i in range(n):                                # 앞으로 기울어진 줄무늬 차양
+            x = -W / 2 - 0.15 + (W + 0.3) * (i + 0.5) / n
+            box((x, cy, 1.99), ((W + 0.3) / n + 0.005, D + 0.5, 0.05), '#3fa39a' if i % 2 == 0 else trim, rot=(-9.5, 0, 0))
+            box((x, fy - 0.27, 1.69), ((W + 0.3) / n + 0.005, 0.03, 0.2), '#3fa39a' if i % 2 == 0 else trim)
+        box((0, cy + D / 2, 1.05), (W, 0.04, 2.1), '#fff0d0')                           # 뒤 가림막
+        box((0, cy + D / 2 - 0.03, 0.5), (W - 0.1, 0.03, 0.9), '#e0a868')
+        boxb((0, fy + 0.45, 0), (W - 0.5, 0.6, 0.72), '#c8925a', bevel=0.02)            # 좌판
+        box((0, fy + 0.45, 0.74), (W - 0.4, 0.7, 0.05), '#e0b47c')
+        for x, c in ((-1.1, '#e8574c'), (-0.7, '#f2c230'), (-0.3, '#8ad06a')):          # 좌판 위 과일
+            ball((x, fy + 0.4, 0.84), 0.09, c)
+        boxb((0.8, fy + 0.45, 0.76), (0.5, 0.36, 0.22), '#a4764a', bevel=0.01)          # 상자
+        for i in range(3):
+            ball((0.66 + i * 0.14, fy + 0.45, 0.99), 0.07, '#b8763c')
+        box((0, fy - 0.3, 1.52), (1.2, 0.05, 0.36), pole, bevel=0.02)                   # 간판
+        box((0, fy - 0.33, 1.52), (1.08, 0.03, 0.26), trim)
+        ball((0, fy - 0.36, 1.5), 0.1, '#b8763c', (0.85, 0.4, 1))
+        box((0, fy - 0.36, 1.6), (0.2, 0.05, 0.06), '#8a5a34')
+        for sx in (-1, 1):                                # 옆에 쌓아 둔 자루와 통
+            cyl((sx * (W / 2 + 0.25), fy + 0.3, 0), 0.2, 0.42, '#c9a06a', seg=10)
+            ball((sx * (W / 2 + 0.25), fy + 0.3, 0.42), 0.2, '#e9d9a8', (1, 1, 0.45))
+
+    with Model('tent_museum'):                            # 두루의 조사 천막 (6×4칸 자리): 둥근 천막과 깃발
+        cy, R = 0.15, 1.55
+        cyl((0, cy, 0), R, 1.15, '#f3ead6', seg=16)
+        for i in range(8):                                # 세로 줄무늬
+            a = math.radians(i * 45 + 22.5)
+            box((math.cos(a) * R * 0.995, cy + math.sin(a) * R * 0.995, 0.575), (0.34, 0.03, 1.15), '#7c93b0', rot=(0, 0, math.degrees(a) + 90))
+        cone((0, cy, 1.15), R + 0.22, 1.25, '#5f7ea8', seg=16)
+        cyl((0, cy, 1.12), R + 0.22, 0.07, '#f3ead6', seg=16)
+        cyl((0, cy, 2.38), 0.03, 0.75, pole, seg=5)
+        poly([(0.02, cy, 3.1), (0.5, cy, 2.95), (0.02, cy, 2.8)], [(0, 1, 2)], '#e8574c')
+        fy = cy - R
+        box((0, fy - 0.01, 0.55), (0.9, 0.06, 1.1), dark)                                # 입구
+        for sx in (-1, 1):
+            box((sx * 0.5, fy - 0.03, 0.55), (0.1, 0.08, 1.14), trim)
+        box((0, fy - 0.03, 1.13), (1.1, 0.08, 0.1), trim)
+        box((1.3, fy - 0.5, 0.55), (0.06, 0.06, 1.1), pole)                              # 팻말: 돋보기
+        box((1.3, fy - 0.53, 0.95), (0.62, 0.04, 0.44), trim, bevel=0.02)
+        torus((1.24, fy - 0.56, 0.99), 0.1, 0.022, '#5f7ea8', seg=12, tseg=5, rot=(90, 0, 0))
+        tube((1.31, fy - 0.56, 0.92), (1.44, fy - 0.56, 0.8), 0.022, '#5f7ea8', seg=5)
+        boxb((-1.9, fy + 0.2, 0), (0.5, 0.4, 0.34), '#c9945a', bevel=0.02)               # 표본 상자
+        boxb((-1.86, fy + 0.2, 0.34), (0.4, 0.32, 0.26), '#a4764a', bevel=0.02)
+
+    with Model('site'):                                   # 공사 중인 터: 말뚝과 줄, 목재 더미, 팻말
+        w, d = 1.9, 1.3
+        pts = [(-w, -d), (w, -d), (w, d), (-w, d)]
+        for i, (x, y) in enumerate(pts):
+            cyl((x, y, 0), 0.05, 0.6, pole, seg=6)
+            nx, ny = pts[(i + 1) % 4]
+            tube((x, y, 0.5), (nx, ny, 0.5), 0.015, '#e8574c', seg=4)
+            tube((x, y, 0.3), (nx, ny, 0.3), 0.015, trim, seg=4)
+        for i in range(4):                                # 목재 더미
+            tube((-1.2, -0.3 + i * 0.16, 0.08), (0.2, -0.3 + i * 0.16, 0.08), 0.075, 'wood', seg=7)
+        for i in range(3):
+            tube((-1.2, -0.22 + i * 0.16, 0.21), (0.2, -0.22 + i * 0.16, 0.21), 0.075, 'wood_l', seg=7)
+        lump((1.0, 0.3, 0.14), 1.0, 'rock', (0.3, 0.26, 0.2), seed=3, amp=0.2)
+        lump((1.3, -0.1, 0.1), 1.0, 'rock_d', (0.2, 0.2, 0.14), seed=5, amp=0.2)
+        box((0, -d - 0.25, 0.4), (0.07, 0.07, 0.8), pole)
+        box((0, -d - 0.29, 0.7), (0.8, 0.05, 0.42), '#f2c230', bevel=0.02)
+        for sx in (-1, 0, 1):
+            box((sx * 0.22, -d - 0.32, 0.7), (0.1, 0.02, 0.44), '#3a3a3a', rot=(0, 28, 0))
+
+
 def build():
     house_a(); house_b(); house_c()
     for lv in (1, 2, 3):
         home(lv)
-    shop(); museum(); hall(); bridge_and_dock(); fixtures()
+    shop(); museum(); hall(); bridge_and_dock(); fixtures(); tents()

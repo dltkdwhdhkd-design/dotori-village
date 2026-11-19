@@ -11,6 +11,7 @@ import { thumb, thumbOfModel } from '../gfx/thumbs.js';
 import { Clock, dayKey, dateLabel, season, SEASON_KO, WEATHER_KO } from '../core/clock.js';
 import { el, fmt, josa, rand } from '../core/util.js';
 import { museumProgress } from './scripts.js';
+import { track, openNote } from './quests.js';
 
 const KIND_KO = { tool: '도구', fruit: '과일', shell: '조개', fish: '물고기', bug: '곤충', fossil: '화석', fossilid: '화석', furniture: '가구', wall: '벽지', floor: '바닥재', seed: '씨앗', sapling: '묘목', flower: '꽃', medicine: '약', misc: '잡동사니', parcel: '부탁받은 물건' };
 const narr = (t) => Dialog.say('', t);
@@ -35,7 +36,7 @@ function bagActions(i, close, redraw) {
     else if (it.kind === 'sapling') o = { t: 'tree', kind: it.tree, stage: 0 };
     else if (it.kind === 'seed') o = { t: 'flower', sp: it.sp, col: ['red', 'yellow', 'white'][Math.floor(rand() * 3)] };
     else o = { t: 'flower', sp: it.sp, col: it.col };
-    G.village.set(f.tx, f.ty, o);
+    G.village.set(f.tx, f.ty, o); track('plant');
     Sound.sfx('dig'); burst('dirt', f.tx + 0.5, 0.1, f.ty + 0.5, 6); close(); p.do('pick', 0.4);
   }, 'go');
   if (inHome && it.kind === 'furniture') add('방에 놓기', () => {
@@ -177,7 +178,11 @@ export function openMap() {
   x.font = 'bold 13px "Jua","Malgun Gothic",sans-serif'; x.textAlign = 'center';
   for (const b of v.buildings) {
     let label = { hall: '마을회관', shop: '만물상', museum: '박물관', home: '우리 집' }[b.type], col = { hall: '#4a5568', shop: '#3fa39a', museum: '#7c93b0', home: '#d9584a' }[b.type];
-    if (b.type === 'house') { const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot); if (!vid) { label = '빈터'; col = '#b9a98a'; } else { label = S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
+    const Q = S.prog;
+    if (b.type === 'house') { const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot); if (!vid) { label = (Q.pend.sites || []).includes(b.lot) ? '공사 중' : '빈터'; col = '#b9a98a'; } else { label = S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
+    else if (b.type === 'shop' && Q.shop < 2) label = '천막 가게';
+    else if (b.type === 'museum' && Q.museum < 2) { label = Q.museum === 1 ? '조사 천막' : '박물관 터'; if (Q.museum < 1) col = '#b9a98a'; }
+    else if (b.type === 'home' && S.player.houseLv < 1) label = '내 천막';
     x.fillStyle = col; x.fillRect(b.x * SC + 1, b.y * SC + 1, b.w * SC - 2, b.d * SC - 2);
     x.strokeStyle = '#4a3220'; x.lineWidth = 1.5; x.strokeRect(b.x * SC + 1, b.y * SC + 1, b.w * SC - 2, b.d * SC - 2);
     x.fillStyle = '#fff'; x.strokeStyle = '#3a2a1a'; x.lineWidth = 3; x.strokeText(label, (b.x + b.w / 2) * SC, (b.y + b.d / 2) * SC + 5); x.fillText(label, (b.x + b.w / 2) * SC, (b.y + b.d / 2) * SC + 5);
@@ -327,5 +332,5 @@ export function showTitle({ onNew, onContinue }) {
 }
 
 export function registerMenus() {
-  Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openMail, openStorage, board, bigTree, rest });
+  Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openNote, openMail, openStorage, board, bigTree, rest });
 }

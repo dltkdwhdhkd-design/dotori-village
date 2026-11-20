@@ -140,6 +140,11 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 .lk-row { display:flex; gap:10px; align-items:flex-start; margin-bottom:9px; }
 .lk-label { flex:none; width:74px; font-size:15px; color:#8a6a48; padding-top:5px; }
 .lk-box { display:flex; flex-wrap:wrap; gap:6px; }
+.lk-box.lk-hair-grid { flex:1; display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); }
+.lk-hair-grid .opt { display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 3px; font-size:13px; }
+.lk-hair-grid img { width:52px; height:52px; object-fit:contain; }
+.lk-zoom { min-width:88px; }
+.lookui button:focus-visible { outline:3px solid #407a68; outline-offset:2px; }
 .opt { border:2px solid var(--line); background:#fffdf5; border-radius:12px; padding:4px 11px; font-size:15px; }
 .opt:hover { background:#ffe19a; }
 .opt.on { background:var(--accent); border-color:var(--accent); color:#fff; }
@@ -154,6 +159,22 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 #title .tb .big.alt { flex:none; width:150px; font-size:17px; }
 #title { overflow:auto; }
 #title .sub.lt { color:#fff; text-shadow:0 2px 0 #6b4a2f, 0 0 8px rgba(0,0,0,.35); font-size:19px; }
+
+@media (max-width:620px) {
+  #title:not(.front) { justify-content:flex-start; padding:8px 0 16px; }
+  #title .box.wide { min-width:0; padding:12px; }
+  #title .tf { grid-template-columns:auto 1fr; }
+  #title .sub.lt { font-size:15px; text-align:center; }
+  #title .tb .big.alt { width:auto; }
+  .lookui { flex-direction:column; gap:10px; }
+  .lk-left { flex-direction:row; justify-content:center; }
+  .lk-view { width:132px !important; height:166px !important; }
+  .lk-turn { flex-direction:column; gap:4px; }
+  .lk-label { width:51px; font-size:13px; }
+  .lk-opts { max-height:28vh; padding:4px; }
+  .lk-right .tabs,.lk-quick { margin-bottom:6px; }
+  .lk-box.lk-hair-grid { grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); }
+}
 
 /* ---------- 같이 하기 ---------- */
 #nettags { position:absolute; inset:0; pointer-events:none; overflow:hidden; }

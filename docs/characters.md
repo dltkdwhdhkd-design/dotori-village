@@ -9,23 +9,25 @@
 | --- | --- | --- | --- |
 | player_custom | 주인공 — 머리·눈·옷·모자를 갈아 끼우는 모델(아래 '주인공 꾸미기') | 사람 | |
 | player_1 ~ player_4 | 예전의 정해진 주인공 네 가지(예전 저장이 쓴다. 거울을 보면 꾸미는 모델로 바뀐다) | 사람 | |
-| villager_dalgom | 달곰 | 반달곰 | 느긋 |
-| villager_goran | 고란 | 고라니 | 수줍 |
-| villager_nureong | 누렁 | 누렁이 | 열혈 |
-| villager_beomi | 범이 | 호랑이 | 까칠 |
-| villager_jangkki | 장끼 | 꿩 | 멋쟁이 |
-| villager_pongdang | 퐁당 | 개구리 | 명랑 |
-| villager_dungdung | 둥둥 | 청둥오리 | 엉뚱 |
-| villager_sandeul | 산들 | 염소 | 다정 |
-| villager_dahong | 다홍 | 여우 | 새침 |
-| villager_kkokki | 꼬끼 | 수탉 | 열혈 |
-| villager_dodam | 도담 | 돼지 | 느긋 |
-| villager_pogeun | 포근 | 양 | 수줍 |
-| npc_kkami | 까미 | 까치 | 만물상 주인 |
-| npc_duru | 두루 선생 | 두루미 | 박물관장 |
-| npc_ujik | 우직 이장 | 황소 | 이장 |
+| villager_dalgom | 치이카와 | 작고 귀여운 친구 | 느긋 |
+| villager_goran | 하치와레 | 파란 귀 친구 | 수줍 |
+| villager_nureong | 우사기 | 토끼 | 열혈 |
+| villager_beomi | 랏코 | 해달 | 까칠 |
+| villager_jangkki | 쿠리만쥬 | 밤만쥬 친구 | 멋쟁이 |
+| villager_pongdang | 시사 | 시사 | 명랑 |
+| villager_dungdung | 파자마 그린 | 파자마 파티즈 | 엉뚱 |
+| villager_sandeul | 카니짱 | 헌책방 주인 | 다정 |
+| villager_dahong | 모몽가 | 날다람쥐 | 새침 |
+| villager_kkokki | 파자마 핑크 | 파자마 파티즈 | 열혈 |
+| villager_dodam | 파자마 화이트 | 파자마 파티즈 | 느긋 |
+| villager_pogeun | 파자마 퍼플 | 파자마 파티즈 | 수줍 |
+| npc_kkami | 까미 | 포셰트 갑옷 씨 | 만물상 주인 |
+| npc_duru | 두루 선생 | 라멘 갑옷 씨 | 박물관장 |
+| npc_ujik | 우직 이장 | 노동 갑옷 씨 | 이장 |
 
 이름·말버릇·성격·집 색은 `js/data/villagers.js`, 대사는 `js/data/talk.js` 에서 바꿉니다.
+
+주민은 나가노의 치이카와 등장인물을 바탕으로 직접 만든 팬 모델입니다. 시설 담당자의 마을 이름은 퀘스트와 편지에서도 쓰입니다. [애니메이션 공식 캐릭터 소개](https://www.anime-chiikawa.jp/chara.html)
 
 ## 방법 1 — 3D 모델(.glb)로 바꾸기
 
@@ -59,7 +61,7 @@
 
 ### 스크립트로 만들 때 (`tools/blender/chars.py`)
 
-모든 캐릭터가 `Char` 라는 같은 뼈대를 씁니다. 캐릭터 하나는 아래 함수들을 차례로 부르는 것으로 만들어집니다.
+주인공은 `Char` 뼈대를 씁니다. 이웃의 둥근 몸체와 얼굴 무늬, 시설 담당자의 갑옷은 `tools/blender/chiikawa.py`에서 같은 게임용 부위 이름으로 만듭니다. 주인공 모델은 아래 함수들을 차례로 부르는 것으로 만들어집니다.
 
 | 함수 | 하는 일 |
 | --- | --- |
@@ -101,7 +103,9 @@
 
 | 고르는 것 | 가짓수 | 모델의 부위 이름 |
 | --- | --- | --- |
-| 머리 모양 | 9 | `hair1`~`hair9` (+ `hairfr1`~ 앞머리, `hairtop1`~ 윗머리) |
+| 얼굴형 | 기본형·동그란 얼굴·갸름한 얼굴 | 머리와 머리에 붙은 부위의 가로·세로 비율 |
+| 눈썹 · 코 | 각각 3 | `brow1`~`brow3`, `nose1`~`nose3` |
+| 머리 모양 | 12 | `hair1`~`hair12` (+ `hairfr1`~ 앞머리, `hairtop1`~ 윗머리) |
 | 눈 | 7 | `eyes1`~`eyes7` |
 | 입 | 5 | `mouth1`~`mouth5` (말할 때 입 `mouth_open` 은 함께 쓴다) |
 | 볼 | 없음·발그레·주근깨·둘 다 | `blush`, `freckle` |
@@ -112,7 +116,7 @@
 
 - 무엇을 고를 수 있는지(이름, 색, 어떤 옷이 긴소매인지, 어떤 모자가 머리를 덮는지)는 `js/game/look.js` 의 표에 있다. 고른 모습은 숫자 묶음으로 저장된다(`S.player.look`).
 - 모델은 `tools/blender/chars.py` 의 `custom()` 이 만든다. 다시 만들기: `python3 tools/blender/build.py chars:player_custom`
-- **가짓수를 늘리려면**: ① `custom()` 에 같은 규칙으로 부위를 더한다(예: `hp('hair10')` 안에 머리카락을 만든다) → ② `look.js` 의 표(`HAIR` 등)에 이름을 한 줄 더한다 → ③ 다시 만들고 `catalog.html?b=looks` 에서 확인한다.
+- **가짓수를 늘리려면**: ① `custom()` 에 같은 규칙으로 부위를 더한다(예: `hp('hair13')` 안에 머리카락을 만든다) → ② `look.js` 의 표(`HAIR` 등)에 이름을 한 줄 더한다 → ③ 다시 만들고 `catalog.html?b=looks` 에서 확인한다.
   - 머리카락은 세 조각으로 나뉜다: 늘 보이는 `hairN`, 푹 눌러쓰는 모자(챙 모자·밀짚모자·털모자)를 쓰면 숨기는 앞머리 `hairfrN`, 모자를 쓰면 숨기는 윗머리 `hairtopN`. 이렇게 해야 모자를 뚫고 나오지 않는다.
   - 색이 바뀌어야 하는 면은 위의 `p_*` 재질로 만든다. 새 재질을 만들었으면 `tools/blender/lib.py` 의 `PALETTE` 와 `js/gfx/models.js` 의 `DYNAMIC`, `look.js` 의 `tintOf` 에 넣는다.
 - **확인하는 화면**: `catalog.html?b=looks` — 머리 모양(앞·뒤), 눈, 입, 볼, 안경, 옷(앞·뒤), 모자(앞·옆), 색을 전부 늘어놓는다. `&part=hair|back|face|wear|hat|color` 로 한 갈래만 볼 수 있다.

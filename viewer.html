@@ -10,6 +10,8 @@
 <script type="module">
 import * as THREE from 'three';
 import { loadBundle, loadSingle, make, MODELS } from './js/gfx/models.js';
+import { VILLAGERS, NPCS } from './js/data/villagers.js';
+import { VERSION } from './js/core/version.js';
 const q = new URLSearchParams(location.search);
 const b = q.get('b') || 'nature';
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -30,8 +32,8 @@ function label(text) {
 let names = [];
 const LOOK = await import('./js/game/look.js');
 if (b === 'chars') {
-  const list = await (await fetch('./assets/chars/chars.json')).json();
-  for (const id of Object.keys(list)) { try { await loadSingle('./assets/chars/' + list[id].file, id); names.push(id); } catch (e) { console.warn(id, e); } }
+  const list = await (await fetch('./assets/chars/chars.json?v=' + VERSION)).json();
+  for (const id of Object.keys(list)) { try { await loadSingle('./assets/chars/' + list[id].file + '?v=' + VERSION, id); names.push(id); } catch (e) { console.warn(id, e); } }
 } else {
   await loadBundle('./assets/models/' + b + '.glb');
   names = Object.keys(MODELS);
@@ -44,7 +46,12 @@ names.forEach((n, i) => {
   if (o.userData.parts.snow && !q.get('snow')) o.userData.parts.snow.visible = false;
   if (o.userData.parts.hair1) LOOK.dress({ parts: o.userData.parts, model: o }, LOOK.defaultLook());      // 꾸미는 주인공: 기본 모습만 보이게(전부 보려면 catalog.html?b=looks)
   if (o.userData.parts.mouth_open && !q.get('talk')) o.userData.parts.mouth_open.visible = false;
-  if (q.get('lab') !== '0') { const l = label(n); l.position.set(x, -0.05, z + sp * 0.42); scene.add(l); }
+  if (q.get('lab') !== '0') {
+    const npc = NPCS[n.replace(/^npc_/, '')];
+    const caption = VILLAGERS[n.replace(/^villager_/, '')]?.name || npc?.species ||
+      (n === 'player_custom' ? '꾸미는 주인공' : n.replace(/^player_/, '주인공 '));
+    const l = label(caption); l.position.set(x, -0.05, z + sp * 0.42); scene.add(l);
+  }
 });
 const rows = Math.ceil(names.length / cols);
 const cx = (cols - 1) * sp / 2, cz = (rows - 1) * sp / 2;

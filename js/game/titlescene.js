@@ -4,7 +4,7 @@ import { make, patchMaterial, CURVE } from '../gfx/models.js';
 import { Actor } from '../gfx/actor.js';
 import { MODEL, dress, defaultLook } from './look.js';
 
-const WHO = [[MODEL, -1.75, 2.0, 0.18], ['villager_dalgom', 1.95, 2.1, -0.22], ['villager_pongdang', -3.55, 1.3, 0.4], ['villager_goran', 3.7, 1.25, -0.42], ['npc_kkami', 5.2, 0.3, -0.6]];
+const WHO = [[MODEL, -1.75, 2.0, 0.18], ['villager_dalgom', 1.95, 2.1, -0.22], ['villager_nureong', -3.55, 1.3, 0.4], ['villager_goran', 3.7, 1.25, -0.42], ['npc_kkami', 5.2, 0.3, -0.6]];
 const TINT_HOME = { roof: 0xb8763c, roof_d: 0x94592a, wall: 0xfff1d2, wall_d: 0xe6cfa2 };
 
 export class TitleScene {

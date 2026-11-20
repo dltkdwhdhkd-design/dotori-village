@@ -1,4 +1,4 @@
-"""캐릭터 모델 — 전부 이 게임을 위해 새로 만든 오리지널 캐릭터.
+"""캐릭터 모델 — 꾸미는 사람 주인공과 치이카와 마을 배역.
 
 머리가 크고 몸이 작은 인형 체형에 옷을 입힌다. 모든 캐릭터가 같은 뼈대(Char)를 쓴다.
 
@@ -10,6 +10,7 @@
 """
 import math
 from lib import *
+from chiikawa import RESIDENT_MODELS
 
 INK = '#3b2b28'        # 눈·입 선
 WHITE = '#ffffff'
@@ -112,7 +113,7 @@ class Char:
     def dot(self, x, z, mat, w, h, thick=0.012, out=0.0, roll=0):
         """얼굴에 붙이는 납작한 타원(눈, 볼, 무늬). w·h는 반지름."""
         p, rot = self.hp(x, z, out)
-        ball(tuple(p), 1.0, mat, (w, thick, h), rot=(rot[0], roll, rot[2]), sub=2 if max(w, h) > 0.03 else 1)
+        ball(tuple(p), 1.0, mat, (w, thick, h), rot=(rot[0], roll, rot[2]), sub=3 if max(w, h) > 0.03 else 2)
 
     def bump(self, c, r):
         """얼굴에 볼록한 면을 하나 더한다(주둥이 등). 그 뒤 눈·입은 이 면 위에도 붙는다."""
@@ -429,480 +430,151 @@ class Char:
                 ball((s * (x + 0.02), -0.01, z - l * 0.45), 1.0, col, (0.06, w, l * 0.6), rot=(0, -s * 12, 0), sub=2)
 
     def hair_cap(self, col, cut=0.56, tilt=-24, grow=0.02):
-        """머리 위를 덮는 머리카락"""
+        """앞쪽은 이마를 드러내고 귀와 뒷목 쪽으로 길어지는 머리 윤곽."""
         with self.head:
-            self.fit(dome((0, 0.006, self.hc + 0.002), 1.0, col, (self.hr[0] + grow, self.hr[1] + grow, self.hr[2] + grow), aim=(tilt, 0, 0), seg=24, rings=8, cut=cut))
+            verts, faces = [], []
+            n, rings = 48, 12
+            for j in range(rings):
+                for i in range(n):
+                    a = 2*math.pi*i/n
+                    edge = math.pi*cut - (.81-tilt*.007)*math.cos(a)
+                    edge += .055*math.sin(3*a+.5)*max(0,math.cos(a))
+                    t = edge*(1-j/rings)
+                    rx,ry,rz = (r+grow for r in self.hr)
+                    verts.append((rx*math.sin(t)*math.sin(a), -ry*math.sin(t)*math.cos(a),
+                                  self.hc+.003+rz*math.cos(t)))
+            for j in range(rings-1):
+                for i in range(n):
+                    k = (i+1)%n
+                    faces.append((j*n+i,j*n+k,(j+1)*n+k,(j+1)*n+i))
+            peak=len(verts)
+            verts.append((0,0,self.hc+self.hr[2]+grow+.003))
+            faces.extend(((rings-1)*n+i,(rings-1)*n+(i+1)%n,peak) for i in range(n))
+            self.fit(poly(verts,faces,col,smooth=True))
         self.top = max(self.top, self.hc + self.hr[2] + grow)
 
 
-# ============================================================ 주민
-def dalgom(name):       # 달곰 — 반달가슴곰, 느긋함
-    fur, pale = '#463a40', '#f3e6cf'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_round(fur, '#8a6a62')
-        c.muzzle(pale, w=0.165, h=0.115, z=c.hc - 0.125)
-        c.nose('#2a2024', w=0.044, h=0.03, z=c.hc - 0.075, line=0.03)
-        c.eyes('sleepy', x=0.178, iris='#d9a05a', lid=fur, size=0.95)
-        c.mouth('cat', z=c.hc - 0.172, w=0.05)
-        c.blush(x=0.285, col='#d9828a')
-        c.torso('#34507e', '#d9b77a', hem='#f3e6cf', collar='#f3e6cf')
-        c.emblem('moon', '#fff6dc', z=0.53, s=1.0)
-        c.arms('#34507e', fur, sl=0.42)
-        c.legs('#d9b77a', fur)
-        with c.tail:
-            ball((0, 0.2, 0.36), 0.065, fur, sub=2)
-        c.done()
-
-
-def goran(name):        # 고란 — 고라니, 수줍음
-    fur, pale = '#c99562', '#fbf0dc'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        with c.head:
-            for s in (1, -1):     # 크고 길쭉한 귀
-                ball((s * 0.33, 0.03, c.hc + 0.33), 1.0, fur, (0.1, 0.05, 0.19), rot=(0, s * 28, 0), sub=2)
-                ball((s * 0.335, -0.012, c.hc + 0.33), 1.0, '#f0c9b0', (0.058, 0.03, 0.135), rot=(0, s * 28, 0), sub=2)
-        c.top = c.hc + 0.5
-        c.patch(pale, cut=0.3, aim=(0, -1, -1.1))
-        c.muzzle(pale, w=0.125, h=0.09, d=0.085)
-        c.nose('#4a3430', w=0.036, h=0.026, line=0.024)
-        c.eyes('oval', x=0.182, size=1.06)
-        c.brows('#8a6240', tilt=14, w=0.04, x=0.182, z=c.hc + 0.115)
-        c.mouth('smile', z=c.hc - 0.165, w=0.038)
-        with c.head:               # 작은 송곳니
-            for s in (1, -1):
-                p, _ = c.hp(s * 0.04, c.hc - 0.17, 0.004)
-                cone((p.x, p.y, p.z), 0.011, 0.034, WHITE, seg=5, rot=(180, 0, 0))
-        c.blush(x=0.29)
-        c.torso('#f4ecd8', '#8a6a4a', hem=None, collar='#f4ecd8')
-        with c.body:               # 풀빛 카디건
-            c.band(0.36, 0.69, '#8fb56a', 0.016, 0.012, n=5)
-            box(c.front(0.535, 0.02), (0.07, 0.02, 0.27), '#f4ecd8')
-        c.buttons('#fff3c4', zs=(0.6, 0.5, 0.41), r=0.014)
-        c.emblem('leaf', '#5f9a4a', z=0.57, s=0.75, x=0.1)
-        c.arms('#8fb56a', fur, sl=0.62)
-        c.legs('#8a6a4a', '#5a4030')
-        with c.tail:
-            ball((0, 0.2, 0.36), 0.05, pale, sub=2)
-        c.done()
-
-
-def nureong(name):      # 누렁 — 누렁이, 운동 좋아함
-    fur, pale = '#e8b24a', '#fff6e2'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_flop('#c98a2e')
-        c.muzzle(pale, w=0.16, h=0.11, d=0.11)
-        c.nose('#2f2428', w=0.046, h=0.033, line=0.028)
-        c.eyes('oval', x=0.178)
-        c.brows('#9a6a22', tilt=-6, w=0.05, th=0.016, x=0.178, z=c.hc + 0.115)
-        c.mouth('cat', z=c.hc - 0.172, w=0.056)
-        with c.head:               # 빨간 머리띠
-            torus((0, 0.0, c.hc + 0.2), 0.345, 0.03, '#e8463c', seg=20, tseg=6, scale=(1, 0.94, 1.3))
-        c.torso('#e8463c', '#3a4a6a', hem=WHITE)
-        with c.body:
-            c.band(0.56, 0.6, WHITE, 0.011)
-        c.emblem('star', '#ffd84a', z=0.48, s=0.9)
-        c.arms('#e8463c', fur, sl=0.25)
-        c.legs('#3a4a6a', '#f7f7f2', sock=WHITE)
-        with c.tail:               # 말린 꼬리
-            torus((0, 0.23, 0.42), 0.06, 0.032, fur, seg=10, tseg=6, rot=(0, 90, 0))
-        c.done()
-
-
-def beomi(name):        # 범이 — 호랑이, 무뚝뚝함
-    fur, pale, st = '#f09a3a', '#fff4e0', '#3a2a26'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_round(fur, pale, r=0.1, x=0.28)
-        with c.head:
-            for s in (1, -1):
-                ball((s * 0.28, 0.045, c.hc + 0.275), 0.085, st, (1, 0.5, 1), sub=2)       # 귀 뒤 검은 털
-                ball((s * 0.27, -0.17, c.hc - 0.13), 1.0, pale, (0.12, 0.14, 0.095), sub=2)   # 볼의 흰 털
-            # 이마 줄무늬(가운데 하나, 양옆 둘)
-            for (x, z, w, h, rl) in ((0, 0.25, 0.022, 0.07, 0), (0.1, 0.22, 0.018, 0.055, -25), (-0.1, 0.22, 0.018, 0.055, 25)):
-                c.dot(x, c.hc + z, st, w, h, thick=0.008, out=0.002, roll=rl)
-            for s in (1, -1):
-                for (z, w) in ((0.03, 0.06), (-0.05, 0.07)):
-                    c.dot(s * 0.36, c.hc + z, st, w, 0.016, thick=0.008, out=0.002, roll=s * 8)
-        c.muzzle(pale, w=0.14, h=0.095)
-        c.nose('#e07a7a', w=0.04, h=0.028, line=0.026)
-        c.eyes('oval', x=0.175, size=0.92)
-        c.brows(st, tilt=-20, w=0.058, th=0.02, z=c.hc + 0.068, x=0.168)
-        c.mouth('flat', z=c.hc - 0.172, w=0.05)
-        c.torso('#f7f0dc', '#4a4640', collar='#f7f0dc')
-        with c.body:               # 쪽빛 배자(조끼)
-            c.band(0.35, 0.67, '#2f4e86', 0.018, 0.012, n=5)
-            box(c.front(0.535, 0.02), (0.085, 0.02, 0.27), '#f7f0dc')
-            ball(c.front(0.56, 0.026), 0.022, '#f2c230', (1, 0.6, 1), sub=1)
-        c.arms('#f7f0dc', fur, sl=0.45)
-        c.legs('#4a4640', '#2e2a2a')
-        with c.tail:
-            p0 = Vector((0, 0.17, 0.36))
-            pts = [p0, Vector((0, 0.32, 0.4)), Vector((0, 0.4, 0.55)), Vector((0, 0.36, 0.72))]
-            for i in range(3):
-                tube(pts[i], pts[i + 1], 0.04, fur if i % 2 == 0 else st, seg=8)
-                ball(pts[i + 1], 0.04, st if i == 2 else fur, sub=2)
-        c.done()
-
-
-def bird_head(c, col, beak, cheek=None):
-    c.skull(col)
-    if cheek:
-        with c.head:
-            ball((0, -0.03, c.hc - 0.07), 1.0, cheek, (0.34, 0.35, 0.25), sub=3)
-
-
-def beak(c, col, z=None, w=0.07, l=0.14, h=0.05, col2=None, flat=False):
-    """부리. flat=True면 오리처럼 넓적하게"""
-    z = c.hc - 0.09 if z is None else z
-    y0 = -(c.hr[1] - 0.05)
-    with c.head:
-        if flat:
-            ball((0, y0 - l * 0.45, z + 0.008), 1.0, col, (w * 1.35, l * 0.9, h * 0.62), sub=2)
-            ball((0, y0 - l * 0.35, z - 0.028), 1.0, col2 or col, (w * 1.1, l * 0.72, h * 0.42), sub=2)
-        else:
-            cone((0, y0, z + 0.012), w, l, col, seg=10, rot=(90, 0, 0), scale=(1, 0.72, 1))
-            cone((0, y0, z - 0.03), w * 0.8, l * 0.72, col2 or col, seg=8, rot=(90, 0, 0), scale=(1, 0.45, 1))
-
-
-def jangkki(name):      # 장끼 — 꿩, 멋 부림
-    g = '#2f7f62'
-    with Model(name) as m:
-        c = Char(m)
-        bird_head(c, g, '#f5e3a0')
-        with c.head:
-            for s in (1, -1):      # 눈가의 붉은 살, 뒤통수 깃
-                c.dot(s * 0.184, c.hc - 0.05, '#ee5a4e', 0.1, 0.098, thick=0.01)
-                cone((s * 0.16, 0.2, c.hc + 0.25), 0.04, 0.15, g, seg=6, rot=(-35, s * 14, 0))
-            torus((0, 0, NECK + 0.035), 0.2, 0.04, WHITE, seg=18, tseg=6, scale=(1, 0.92, 0.8))   # 흰 목테
-        c.top = c.hc + 0.45
-        beak(c, '#f5e3a0', w=0.07, l=0.15, col2='#e6cf86')
-        c.eyes('oval', x=0.18, size=0.9, z=c.hc - 0.035)
-        c.brows('#1e4a3a', tilt=8, w=0.045, th=0.012, z=c.hc + 0.095, x=0.18)
-        c.torso('#f7ecd0', '#5a3a2a', collar='#f2c230')
-        with c.body:               # 자줏빛 조끼
-            c.band(0.36, 0.66, '#8a2e3a', 0.016, 0.012, n=5)
-            box(c.front(0.535, 0.02), (0.08, 0.02, 0.27), '#f7ecd0')
-        c.buttons('#f2c230', zs=(0.56, 0.48, 0.4), r=0.014)
-        c.wings('#b8743a', '#5a3a2a', sleeve='#f7ecd0', sl=0.25)
-        c.birdlegs('#d9a03c', pants='#5a3a2a')
-        with c.tail:               # 길고 줄무늬 진 꽁지
-            pts = [Vector((0, 0.16, 0.38)), Vector((0, 0.42, 0.52)), Vector((0, 0.66, 0.74)), Vector((0, 0.84, 1.02))]
-            cols = ['#c9843a', '#5a3a2a', '#c9843a']
-            for i in range(3):
-                tube(pts[i], pts[i + 1], 0.05 - i * 0.012, cols[i], r2=0.04 - i * 0.012, seg=6)
-            ball(pts[3], 0.016, '#5a3a2a', sub=1)
-        c.done()
-
-
-def pongdang(name):     # 퐁당 — 개구리, 발랄함
-    g, pale = '#7ccb5a', '#eaf7c8'
-    with Model(name) as m:
-        c = Char(m, hr=(0.43, 0.385, 0.315), hc=1.01)
-        c.skull(g)
-        with c.head:
-            for s in (1, -1):      # 머리 위로 솟은 눈두덩
-                ball((s * 0.19, -0.05, c.hc + 0.27), 0.135, g, sub=3)
-        c.patch(pale, cut=0.4, aim=(0, -1, -1.6))
-        c.bump((0.19, -0.05, c.hc + 0.27), (0.135, 0.135, 0.135))
-        c.bump((-0.19, -0.05, c.hc + 0.27), (0.135, 0.135, 0.135))
-        c.top = c.hc + 0.42
-        c.eyes('big', x=0.19, z=c.hc + 0.275, size=1.0)
-        c.mouth('wide', z=c.hc - 0.1, w=0.078)
-        c.blush(x=0.3, z=c.hc - 0.05)
-        c.torso('#ffd84a', kind='dress', hem='#f2a03c', collar='#f2a03c')
-        c.dots(WHITE, r=0.02, rows=((0.4, 7, 0.0), (0.5, 6, 0.5), (0.6, 5, 0.0)))
-        c.arms('#ffd84a', g, sl=0.3)
-        c.legs(g, '#f2a03c')
-        c.done()
-
-
-def dungdung(name):     # 둥둥 — 청둥오리, 엉뚱함
-    with Model(name) as m:
-        c = Char(m)
-        bird_head(c, '#2f8a62', '#f2c230')
-        with c.head:
-            torus((0, 0, NECK + 0.035), 0.2, 0.04, WHITE, seg=18, tseg=6, scale=(1, 0.92, 0.8))
-        beak(c, '#f2c230', z=c.hc - 0.1, w=0.085, l=0.19, h=0.07, col2='#e0a82a', flat=True)
-        c.eyes('pop', x=0.175, z=c.hc + 0.015, size=1.0)
-        c.brows('#1e5a40', tilt=10, w=0.035, th=0.011, z=c.hc + 0.125, x=0.175)
-        c.torso(WHITE, '#6a7a8a', hem='#3a6ab0')
-        with c.body:               # 세일러 깃
-            for s in (1, -1):
-                ball((s * 0.09, -0.14, 0.645), 1.0, '#3a6ab0', (0.085, 0.05, 0.06), rot=(0, 0, s * 20), sub=2)
-            ball((0, 0.14, 0.64), 1.0, '#3a6ab0', (0.15, 0.06, 0.07), sub=2)
-            ball(c.front(0.585, 0.02), 0.03, '#e8463c', (1.3, 0.7, 0.9), sub=2)
-        c.wings('#b8a890', '#3a6ab0', sleeve=WHITE, sl=0.25)
-        c.birdlegs('#f29a3c', pants='#6a7a8a')
-        with c.tail:
-            ball((0, 0.2, 0.38), 1.0, '#6a5a4a', (0.07, 0.09, 0.05), sub=2)
-            arc((0, 0.27, 0.43), 0.045, 0.016, '#2a3a3a', 0, 250, seg=8, tseg=5, rot=(90, 0, 90))
-        c.done()
-
-
-def sandeul(name):      # 산들 — 염소, 다정함
-    fur = '#fbf5e8'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_side(fur, '#f5b8b0', l=0.19, droop=24, z=c.hc + 0.12)
-        with c.head:
-            for s in (1, -1):      # 작은 뿔
-                cone((s * 0.14, 0.06, c.hc + 0.3), 0.045, 0.17, '#cdb898', seg=8, rot=(-22, s * 12, 0))
-            cone((0, -0.27, c.hc - 0.26), 0.04, 0.11, fur, seg=8, rot=(170, 0, 0))            # 턱수염
-            ball((0, -0.02, c.hc + 0.32), 0.08, fur, (1.2, 1, 0.8), sub=2)
-        c.top = c.hc + 0.5
-        c.muzzle('#fbe6dc', w=0.125, h=0.088, d=0.085)
-        c.nose('#e89a98', w=0.034, h=0.024, line=0.02, linecol='#c98a88')
-        c.eyes('smile', x=0.178)
-        c.mouth('smile', z=c.hc - 0.165, w=0.04, col='#c98a88')
-        c.blush(x=0.285)
-        c.torso('#b7a0e0', '#7a6a9a', hem='#f3ecff', collar='#f3ecff')
-        with c.body:
-            for z in (0.46, 0.56):
-                c.band(z, z + 0.022, '#f3ecff', 0.011)
-        c.emblem('flower', '#ff9fc2', z=0.61, s=0.8, x=0.085)
-        c.arms('#b7a0e0', fur, sl=0.7)
-        c.legs('#7a6a9a', '#5a4a6a')
-        with c.tail:
-            ball((0, 0.19, 0.37), 1.0, fur, (0.04, 0.06, 0.05), sub=2)
-        c.done()
-
-
-def dahong(name):       # 다홍 — 여우, 새침함
-    fur, pale, dk = '#ee6f3c', '#fff6ea', '#3a2a28'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_point(fur, pale, x=0.25, h=0.3, w=0.135, lean=20, tip=dk)
-        with c.head:
-            for s in (1, -1):      # 뺨의 흰 털
-                cone((s * 0.36, -0.1, c.hc - 0.16), 0.085, 0.13, pale, seg=8, rot=(0, s * 105, 0), scale=(1, 0.7, 1))
-                cone((s * 0.34, -0.1, c.hc - 0.09), 0.07, 0.12, pale, seg=8, rot=(0, s * 80, 0), scale=(1, 0.7, 1))
-        c.patch(pale, cut=0.33, aim=(0, -1, -1.2))
-        c.muzzle(pale, w=0.12, h=0.088, d=0.1)
-        c.nose(dk, w=0.033, h=0.025, line=0.022)
-        c.eyes('lash', x=0.176, size=0.95)
-        c.mouth('smile', z=c.hc - 0.166, w=0.036)
-        c.blush(x=0.3, z=c.hc - 0.08, r=0.04)
-        c.torso('#8a3a6a', kind='dress', hem='#f7d8e6', collar=WHITE)
-        c.buttons('#f7d8e6', zs=(0.6, 0.52), r=0.015)
-        c.arms('#8a3a6a', fur, hand=dk, sl=0.55)
-        c.legs(dk, '#5a2a4a')
-        with c.tail:               # 탐스러운 꼬리
-            ball((0, 0.3, 0.42), 1.0, fur, (0.11, 0.17, 0.11), rot=(-35, 0, 0), sub=3)
-            ball((0, 0.43, 0.52), 1.0, pale, (0.085, 0.11, 0.085), rot=(-35, 0, 0), sub=2)
-        c.done()
-
-
-def kkokki(name):       # 꼬끼 — 수탉, 운동 좋아함
-    with Model(name) as m:
-        c = Char(m)
-        bird_head(c, '#fffaf0', '#f2b83a')
-        with c.head:
-            for i, (y, z, r) in enumerate(((-0.14, 0.33, 0.075), (-0.02, 0.38, 0.09), (0.11, 0.34, 0.075))):   # 볏
-                ball((0, y, c.hc + z), r, '#e8463c', (0.55, 1, 1.1), sub=2)
-            for s in (1, -1):      # 턱 밑 살
-                ball((s * 0.035, -0.33, c.hc - 0.2), 1.0, '#e8463c', (0.035, 0.03, 0.06), sub=2)
-        c.top = c.hc + 0.5
-        beak(c, '#f2b83a', w=0.062, l=0.13)
-        c.eyes('oval', x=0.18, size=0.92)
-        c.brows('#c0392b', tilt=-14, w=0.05, th=0.016, x=0.18, z=c.hc + 0.105)
-        c.torso('#3a7ad0', '#3a4a6a', hem=WHITE, collar=WHITE)
-        with c.body:               # 운동복 지퍼와 줄
-            box(c.front(0.53, 0.012), (0.02, 0.016, 0.3), WHITE)
-        c.wings('#fffaf0', '#fffaf0', sleeve='#3a7ad0', sl=0.5)
-        c.birdlegs('#f2b83a', pants='#3a4a6a')
-        with c.tail:               # 풍성한 꽁지깃
-            for i, a in enumerate((-30, 0, 30)):
-                arc((math.sin(math.radians(a)) * 0.05, 0.2, 0.36), 0.2, 0.035, '#2a4a4a' if i != 1 else '#3a6a5a', 80, 190, seg=8, tseg=5, rot=(90, 0, 90 + a * 0.6))
-        c.done()
-
-
-def dodam(name):        # 도담 — 돼지, 느긋함
-    fur = '#ffc2c8'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        with c.head:
-            for s in (1, -1):      # 앞으로 접힌 귀
-                cone((s * 0.25, -0.02, c.hc + 0.24), 0.11, 0.17, '#f7a3ae', seg=8, rot=(35, s * 30, 0), scale=(1, 0.5, 1))
-            cyl((0, -0.345, c.hc - 0.1), 0.085, 0.06, '#f7a3ae', seg=14, rot=(90, 0, 0), scale=(1.15, 1, 0.85))   # 코
-            for s in (1, -1):
-                ball((s * 0.03, -0.408, c.hc - 0.1), 1.0, '#c96a7a', (0.014, 0.008, 0.022), sub=1)
-        c.top = c.hc + 0.42
-        c.eyes('sleepy', x=0.185, lid=fur, z=c.hc + 0.01)
-        c.mouth('smile', z=c.hc - 0.205, w=0.045, col='#b85a6a')
-        c.blush(x=0.29, z=c.hc - 0.11, col='#ff8a9a')
-        c.torso('#fff3d6', '#6aa35a', collar='#fff3d6')
-        with c.body:               # 풀색 멜빵바지
-            box(c.front(0.47, 0.012), (0.2, 0.02, 0.17), '#6aa35a', bevel=0.008)
-            for s in (1, -1):
-                tube(c.front(0.55, 0.014, s * 0.08), (s * 0.115, -0.05, 0.69), 0.02, '#6aa35a', seg=6)
-                tube((s * 0.115, -0.05, 0.69), (s * 0.1, 0.13, 0.6), 0.02, '#6aa35a', seg=6)
-                ball(c.front(0.54, 0.024, s * 0.078), 0.02, '#ffd84a', (1, 0.6, 1), sub=1)
-        c.emblem('acorn', '#f2c06a', z=0.455, s=0.8)
-        c.arms('#fff3d6', fur, sl=0.3)
-        c.legs('#6aa35a', '#8a5a3a')
-        with c.tail:
-            torus((0, 0.22, 0.4), 0.035, 0.016, '#f7a3ae', seg=8, tseg=5, rot=(0, 90, 0))
-        c.done()
-
-
-def pogeun(name):       # 포근 — 얼굴이 검은 양, 수줍음
-    face, wool = '#4a4048', '#fbf4e4'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(face)
-        c.ears_side(face, '#7a6a70', l=0.17, droop=16, z=c.hc + 0.02, x=0.37)
-        with c.head:               # 몽실몽실한 털
-            n = 9
-            for i in range(n):
-                a = math.pi * (i / (n - 1))
-                ball((math.cos(a) * 0.32, -0.06, c.hc + 0.12 + math.sin(a) * 0.24), 0.125, wool, sub=2)
-            for (x, y, z, r) in ((0, 0.08, 0.3, 0.2), (0.2, 0.14, 0.2, 0.19), (-0.2, 0.14, 0.2, 0.19), (0, 0.22, 0.08, 0.24), (0.24, 0.16, -0.02, 0.18), (-0.24, 0.16, -0.02, 0.18), (0, -0.1, 0.34, 0.15)):
-                ball((x, y, c.hc + z), r, wool, sub=2)
-        c.top = c.hc + 0.5
-        c.eyes('oval', x=0.165, iris='#e6c07a', size=1.0, z=c.hc - 0.045)
-        c.nose('#f0a0a8', w=0.034, h=0.022, z=c.hc - 0.135, line=0.02, linecol='#f0c0c8')
-        c.mouth('smile', z=c.hc - 0.19, w=0.036, col='#f0c0c8')
-        c.blush(x=0.26, z=c.hc - 0.13, col='#e8707e', r=0.042)
-        c.torso('#9fd8c8', '#fbf4e4', hem=WHITE)
-        with c.body:               # 분홍 목도리
-            torus((0, 0, 0.675), 0.15, 0.05, '#ff9fc2', seg=16, tseg=6, scale=(1, 0.92, 0.75))
-            box((0.1, -0.16, 0.56), (0.07, 0.035, 0.17), '#ff9fc2', rot=(0, -8, 0), bevel=0.01)
-        c.buttons(WHITE, zs=(0.5, 0.42), r=0.015)
-        c.arms('#9fd8c8', face, sl=0.6)
-        c.legs(face, '#3a3238')
-        with c.tail:
-            ball((0, 0.21, 0.38), 0.07, wool, sub=2)
-        c.done()
-
-
-# ============================================================ 가게·박물관·마을회관 사람들
-def kkami(name):        # 까미 — 까치 (만물상)
-    bk, bl = '#33303c', '#3a5a9a'
-    with Model(name) as m:
-        c = Char(m)
-        bird_head(c, bk, bk)
-        beak(c, '#6a6672', w=0.062, l=0.15, col2='#56525e')
-        c.eyes('oval', x=0.18, white=True, size=0.95)
-        c.brows('#6a8ad0', tilt=8, w=0.04, th=0.011, x=0.18, z=c.hc + 0.12)
-        c.blush(x=0.3, col='#c97a8a', r=0.04)
-        c.torso(WHITE, bk)
-        with c.body:               # 주황 앞치마
-            p = c.front(0.47, 0.014)
-            box(p, (0.25, 0.022, 0.25), '#f29a3c', bevel=0.01)
-            box(c.front(0.62, 0.014), (0.13, 0.02, 0.07), '#f29a3c', bevel=0.006)
-            for s in (1, -1):
-                tube(c.front(0.64, 0.012, s * 0.055), (s * 0.1, 0.02, 0.705), 0.014, '#d9802a', seg=5)
-            c.band(0.385, 0.41, '#d9802a', 0.014)
-        c.emblem('acorn', '#fff3d6', z=0.47, s=1.0, col2='#8a5a34')
-        c.wings(bk, bl, sleeve=None)
-        with c.armL:
-            ball((0.27, 0.0, 0.52), 1.0, WHITE, (0.045, 0.08, 0.075), rot=(0, 23, 0), sub=2)
-        with c.armR:
-            ball((-0.27, 0.0, 0.52), 1.0, WHITE, (0.045, 0.08, 0.075), rot=(0, -23, 0), sub=2)
-        c.birdlegs('#4a4650', pants=bk)
-        with c.tail:
-            tube((0, 0.16, 0.38), (0, 0.62, 0.62), 0.05, bl, r2=0.03, seg=6)
-            tube((0, 0.16, 0.38), (0, 0.5, 0.52), 0.06, bk, r2=0.04, seg=6)
-        c.done()
-
-
-def duru(name):         # 두루 선생 — 두루미 (박물관)
-    with Model(name) as m:
-        c = Char(m, hc=1.11, hr=(0.37, 0.35, 0.325))
-        with c.head:               # 긴 목
-            cyl((0, 0, NECK - 0.02), 0.085, 0.2, '#3a363c', seg=12)
-        bird_head(c, '#fffdf6', '#8a9a7a')
-        with c.head:
-            c.fit(dome((0, 0.0, c.hc), 1.0, '#e8463c', (c.hr[0] + 0.006, c.hr[1] + 0.006, c.hr[2] + 0.006), aim=(-14, 0, 0), seg=20, rings=5, cut=0.24))   # 붉은 정수리
-            ball((0, 0.1, c.hc - 0.12), 1.0, '#3a363c', (0.3, 0.26, 0.2), sub=2)                                          # 검은 뒷목
-        beak(c, '#9aa88a', w=0.052, l=0.21, z=c.hc - 0.08, col2='#8a987a')
-        c.eyes('dot', x=0.15, z=c.hc + 0.005, size=1.0)
-        with c.head:               # 동그란 안경
-            for s in (1, -1):
-                p, rot = c.hp(s * 0.15, c.hc + 0.005, 0.02)
-                torus(tuple(p), 0.085, 0.011, '#8a6a3a', seg=14, tseg=5, rot=(90 + rot[0], 0, rot[2]))
-            p, _ = c.hp(0, c.hc + 0.01, 0.03)
-            tube((-0.065, p.y, p.z), (0.065, p.y, p.z), 0.009, '#8a6a3a', seg=5)
-        c.brows('#6a6a70', tilt=12, w=0.036, th=0.01, x=0.15, z=c.hc + 0.115)
-        c.torso('#f7f0dc', '#5a4a3a', collar='#f7f0dc')
-        with c.body:               # 갈색 조끼와 나비넥타이
-            c.band(0.36, 0.66, '#8a6a4a', 0.016, 0.012, n=5)
-            box(c.front(0.535, 0.02), (0.075, 0.02, 0.27), '#f7f0dc')
-            for s in (1, -1):
-                cone((s * 0.005, c.front(0.655, 0.03)[1], 0.655), 0.035, 0.06, '#c0392b', seg=6, rot=(0, s * 90, 0), scale=(1, 0.5, 1))
-            ball(c.front(0.655, 0.035), 0.016, '#a02a20', sub=1)
-        c.buttons('#f2e2a8', zs=(0.53, 0.44), r=0.014)
-        c.wings('#fffdf6', '#3a363c', sleeve='#f7f0dc', sl=0.3)
-        c.birdlegs('#5a5650', pants='#5a4a3a')
-        with c.tail:
-            ball((0, 0.21, 0.4), 1.0, '#3a363c', (0.09, 0.11, 0.08), rot=(-30, 0, 0), sub=2)
-        c.done()
-
-
-def ujik(name):         # 우직 이장 — 황소 (마을회관)
-    fur, pale = '#b8763e', '#f7dcc0'
-    with Model(name) as m:
-        c = Char(m)
-        c.skull(fur)
-        c.ears_side(fur, '#e8b0a0', l=0.17, droop=10, z=c.hc + 0.1, x=0.36)
-        with c.head:               # 뿔
-            for s in (1, -1):
-                arc((s * 0.25, 0.02, c.hc + 0.26), 0.11, 0.036, '#f5ead0', 0 if s > 0 else 90, 90 if s > 0 else 180, seg=6, tseg=6, rot=(90, 0, 0))
-                p = (s * 0.25, 0.02, c.hc + 0.37)
-                cone(p, 0.036, 0.07, '#f5ead0', seg=6, rot=(0, -s * 90, 0))
-        c.muzzle(pale, w=0.2, h=0.115, d=0.1, z=c.hc - 0.14)
-        with c.head:
-            for s in (1, -1):
-                p, rot = c.hp(s * 0.06, c.hc - 0.11, 0.004)
-                ball(tuple(p), 1.0, '#a86a5a', (0.02, 0.01, 0.014), rot=rot, sub=1)
-        c.eyes('oval', x=0.185, size=0.92, z=c.hc + 0.0)
-        c.brows('#6a3e1e', tilt=-4, w=0.06, th=0.022, x=0.185, z=c.hc + 0.125)
-        c.mouth('smile', z=c.hc - 0.2, w=0.055, col='#8a5040')
-        with c.head:               # 밀짚모자
-            lathe([(0.37, 0.0), (0.375, 0.012), (0.2, 0.035), (0.185, 0.13), (0.14, 0.17), (0.0, 0.18)], '#ecd28a', center=(0, 0.03, c.hc + 0.3), seg=18, rot=(-8, 0, 0))
-            lathe([(0.2, 0.04), (0.197, 0.075)], '#c0392b', center=(0, 0.03, c.hc + 0.3), seg=18, rot=(-8, 0, 0), caps=False)
-        c.top = c.hc + 0.5
-        c.torso('#fff6e2', '#5a6a4a', collar='#fff6e2')
-        with c.body:               # 이장님 조끼
-            c.band(0.35, 0.67, '#5f8a4a', 0.018, 0.012, n=5)
-            box(c.front(0.535, 0.02), (0.09, 0.02, 0.27), '#fff6e2')
-            box(c.front(0.47, 0.026, 0.12), (0.07, 0.016, 0.06), '#4f7a3e', bevel=0.004)
-        c.emblem('acorn', '#f2c06a', z=0.585, s=0.7, x=-0.11)
-        c.arms('#fff6e2', fur, sl=0.5)
-        c.legs('#5a6a4a', '#4a3a2a')
-        with c.tail:
-            tube((0, 0.17, 0.38), (0, 0.28, 0.24), 0.018, fur, seg=5)
-            ball((0, 0.29, 0.22), 0.04, '#5a3a1e', (1, 1, 1.4), sub=2)
-        c.done()
-
-
 # ============================================================ 플레이어(사람 아이)
-NOSE = {'#ffdcc0': '#f0b090', '#f5cba8': '#e0a482', '#e8b890': '#d09a70'}     # 살빛에 맞춘 코 색
+NOSE = {'#ffdcc0': '#ed936b', '#f5cba8': '#dd825b', '#e8b890': '#cc7756'}
+
+
+def human_head(c, skin, nose, modular=False):
+    c.skull(skin, sub=4)
+    with c.head:
+        for s in (-1, 1):
+            ball((s*.401, -.004, c.hc-.045), 1, skin, (.071,.065,.076), sub=3)
+            ball((s*.439, -.048, c.hc-.044), 1, nose, (.028,.018,.039), sub=2)
+    z = c.hc - .087
+    for i in range(1,4) if modular else (1,):
+        part = c.m.part('nose%d'%i,(0,0,NECK),parent='head') if modular else c.head
+        with part:
+            if i == 1:
+                outline = [(0,.040),(-.013,.031),(-.039,-.010),(-.034,-.021),
+                           (.033,-.021),(.039,-.010),(.013,.031)]
+                vs = [tuple(c.hp(x,z+dz,.007)[0]) for x,dz in outline]
+                vs.append(tuple(c.hp(0,z-.006,.055)[0]))
+                poly(vs, [(j,(j+1)%len(outline),len(outline)) for j in range(len(outline))],nose,smooth=True)
+            elif i == 2:
+                c.dot(0,z,nose,.042,.033,.032,.016)
+            else:
+                c.dot(0,z,nose,.026,.021,.023,.010)
+
+
+def human_brows(c, color, modular=False):
+    for i in range(1,4) if modular else (1,):
+        part = c.m.part('brow%d'%i,(0,0,NECK),parent='head') if modular else c.head
+        with part:
+            for side in (-1,1):
+                mid = c.hc+.112
+                points = [[(.133,mid),(.160,mid+.010),(.188,mid+.012),(.212,mid+.005)],
+                          [(.133,mid+.014),(.165,mid+.007),(.194,mid-.002),(.213,mid-.008)],
+                          [(.134,mid+.003),(.164,mid+.006),(.196,mid+.005),(.216,mid+.002)]][i-1]
+                for j,((x,z),(xx,zz)) in enumerate(zip(points,points[1:])):
+                    a,b = c.hp(side*x,z,.010)[0],c.hp(side*xx,zz,.010)[0]
+                    tube(a,b,.013 if j<2 else .011,color,r2=.011 if j<2 else .004,seg=10)
+                    if j<2: ball(a,.013,color,sub=2)
+
+
+def hair_lock(c, start, end, bend, width, depth, color):
+    """머리 곡면을 따라 굽고 끝으로 갈수록 가늘어지는 앞머리 한 갈래."""
+    verts,faces=[],[]
+    rings,sides=12,12
+    for j in range(rings+1):
+        t=j/rings
+        x=(1-t)*start[0]+t*end[0]+math.sin(t*math.pi)*bend
+        z=c.hc+(1-t)*start[1]+t*end[1]
+        shape=max(.035,math.sin(math.pi*(.035+.955*t))**.68)*(1.14-.39*t)
+        for i in range(sides):
+            a=2*math.pi*i/sides
+            sx=x+width*shape*math.cos(a)
+            p,_=c.hp(sx,z)
+            verts.append((sx,p.y-.012-depth*shape*math.sin(a),z))
+    for j in range(rings):
+        for i in range(sides):
+            k=(i+1)%sides
+            faces.append((j*sides+i,(j+1)*sides+i,(j+1)*sides+k,j*sides+k))
+    # 정면(-Y)에서 바깥 면이 보이도록 감는다.
+    poly(verts,[tuple(reversed(f)) for f in faces],color,smooth=True)
+
+
+def human_eyes(c, style, color, name='eyes'):
+    x,z = .177,c.hc-.041
+    with c.m.part(name, tuple(c.hp(0,z)[0]), parent='head'):
+        for s in (-1,1):
+            ex = s*x
+            if style == 'smile':
+                p,rot = c.hp(ex,z-.025,.010)
+                arc(tuple(p),.055,.014,color,15,165,seg=12,tseg=7,rot=(90+rot[0],0,rot[2]))
+                continue
+            if style == 'dot':
+                c.dot(ex,z,color,.044,.054,.016,.008)
+                c.dot(ex-.010,z+.014,WHITE,.012,.016,.008,.024)
+                continue
+            w,h = {'oval':(.073,.099),'big':(.088,.091),'lash':(.077,.090),
+                   'half':(.076,.054),'pop':(.078,.083)}[style]
+            c.dot(ex,z,INK,w,h,.012,.008)
+            c.dot(ex,z-.005,'#fffcf1',w-.006,h-.010,.013,.017)
+            pw = w*(.41 if style=='pop' else .65)
+            px = ex-s*.010
+            c.dot(px,z+.001,color,pw,h*.78,.015,.025)
+            c.dot(px-.011,z+h*.35,WHITE,pw*.29,h*.19,.009,.038)
+            if style in ('half','lash'):
+                c.dot(ex,z+h*.68,INK,w*1.02,.012,.011,.027,roll=s*7)
+            if style=='lash':
+                for dx,dz in [(.059,.068),(.076,.048)]:
+                    c.dot(ex+s*dx,z+dz,INK,.011,.024,.011,.017,roll=-s*31)
+
+
+def finish_player(c):
+    # 얼굴과 머리 장식은 같은 축으로 키워 안경·모자가 함께 맞게 한다.
+    for p in c.m.parts:
+        if p is c.head or p.parent=='head':
+            for v in p.bm.verts:
+                v.co.x *= 1.105
+                v.co.z = NECK + (v.co.z-NECK)*1.10
+            p.pivot.x *= 1.105
+            p.pivot.z = NECK + (p.pivot.z-NECK)*1.10
+    c.top = NECK+(c.top-NECK)*1.10
+    c.done()
+
+
+def sneaker(c):
+    for part,s in [(c.legL,1),(c.legR,-1)]:
+        x=s*LEGX
+        with part:
+            ball((x,-.037,.034),1,'#f5e4ce',(.102,.142,.032),sub=3)
+            for y,z in [(-.096,.113),(-.072,.123)]:
+                capsule((x-.034,y,z),(x+.034,y,z),.008,'#fff2d8',seg=6,sub=1)
 
 
 def kid(name, skin, hair, top, bottom, style):
     with Model(name) as m:
         c = Char(m)
-        c.skull(skin)
-        with c.head:               # 귀
-            for s in (1, -1):
-                ball((s * 0.4, 0.02, c.hc - 0.03), 1.0, skin, (0.045, 0.05, 0.06), sub=2)
-        c.eyes('oval', x=0.175, size=1.02)
-        c.brows(hair, tilt=6, w=0.04, th=0.011, x=0.175, z=c.hc + 0.11)
-        with c.head:               # 작고 동그란 코
-            c.dot(0, c.hc - 0.095, NOSE.get(skin, '#e8a888'), 0.02, 0.015, thick=0.012, out=0.004)
-        c.mouth('smile', z=c.hc - 0.158, w=0.045)
-        c.blush(x=0.285, z=c.hc - 0.125)
+        human_head(c, skin, NOSE.get(skin, '#db805b'))
+        human_eyes(c, {'bob':'oval','spiky':'big','pony':'lash','cap':'half'}[style], INK)
+        human_brows(c,hair)
+        c.mouth('wide', z=c.hc-.162, w=.060)
+        c.blush(x=.283,z=c.hc-.126,r=.065,col='#f5a599')
         H = c.hr
         if style == 'bob':                 # 단발 + 도토리 모자
             c.hair_cap(hair, cut=0.62, tilt=-20)
@@ -969,7 +641,8 @@ def kid(name, skin, hair, top, bottom, style):
                 c.emblem('acorn', '#fff3d6', z=0.53, s=1.0, col2='#8a5a34')
             c.arms(top, skin, sl=0.3 if style == 'bob' else 0.72)
             c.legs(bottom, '#f7f7f2' if style == 'spiky' else '#8a5a3a', sock=WHITE)
-        c.done()
+        sneaker(c)
+        finish_player(c)
 
 
 # ============================================================ 꾸미는 주인공
@@ -1003,20 +676,14 @@ def custom(name):
         bp = lambda n: m.part(n, (0, 0, BODY0), parent='body')
 
         # ---------------- 얼굴
-        c.skull(SK)
-        with c.head:
-            for s in (1, -1):              # 귀
-                ball((s * 0.4, 0.02, hc - 0.03), 1.0, SK, (0.045, 0.05, 0.06), sub=2)
-            c.dot(0, hc - 0.095, NO, 0.02, 0.015, thick=0.012, out=0.004)
-        c.brows(HA, tilt=6, w=0.04, th=0.011, x=0.175, z=hc + 0.11)
-        EYES = (('oval', dict(x=0.175, size=1.02)), ('big', dict(x=0.178, size=0.98)), ('dot', dict(x=0.17, size=1.22)), ('half', dict(x=0.175, size=1.05)),
-                ('smile', dict(x=0.175, size=1.05)), ('lash', dict(x=0.172, size=1.0)), ('pop', dict(x=0.172, size=1.3)))
-        for i, (st, kw) in enumerate(EYES):
-            c.eyes(st, col=EY, name='eyes%d' % (i + 1), **kw)
+        human_head(c, SK, NO, modular=True)
+        human_brows(c, HA, modular=True)
+        for i, style in enumerate(('oval','big','dot','half','smile','lash','pop'),1):
+            human_eyes(c, style, EY, 'eyes%d' % i)
         for i, st in enumerate(('smile', 'cat', 'flat', 'o', 'wide')):
-            c.mouth(st, z=hc - 0.158, w=0.045, name='mouth%d' % (i + 1), open_part=(i == 0))
+            c.mouth(st, z=hc - 0.162, w=0.065, name='mouth%d' % (i + 1), open_part=(i == 0))
         with _into(c, 'head', hp('blush')):
-            c.blush(x=0.285, z=hc - 0.125)
+            c.blush(x=.283, z=hc-.126, r=.065, col='#f5a599')
         with hp('freckle'):
             for s in (1, -1):
                 for dx, dz in ((0.0, 0.0), (0.04, 0.02), (-0.036, 0.022)):
@@ -1026,8 +693,10 @@ def custom(name):
         def bangs(n, z, w=0.075, hgt=0.085, sp=0.115, drop=0.012, col=HA):
             for i in range(n):
                 k = i - (n - 1) / 2
-                p, _ = c.hp(k * sp, hc + z - abs(k) * drop)
-                ball((p.x, p.y - 0.004, p.z), 1.0, col, (w, 0.04, hgt), rot=(0, k * 6, 0), sub=2)
+                x = k*sp
+                center = z-abs(k)*drop
+                hair_lock(c,(x*.77+.032,center+hgt*.80),(x-.018,center-hgt*.91),
+                          .014 if k<0 else -.012,w*1.23,.047,col)
 
         def cap(part, cut, tilt, grow=0.02):
             with _into(c, 'head', part):
@@ -1099,6 +768,41 @@ def custom(name):
 
         cap(hp('hair9'), 0.5, -16, grow=0.009)             # 9 아주 짧은 머리
 
+        P = hp('hair10'); cap(P,.57,-19)                    # 깊은 옆가르마
+        with hp('hairfr10'):
+            for start,end,wide in [((.090,.288),(-.256,.092),.113),
+                                   ((.127,.266),(-.083,.135),.095),
+                                   ((.148,.259),(.301,.091),.080)]:
+                hair_lock(c,start,end,-.024,wide,.053,HA)
+        with P:
+            for s in (-1,1):
+                ball((s*.373,.027,hc-.020),1,HA,(.079,.145,.139),rot=(0,s*16,0),sub=3)
+
+        P = hp('hair11'); cap(P,.58,-23)                    # 양쪽으로 땋은 머리
+        with hp('hairfr11'):
+            hair_lock(c,(-.013,.308),(-.225,.115),-.03,.108,.045,HA)
+            hair_lock(c,(.012,.308),(.225,.115),.03,.108,.045,HA)
+        with P:
+            for s in (-1,1):
+                for j in range(5):
+                    f=1-j*.075
+                    ball((s*(.385+.032*math.sin(j*1.7)),.095,hc+.035-j*.062),
+                         1,HA,(.077*f,.091*f,.082*f),rot=(0,s*(25 if j%2 else -25),0),sub=3)
+                ball((s*.397,.095,hc-.243),1,TIE,(.055,.061,.025),sub=2)
+                ball((s*.402,.098,hc-.279),1,HA,(.047,.052,.052),sub=3)
+
+        P = hp('hair12'); cap(P,.59,-21)                    # 웨이브 단발
+        with hp('hairfr12'):
+            for s in (-1,1):
+                hair_lock(c,(s*.026,.302),(s*.232,.108),s*.069,.112,.054,HA)
+                hair_lock(c,(s*.146,.259),(s*.307,.051),s*.046,.082,.043,HA)
+        with P:
+            ball((0,.13,hc-.10),1,HA,(.396,.286,.228),sub=3)
+            for s in (-1,1):
+                for x,y,z,r,t in [(.359,-.025,.015,.121,-14),(.385,-.022,-.094,.114,15),
+                                   (.354,.005,-.163,.087,34),(.309,.139,-.159,.110,20)]:
+                    ball((s*x,y,hc+z),1,HA,(r*.82,r*1.10,r*1.14),rot=(0,s*t,0),sub=3)
+
         # ---------------- 모자·머리 장식
         with hp('hat1'):                                   # 1 도토리 깍정이 모자
             lathe([(0.3, 0.0), (0.305, 0.03), (0.27, 0.09), (0.18, 0.14), (0.0, 0.165)], '#a8703c', center=(0, 0.05, hc + 0.27), seg=16, rot=(-14, 0, 0))
@@ -1168,9 +872,12 @@ def custom(name):
             bridge(out=0.036, col='#2a2a34', r=0.012, w=0.09)
 
         # ---------------- 옷(몸통)
-        with _into(c, 'body', bp('top1')):                 # 1 반소매 티
-            c.torso(TP, BT, collar=TP)
-            c.emblem('acorn', '#fff3d6', z=0.53, s=1.0, col2='#8a5a34')
+        with _into(c, 'body', bp('top1')) as P:                 # 1 반소매 티
+            c.torso(TP, BT, collar='#fff1d6')
+            with P:
+                c.band(.385,.413,'#fff1d6',.017)
+                c.band(.426,.441,TP2,.014)
+            c.emblem('acorn', '#ffdfa2', z=.555, s=1.32, col2='#935a42')
         with _into(c, 'body', bp('top2')) as P:            # 2 후드티
             c.torso(TP, BT, collar=TP)
             with P:
@@ -1236,15 +943,11 @@ def custom(name):
                 tube((x, 0, 0.155), (x, 0, 0.08), lr - 0.002, WHITE, r2=lr * 0.92, seg=10)
 
         c.top = hc + 0.52
-        c.done()
+        sneaker(c)
+        finish_player(c)
 
 
-ALL = {}
-for _n, _f in (('dalgom', dalgom), ('goran', goran), ('nureong', nureong), ('beomi', beomi), ('jangkki', jangkki), ('pongdang', pongdang),
-               ('dungdung', dungdung), ('sandeul', sandeul), ('dahong', dahong), ('kkokki', kkokki), ('dodam', dodam), ('pogeun', pogeun)):
-    ALL['villager_' + _n] = _f
-for _n, _f in (('kkami', kkami), ('duru', duru), ('ujik', ujik)):
-    ALL['npc_' + _n] = _f
+ALL = dict(RESIDENT_MODELS)
 ALL['player_1'] = lambda n: kid(n, '#ffdcc0', '#6a4530', '#e8574c', '#40598f', 'bob')
 ALL['player_2'] = lambda n: kid(n, '#f5cba8', '#2e2a36', '#4a90d9', '#7a6a52', 'spiky')
 ALL['player_3'] = lambda n: kid(n, '#ffdcc0', '#b8682e', '#ffd04a', '#5fae62', 'pony')

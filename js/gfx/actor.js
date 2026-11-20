@@ -277,7 +277,13 @@ export class Actor {
         if (P.arm_R) P.arm_R.position.z = R.arm_R.z + fwd * (R.arm_R.y - hb);
         if (P.tail) P.tail.rotation.y = Math.sin(this.t * (moving ? 9 : 3)) * (moving ? 0.35 : 0.18);
         // 눈 깜박임, 말할 때 입
-        if (P.eyes) { this.blinkT -= dt; if (this.blinkT < 0) this.blinkT = 2.4 + Math.random() * 3.6; P.eyes.scale.y = this.blinkT < 0.12 ? 0.12 : 1; }
+        if (P.eyes) {
+          this.blinkT -= dt;
+          if (this.blinkT < 0) this.blinkT = 2.4 + Math.random() * 3.6;
+          // 닫을 때는 빠르게, 다시 뜰 때는 조금 천천히.
+          const lid = this.blinkT > .105 ? (.17 - this.blinkT) / .065 : this.blinkT / .105;
+          P.eyes.scale.y = 1 - .90 * Math.max(0, Math.min(1, lid));
+        }
         if (talking) this.talkT -= dt;
         if (P.mouth_open) {
           P.mouth_open.visible = talking; if (P.mouth) P.mouth.visible = !talking;

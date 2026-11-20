@@ -1,4 +1,4 @@
-// 주민과 시설 담당 캐릭터 — 전부 이 게임의 오리지널 캐릭터
+// 주민과 시설 담당 캐릭터 — 모델을 바꾸어도 저장 파일에서는 같은 ID를 쓴다
 // 이름·말버릇·성격은 여기서 바꿀 수 있다. 모습은 assets/chars/<id>.glb
 export const PERSONALITY = {
   lazy: { ko: '느긋', wake: 9, sleep: 23.5, pitch: 0.78 },
@@ -13,25 +13,25 @@ export const PERSONALITY = {
 };
 
 export const VILLAGERS = {
-  dalgom: { name: '달곰', species: '반달곰', p: 'lazy', catch: '곰곰', bday: [2, 14], house: 'house_b', roof: '#f2c230', wall: '#fff3d6', door: '#8a5a3a', set: 'log', likes: ['fruit', 'fish'] },
-  goran: { name: '고란', species: '고라니', p: 'shy', catch: '고란', bday: [5, 8], house: 'house_a', roof: '#6aa5f2', wall: '#fffaf0', door: '#c98a5a', set: 'pastel', likes: ['flower', 'shell'] },
-  nureong: { name: '누렁', species: '누렁이', p: 'jock', catch: '멍', bday: [8, 15], house: 'house_b', roof: '#e8574c', wall: '#fff3d6', door: '#7a5030', set: 'log', likes: ['fish', 'bug'] },
-  beomi: { name: '범이', species: '호랑이', p: 'cranky', catch: '어흥', bday: [11, 3], house: 'house_c', roof: '#5a4a3a', wall: '#ecdcb8', door: '#3a2a22', set: 'hanok', likes: ['fish', 'furniture'] },
-  jangkki: { name: '장끼', species: '꿩', p: 'smug', catch: '꿩', bday: [4, 1], house: 'house_c', roof: '#1f7a5e', wall: '#fff3d6', door: '#8a5a3a', set: 'hanok', likes: ['furniture', 'flower'] },
-  pongdang: { name: '퐁당', species: '개구리', p: 'peppy', catch: '퐁', bday: [6, 21], house: 'house_a', roof: '#84d15e', wall: '#fffbe8', door: '#e88aa8', set: 'pastel', likes: ['flower', 'bug'] },
-  dungdung: { name: '둥둥', species: '청둥오리', p: 'odd', catch: '둥', bday: [9, 9], house: 'house_a', roof: '#3fa39a', wall: '#f0f6f4', door: '#e8a83c', set: 'pastel', likes: ['shell', 'fish'] },
-  sandeul: { name: '산들', species: '염소', p: 'kind', catch: '매', bday: [3, 12], house: 'house_c', roof: '#6fb86a', wall: '#fff3d6', door: '#8a6a4a', set: 'hanok', likes: ['flower', 'fruit'] },
-  dahong: { name: '다홍', species: '여우', p: 'snooty', catch: '홍', bday: [10, 25], house: 'house_a', roof: '#b07be0', wall: '#fff0f4', door: '#7a4a8a', set: 'pastel', likes: ['furniture', 'shell'] },
-  kkokki: { name: '꼬끼', species: '수탉', p: 'jock', catch: '꼬꼬', bday: [1, 1], house: 'house_b', roof: '#d98a3c', wall: '#fff3d6', door: '#96421f', set: 'log', likes: ['bug', 'fruit'] },
-  dodam: { name: '도담', species: '돼지', p: 'lazy', catch: '꿀', bday: [7, 7], house: 'house_b', roof: '#f8a6b8', wall: '#fff8f0', door: '#c97a86', set: 'log', likes: ['fruit', 'furniture'] },
-  pogeun: { name: '포근', species: '양', p: 'shy', catch: '메', bday: [12, 12], house: 'house_a', roof: '#e9a3b4', wall: '#fffaf0', door: '#8a6a5a', set: 'pastel', likes: ['flower', 'fruit'] },
+  dalgom: { name: '치이카와', species: '작고 귀여운 친구', p: 'lazy', catch: '와아', bday: [2, 14], house: 'house_b', roof: '#f2c230', wall: '#fff3d6', door: '#8a5a3a', set: 'log', likes: ['fruit', 'fish'] },
+  goran: { name: '하치와레', species: '파란 귀 친구', p: 'shy', catch: '그치', bday: [5, 8], house: 'house_a', roof: '#6aa5f2', wall: '#fffaf0', door: '#c98a5a', set: 'pastel', likes: ['flower', 'shell'] },
+  nureong: { name: '우사기', species: '토끼', p: 'jock', catch: '야하', bday: [8, 15], house: 'house_b', roof: '#e8574c', wall: '#fff3d6', door: '#7a5030', set: 'log', likes: ['fish', 'bug'] },
+  beomi: { name: '랏코', species: '해달', p: 'cranky', catch: '좋군', bday: [11, 3], house: 'house_c', roof: '#5a4a3a', wall: '#ecdcb8', door: '#3a2a22', set: 'hanok', likes: ['fish', 'furniture'] },
+  jangkki: { name: '쿠리만쥬', species: '밤만쥬 친구', p: 'smug', catch: '하아', bday: [4, 1], house: 'house_c', roof: '#1f7a5e', wall: '#fff3d6', door: '#8a5a3a', set: 'hanok', likes: ['furniture', 'flower'] },
+  pongdang: { name: '시사', species: '시사', p: 'peppy', catch: '네엣', bday: [6, 21], house: 'house_a', roof: '#84d15e', wall: '#fffbe8', door: '#e88aa8', set: 'pastel', likes: ['flower', 'bug'] },
+  dungdung: { name: '파자마 그린', species: '파자마 파티즈', p: 'odd', catch: '우우', bday: [9, 9], house: 'house_a', roof: '#3fa39a', wall: '#f0f6f4', door: '#e8a83c', set: 'pastel', likes: ['shell', 'fish'] },
+  sandeul: { name: '카니짱', species: '헌책방 주인', p: 'kind', catch: '살며시', bday: [3, 12], house: 'house_c', roof: '#6fb86a', wall: '#fff3d6', door: '#8a6a4a', set: 'hanok', likes: ['flower', 'fruit'] },
+  dahong: { name: '모몽가', species: '날다람쥐', p: 'snooty', catch: '봐 줘', bday: [10, 25], house: 'house_a', roof: '#b07be0', wall: '#fff0f4', door: '#7a4a8a', set: 'pastel', likes: ['furniture', 'shell'] },
+  kkokki: { name: '파자마 핑크', species: '파자마 파티즈', p: 'jock', catch: '라라', bday: [1, 1], house: 'house_b', roof: '#d98a3c', wall: '#fff3d6', door: '#96421f', set: 'log', likes: ['bug', 'fruit'] },
+  dodam: { name: '파자마 화이트', species: '파자마 파티즈', p: 'lazy', catch: '랄라', bday: [7, 7], house: 'house_b', roof: '#f8a6b8', wall: '#fff8f0', door: '#c97a86', set: 'log', likes: ['fruit', 'furniture'] },
+  pogeun: { name: '파자마 퍼플', species: '파자마 파티즈', p: 'shy', catch: '우라', bday: [12, 12], house: 'house_a', roof: '#e9a3b4', wall: '#fffaf0', door: '#8a6a5a', set: 'pastel', likes: ['flower', 'fruit'] },
 };
 export const VILLAGER_IDS = Object.keys(VILLAGERS);
 
 export const NPCS = {
-  kkami: { name: '까미', species: '까치', role: '만물상 주인', pitch: 1.25, model: 'npc_kkami' },
-  duru: { name: '두루 선생', species: '두루미', role: '박물관장', pitch: 0.85, model: 'npc_duru' },
-  ujik: { name: '우직 이장', species: '황소', role: '이장', pitch: 0.6, model: 'npc_ujik' },
+  kkami: { name: '까미', species: '포셰트 갑옷 씨', role: '만물상 주인', pitch: 1.25, model: 'npc_kkami' },
+  duru: { name: '두루 선생', species: '라멘 갑옷 씨', role: '박물관장', pitch: 0.85, model: 'npc_duru' },
+  ujik: { name: '우직 이장', species: '노동 갑옷 씨', role: '이장', pitch: 0.6, model: 'npc_ujik' },
 };
 
 /** 주민 집 안에 놓이는 가구(시리즈별 기본 배치). [가구 id, x, y] — 방은 6×5칸 */

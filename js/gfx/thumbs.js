@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { make, has, CURVE } from './models.js';
 import { ITEMS, FISH_BY_ID, BUG_BY_ID } from '../data/items.js';
+import { defaultLook, dress, MODEL } from '../game/look.js';
 
 const SIZE = 128;
 let renderer = null, scene = null, cam = null, holder = null;
@@ -48,6 +49,26 @@ export function thumbOfModel(model, opts = {}) {
 
 /** 넙치·가자미를 위에서 볼 때 등지느러미가 위로 오게 놓는 각도: 눈이 왼쪽에 몰린 넙치는 머리가 왼쪽, 오른쪽에 몰린 가자미는 머리가 오른쪽 */
 export function flatYaw(look) { return look && look.f === 'flat' && (look.flat || 'L') === 'L' ? Math.PI : 0; }
+
+export function hairThumb(hair) {
+  const key = 'hair:' + hair;
+  if (cache.has(key)) return cache.get(key);
+  if (!has(MODEL)) return '';
+  if (!renderer) init();
+  const o = make(MODEL), parts = o.userData.parts;
+  dress({ model: o, parts }, { ...defaultLook(), hat: 0, hair });
+  if (parts.mouth_open) parts.mouth_open.visible = false;
+  holder.add(o);
+  cam.position.set(1.25, 1.46, 2.5); cam.lookAt(0, 1.06, 0);
+  const curve = CURVE.k.value;
+  try {
+    CURVE.k.value = 0;
+    renderer.render(scene, cam);
+    const url = renderer.domElement.toDataURL('image/png');
+    cache.set(key, url);
+    return url;
+  } finally { CURVE.k.value = curve; holder.remove(o); }
+}
 
 export function thumb(id) {
   const it = ITEMS[id];

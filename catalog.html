@@ -12,6 +12,7 @@
 //   ?b=fish|bugs  &from=0&n=24 (몇 번째부터 몇 종)  &cols=6  &m=id,id (그 종만)
 import * as THREE from 'three';
 import { loadBundle, loadSingle, make } from './js/gfx/models.js';
+import { VERSION } from './js/core/version.js';
 const q = new URLSearchParams(location.search);
 const b = q.get('b') === 'bugs' ? 'bugs' : q.get('b') === 'looks' ? 'looks' : 'fish';
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -26,12 +27,15 @@ let list;
 if (b === 'looks') {
   // 꾸미기 부위를 하나씩 바꿔 가며 늘어놓는다.  &part=hair|back|face|wear|hat|color 로 한 갈래만 볼 수 있다
   const LK = await import('./js/game/look.js');
-  await loadSingle('./assets/chars/player_custom.glb', LK.MODEL);
+  await loadSingle('./assets/chars/player_custom.glb?v=' + VERSION, LK.MODEL);
   const base = { ...LK.defaultLook(), hat: 0 }, L = [];
   const add = (part, name, look, o = {}) => L.push({ part, name, look: { ...base, ...look }, ...o });
   LK.HAIR.forEach((n, i) => add('hair', n, { hair: i + 1 }));
   LK.HAIR.forEach((n, i) => add('back', n + ' (뒤)', { hair: i + 1 }, { yaw: 2.5 }));
   LK.EYES.forEach((n, i) => add('face', n, { eyes: i + 1, eyec: i % LK.EYEC.length }));
+  LK.FACE.forEach((f, i) => add('face', f.ko, { face: i }));
+  LK.BROW.forEach((n, i) => add('face', n, { brow: i }));
+  LK.NOSE.forEach((n, i) => add('face', n, { nose: i }));
   LK.MOUTH.forEach((n, i) => add('face', n, { mouth: i + 1 }));
   LK.CHEEK.forEach((n, i) => add('face', '볼: ' + n, { cheek: i }));
   LK.GLASS.slice(1).forEach((n, i) => add('face', n, { glass: i + 1 }));

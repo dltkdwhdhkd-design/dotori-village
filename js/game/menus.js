@@ -276,7 +276,7 @@ export function openMenu() {
       <span>해 그림자</span><span><label><input type="checkbox" id="st-shadow" ${Settings.shadow !== false ? 'checked' : ''}> 켜기</label> <span class="note">느린 컴퓨터에서는 끄면 가벼워진다.</span></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 6px">
-      <button class="btn go" id="st-net">같이 하기</button><button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
+      <button class="btn go" id="st-look">캐릭터 꾸미기</button><button class="btn go" id="st-net">같이 하기</button><button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
     </div>
     <textarea id="st-text" class="hidden" style="width:100%;height:90px;font-size:12px"></textarea>
     <div class="note">${S.village.name} 마을에서 ${S.stats.days}일째 · 낚은 물고기 ${S.stats.fish}마리 · 잡은 곤충 ${S.stats.bug}마리 · 번 도토리 ${fmt(S.stats.earned)}</div>
@@ -295,6 +295,7 @@ export function openMenu() {
   const off = $('st-off');
   for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '실제 시간 그대로' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Settings.offsetMin) o.selected = true; off.appendChild(o); }
   $('st-net').onclick = () => G.hooks.openNet();
+  $('st-look').onclick = openMirror;
   $('st-bgm').oninput = (e) => { Settings.bgm = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); };
   $('st-sfx').oninput = (e) => { Settings.sfx = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); Sound.sfx('ui'); };
   off.onchange = () => { Settings.offsetMin = +off.value; Clock.offsetMin = Settings.offsetMin; saveSettings(); refreshTime(true); UI.toast('게임 시계를 바꿨다.'); };
@@ -319,7 +320,7 @@ export function showTitle({ onNew, onContinue }) {
   };
   const form = () => {
     t.classList.remove('front');
-    t.innerHTML = `<h1 style="font-size:46px">이사 준비</h1><div class="sub lt" style="margin-bottom:12px">이름과 모습을 정해 주세요. 모습은 나중에 집 안 거울에서 바꿀 수 있어요</div>
+    t.innerHTML = `<h1 style="font-size:46px">이사 준비</h1><div class="sub lt" style="margin-bottom:12px">이름과 모습을 골라 주세요. 이사 후에도 메뉴나 집 안 거울에서 꾸밀 수 있어요.</div>
       <div class="box wide"><div class="tf"><label>내 이름</label><input type="text" id="t-name" maxlength="6" value="도토리"><label>마을 이름</label><input type="text" id="t-vil" maxlength="6" value="솔바람"></div>
       <div id="t-look"></div>
       <div class="tb"><button class="big alt" id="t-back">돌아가기</button><button class="big" id="t-go">마을로 출발!</button></div></div>`;
@@ -347,7 +348,7 @@ export function openMirror() {
   ok.onclick = () => { done = true; G.player.setLook(ed.look); Sound.sfx('fanfare'); UI.closePanel(); G.player.actor.play('joy', 0.9); save(); };
   no.onclick = () => UI.closePanel();
   acts.appendChild(no); acts.appendChild(ok); box.appendChild(acts);
-  UI.openPanel('거울 — 모습 바꾸기', box, { onClose: () => { ed.dispose(); if (!done) Sound.sfx('close'); } });
+  UI.openPanel('캐릭터 꾸미기', box, { onClose: () => { ed.dispose(); if (!done) Sound.sfx('close'); } });
 }
 
 export function registerMenus() {

@@ -17,7 +17,13 @@ export const EYEC = ['#3b2b28', '#6a4526', '#2f4f8f', '#2f6a44', '#6a3f8a', '#55
 export const CLOTH = ['#e8574c', '#f08a3c', '#ffd04a', '#6fb86a', '#3fa39a', '#4a90d9', '#40598f', '#8a6fd0', '#f08aa8', '#fff3d6', '#9aa0aa', '#3a3a44', '#7a6a52'];
 export const SHOE = ['#8a5a3a', '#e8574c', '#f7f7f2', '#3a3a44', '#4a90d9', '#ffd04a'];
 
-export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리'];
+export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리', '옆가르마', '양 갈래 땋기', '웨이브 단발'];
+export const FACE = [
+  { ko: '기본형', width: 1, height: 1 }, { ko: '동그란 얼굴', width: 1.095, height: .94 },
+  { ko: '갸름한 얼굴', width: .93, height: 1.055 },
+];
+export const BROW = ['부드러운 곡선', '처진 눈썹', '일자 눈썹'];
+export const NOSE = ['삼각 코', '동그란 코', '작은 코'];
 export const EYES = ['또렷한 눈', '동그란 눈', '콩알 눈', '졸린 눈', '웃는 눈', '속눈썹', '놀란 눈'];
 export const MOUTH = ['미소', '고양이 입', '일자 입', '오므린 입', '활짝 웃음'];
 export const CHEEK = ['없음', '발그레', '주근깨', '둘 다'];
@@ -40,10 +46,12 @@ export const PRESETS = [
   { skin: 1, hair: 3, hairc: 3, eyes: 6, eyec: 1, mouth: 1, cheek: 1, outfit: 3, top: 2, bot: 3, shoe: 1, hat: 0, hatc: 8, glass: 0 },
   { skin: 3, hair: 4, hairc: 1, eyes: 2, eyec: 0, mouth: 5, cheek: 1, outfit: 4, top: 9, bot: 5, shoe: 0, hat: 2, hatc: 3, glass: 0 },
 ];
-export const defaultLook = () => ({ ...PRESETS[0] });
+export const defaultLook = () => ({ ...PRESETS[0], face: 0, brow: 0, nose: 0 });
 
 const LIMIT = { skin: [0, SKIN.length - 1], hair: [1, HAIR.length], hairc: [0, HAIRC.length - 1], eyes: [1, EYES.length], eyec: [0, EYEC.length - 1], mouth: [1, MOUTH.length],
-  cheek: [0, CHEEK.length - 1], outfit: [1, OUTFIT.length], top: [0, CLOTH.length - 1], bot: [0, CLOTH.length - 1], shoe: [0, SHOE.length - 1], hat: [0, HAT.length - 1], hatc: [0, CLOTH.length - 1], glass: [0, GLASS.length - 1] };
+  cheek: [0, CHEEK.length - 1], outfit: [1, OUTFIT.length], top: [0, CLOTH.length - 1], bot: [0, CLOTH.length - 1], shoe: [0, SHOE.length - 1], hat: [0, HAT.length - 1], hatc: [0, CLOTH.length - 1], glass: [0, GLASS.length - 1],
+  // 새 필드는 뒤에 붙여 예전 같이 하기 코드의 순서를 유지한다.
+  face: [0, FACE.length - 1], brow: [0, BROW.length - 1], nose: [0, NOSE.length - 1] };
 export const LOOK_KEYS = Object.keys(LIMIT);
 
 /** 빠졌거나 범위를 벗어난 값을 기본값으로 채운다(예전 저장, 다른 사람이 보낸 값) */
@@ -78,6 +86,7 @@ export function partsOf(L) {
   const of = OUTFIT[L.outfit - 1], hat = HAT[L.hat], on = new Set();
   on.add('hair' + L.hair); if (hat.cover !== 'dome') on.add('hairfr' + L.hair); if (!hat.cover) on.add('hairtop' + L.hair);
   on.add('eyes' + L.eyes); on.add('mouth' + L.mouth);
+  on.add('brow' + ((L.brow ?? 0) + 1)); on.add('nose' + ((L.nose ?? 0) + 1));
   if (L.cheek === 1 || L.cheek === 3) on.add('blush');
   if (L.cheek === 2 || L.cheek === 3) on.add('freckle');
   if (L.hat) on.add('hat' + L.hat);
@@ -93,16 +102,17 @@ export function partsOf(L) {
 /** 재질 이름 → 색 */
 export function tintOf(L) {
   const skin = SKIN[L.skin], top = CLOTH[L.top], hat = CLOTH[L.hatc];
-  return { p_skin: skin, p_nose: mix(skin, '#c8603c', 0.34), p_hair: HAIRC[L.hairc], p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
+  return { p_skin: skin, p_nose: mix(skin, '#d56343', 0.56), p_hair: HAIRC[L.hairc], p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
 }
 
-const VARIANT = /^(hair|hairfr|hairtop|eyes|mouth|hat|glass|top)\d+$|^(blush|freckle)$|^(sls|sll|pants|shorts|sock)_[LR]$/;
+const VARIANT = /^(hair|hairfr|hairtop|eyes|mouth|brow|nose|hat|glass|top)\d+$|^(blush|freckle)$|^(sls|sll|pants|shorts|sock)_[LR]$/;
 
 /** 고른 모습을 캐릭터(Actor)에 입힌다. 갈아 끼우는 부위가 없는 모델(직접 바꿔 넣은 모델·그림)이면 아무 일도 하지 않고 false */
 export function dress(actor, look) {
   const P = actor.parts;
   if (!P || !P.hair1) return false;
   const L = cleanLook(look), on = partsOf(L);
+  if (P.head) P.head.scale.set(FACE[L.face].width, FACE[L.face].height, 1);
   for (const k of Object.keys(P)) {
     if (!VARIANT.test(k)) continue;
     P[k].visible = on.has(k);

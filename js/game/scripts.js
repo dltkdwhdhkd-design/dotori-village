@@ -205,7 +205,7 @@ function shopBuyPanel() {
       box.appendChild(list);
     };
     draw();
-    UI.openPanel('까치네 만물상 — 사기', box, { onClose: res });
+    UI.openPanel('까미네 만물상 — 사기', box, { onClose: res });
   });
 }
 function shopSellPanel() {
@@ -235,16 +235,16 @@ function shopSellPanel() {
       box.appendChild(head); box.appendChild(list);
     };
     draw();
-    UI.openPanel('까치네 만물상 — 팔기', box, { onClose: () => res(sold) });
+    UI.openPanel('까미네 만물상 — 팔기', box, { onClose: () => res(sold) });
   });
 }
 async function talkKkami() {
   const k = npcOf('kkami'), P = S.prog, tent = P.shop < 2;
   if (!P.met.kkami) {
     P.met.kkami = true; refreshGoal();
-    await say(k, '까악! 새로 이사 온 {p} 맞죠? 난 까미예요. 이 마을에서 장사를 맡고 있답니다.');
+    await say(k, '반가워요! 새로 이사 온 {p} 맞죠? 난 까미예요. 이 마을에서 장사를 맡고 있답니다.');
     await say(k, tent ? '지금은 천막 좌판이지만, 언젠가는 번듯한 가게를 차릴 거예요. 물고기든 과일이든 뭐든 사 드릴게요!' : '필요한 건 뭐든 말해요. 물고기든 과일이든 뭐든 사 드릴게요!');
-  } else await say(k, pick(tent ? ['어서 와요! 아직은 좌판뿐이지만 쓸 만한 건 다 있어요.', '{p} 손님 오셨네! 오늘은 뭘 도와드릴까?'] : ['어서 와요, 어서 와! 까치네 만물상입니다. 오늘은 뭘 도와드릴까?', '{p} 손님 오셨네! 반짝이는 건 못 드려도 쓸 만한 건 다 있어요.', '까악! 아니, 어서 오세요. 천천히 둘러봐요.']));
+  } else await say(k, pick(tent ? ['어서 와요! 아직은 좌판뿐이지만 쓸 만한 건 다 있어요.', '{p} 손님 오셨네! 오늘은 뭘 도와드릴까?'] : ['어서 와요, 어서 와! 까미네 만물상입니다. 오늘은 뭘 도와드릴까?', '{p} 손님 오셨네! 반짝이는 건 못 드려도 쓸 만한 건 다 있어요.', '어서 오세요. 천천히 둘러봐요.']));
   for (;;) {
     const build = stepId() === 'shop' && tent && !P.pend.shop;
     const opts = ['물건을 사고 싶어', '팔 물건이 있어'].concat(build ? ['가게 지을 재료를 가져왔어'] : [], ['그냥 구경할게']);
@@ -254,7 +254,7 @@ async function talkKkami() {
     else if (build && c === 2) {
       if (!canPay(COST.shop)) { await say(k, `정말요?! 가게를 지으려면 <b>${costText(COST.shop)}</b>가 있어야 해요. 지금은 ${haveMat(COST.shop)}이네요. 조금만 더 부탁해요!`); continue; }
       payCost(COST.shop); P.pend.shop = dayKey() + 1; Sound.sfx('fanfare');
-      await say(k, '까악! 이거면 충분해요! 내일이면 번듯한 가게가 설 거예요.');
+      await say(k, '와, 이거면 충분해요! 내일이면 번듯한 가게가 설 거예요.');
       await say(k, '가게가 서면 가구랑 벽지도 들여놓을게요. 날마다 물건이 바뀌니까 자주 들러요!');
       advance();
     } else break;
@@ -447,7 +447,7 @@ async function festival(u) {
   const lines = ['{p}, 정말 고마워! 덕분에 살기 좋은 마을이 됐어.', '처음 왔을 땐 허허벌판이었는데… 이제 제법 마을 같지?', '오늘은 실컷 놀자! 잔치니까!'];
   for (const [i, n] of guests.slice(0, 3).entries()) { const def = VILLAGERS[n.id]; n.actor.play('wave', 1.0); await say({ name: def.name, pitch: PERSONALITY[def.p].pitch, actor: n.actor }, lines[i]); }
   front[1].play('joy', 1.0);
-  await say({ ...npcOf('kkami'), actor: front[1] }, '까악! 우리 가게도 잔치 기념으로 좋은 물건 많이 들여놓을게요!');
+  await say({ ...npcOf('kkami'), actor: front[1] }, '우리 가게도 잔치 기념으로 좋은 물건 많이 들여놓을게요!');
   front[2].play('wave', 1.0);
   await say({ ...npcOf('duru'), actor: front[2] }, '박물관도 잊지 마십시오. 전시관은 이제부터 채워 가는 것이니까요.');
   Sound.sfx('fanfare'); pop();

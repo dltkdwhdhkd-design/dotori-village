@@ -105,7 +105,8 @@ class Fish:
 
     def mid(self, u):
         """몸의 가운데 줄 높이(주둥이가 위·아래로 향한 정도)"""
-        return self.k.get('nose', 0.0) * self.dep * max(0.0, 1 - u / 0.3) ** 2
+        k = self.k
+        return k.get('nose', 0.0) * self.dep * max(0.0, 1 - u / 0.3) ** 2 - k.get('kype', 0.0) * self.dep * 0.3 * max(0.0, 1 - u / 0.11) ** 2     # kype: 알 낳으러 온 연어 수컷의 아래로 굽은 주둥이
 
     def top(self, u):
         k = self.k
@@ -513,7 +514,17 @@ class Fish:
         cv.line(pts, L * 0.006, dk)
         mz = k.get('mouth', 0.34)
         ml = k.get('mouthlen', 0.07)
-        cv.line([self.pt(0.005, mz), self.pt(ml, mz - 0.1)], L * 0.007, shade(self.col[1], 0.55))
+        if k.get('kype'):                              # 굽은 턱 사이로 벌어진 입과 이빨
+            g = [self.pt(0.004, 0.62), self.pt(ml, 0.4), self.pt(0.03, 0.12)]
+            cv.poly(g, '#3a1e22')
+            for i in range(5):
+                f = (i + 0.5) / 5
+                a_ = (g[0][0] + (g[1][0] - g[0][0]) * f, g[0][1] + (g[1][1] - g[0][1]) * f)
+                cv.poly([(a_[0] - L * 0.006, a_[1]), (a_[0], a_[1] - L * 0.014), (a_[0] + L * 0.006, a_[1])], '#f4f0e4')
+                b_ = (g[2][0] + (g[1][0] - g[2][0]) * f, g[2][1] + (g[1][1] - g[2][1]) * f)
+                cv.poly([(b_[0] - L * 0.005, b_[1]), (b_[0], b_[1] + L * 0.011), (b_[0] + L * 0.005, b_[1])], '#f4f0e4')
+        else:
+            cv.line([self.pt(0.005, mz), self.pt(ml, mz - 0.1)], L * 0.007, shade(self.col[1], 0.55))
         if self.bill:
             zc = (self.top(0) + self.bot(0)) / 2
             cv.poly([(self.xh - L * 0.03, zc + self.dep * 0.14), (L / 2, zc + self.dep * 0.05), (self.xh - L * 0.03, zc - self.dep * 0.06)], k.get('billc', self.col[0]))

@@ -278,7 +278,14 @@ export class Critters {
       }
       b.m.position.set(b.x, b.y, b.z);
       const P = b.m.userData.parts;
-      if (P && P.wing_L) { const fl = b.fly || b.state === 'flee' ? Math.sin(b.t * (b.sp.look.f === 'butterfly' ? 16 : 60)) * 0.8 : 0.1; P.wing_L.rotation.z = fl; P.wing_R.rotation.z = -fl; }
+      if (P && P.wing_L) {
+        const lk = b.sp.look, bf = lk.f === 'butterfly';
+        const moth = bf && /^(moth|saturn|hawk|lantern)$/.test(lk.w || '');           // 나방은 날개를 펴거나 지붕처럼 덮고 앉는다
+        let fl;
+        if (b.fly || b.state === 'flee') fl = bf && !moth ? 0.5 + Math.sin(b.t * 14) * 0.9 : Math.sin(b.t * (bf ? 16 : 60)) * 0.8;   // 나비는 날개를 거의 맞닿을 만큼 위로 쳐올린다(아랫면이 보인다)
+        else fl = bf && !moth ? (lk.w === 'skipper' ? 0.7 : 1.42 - Math.max(0, Math.sin(b.t * 0.9 + i)) * 0.5) : 0.1;              // 앉은 나비는 날개를 접고 가끔 살짝 편다
+        P.wing_L.rotation.z = fl; P.wing_R.rotation.z = -fl;
+      }
     }
     // 벌 떼
     const sw = this.swarm;

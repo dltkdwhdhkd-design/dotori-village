@@ -174,6 +174,27 @@ def butterfly(m, name, k):
         T.cv.fill_mask(k.get('hbase', base) if key == 'H' else base, W.mask)
         wing_patterns(T, W, key, k.get('pat', []), S)
     T.cv.mirror()
+    ucv = None
+    if k.get('under'):                            # 날개 아랫면: 앉아서 날개를 접거나 날갯짓할 때 보인다. 따로 그려 아래쪽만 향하는 판에 입힌다
+        u = k['under']
+        ucv = Canvas(-hw, hw, -back, front, px=int(k.get('px', 176) * 0.75), bg=u.get('base', base))
+        cv0, T.cv = T.cv, ucv
+        for key, W in (('H', H), ('F', F)):
+            W.mask = T.mask_poly(W.outline(70))
+            if 'wash' in u:                       # 윗면 무늬를 그대로 그리고 흐리게 덮은 뒤 아랫면에만 있는 무늬를 더한다
+                T.cv.fill_mask(k.get('hbase', base) if key == 'H' else base, W.mask)
+                wing_patterns(T, W, key, k.get('pat', []), S)
+                T.cv.fill_mask(u['wash'][0], W.mask, u['wash'][1])
+                wing_patterns(T, W, key, u.get('add', []), S, seed=4)
+            else:
+                T.cv.fill_mask(u.get('hbase', u.get('base', base)) if key == 'H' else u.get('base', base), W.mask)
+                wing_patterns(T, W, key, u.get('pat', []), S, seed=4)
+        T.cv.mirror()
+        T.cv = cv0
+        umat = 'txu_' + name
+        _um = tex_material(umat)
+        _um.use_backface_culling = True           # 아래에서 볼 때만 보이게
+        register_mat(umat, _um)
     # 몸
     body = k.get('body', '#3a3430')
     zb = T.z0 + bw
@@ -194,7 +215,15 @@ def butterfly(m, name, k):
         with m.part(nm, (0, by, zb + 0.004)):
             T.plate([(s * x, y) for x, y in H.outline(70)], zb + 0.001)
             T.plate([(s * x, y) for x, y in F.outline(44)], zb + 0.005)
+            if ucv:
+                for pts, zz in ((F.outline(44), zb + 0.0035), (H.outline(70), zb - 0.0005)):
+                    q = [(s * x, y) for x, y in pts]
+                    if sum(q[i][0] * q[(i + 1) % len(q)][1] - q[(i + 1) % len(q)][0] * q[i][1] for i in range(len(q))) > 0:
+                        q.reverse()               # 면이 아래(-Z)를 보게 감는 방향을 맞춘다
+                    T.plate(q, zz, mat=umat, cv=ucv)
     T.off()
+    if ucv:
+        tex_image(_um, ucv.finish())
     ac = k.get('antc', body)
     kind = k.get('ant', 'club')
     if kind == 'feather':

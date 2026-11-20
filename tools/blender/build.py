@@ -20,6 +20,11 @@ def build_cat(cat):
     importlib.reload(mod)
     getattr(mod, fn)()
     lib.export(os.path.join(ROOT, 'assets/models', cat + '.glb'), os.path.join(ROOT, 'blend', cat + '.blend'), webp=webp)
+    if cat in ('fish', 'bugs'):                   # 꼭짓점 값을 작은 정수로 줄여 담는다(파일이 40%쯤 준다). quantize.py 참고
+        import quantize
+        out = os.path.join(ROOT, 'assets/models', cat + '.glb')
+        quantize.quantize(out)
+        print('     꼭짓점 줄임 -> %.0f KB' % (os.path.getsize(out) / 1024))
 
 
 def build_chars(only=None):

@@ -211,7 +211,8 @@ function setupBugHall(room) {
       q.x = ax + Math.cos(a) * r; q.z = az + Math.sin(a) * r * 0.75;
       q.m.position.set(q.x, h + Math.sin(t * 1.7 + i) * 0.12, q.z);
       q.m.rotation.y = Math.atan2(-Math.sin(a) * w, Math.cos(a) * w * 0.75);
-      flap(q.m, t + i, bf ? 9 : 40, bf ? 0.75 : 0.5);
+      if (bf && !/^(moth|saturn|hawk|lantern)$/.test(sp.look.w || '')) { const P = q.m.userData.parts; if (P && P.wing_L) { const a = 0.5 + Math.sin((t + i) * 8) * 0.9; P.wing_L.rotation.z = a; P.wing_R.rotation.z = -a; } }   // 나비는 날개를 위로 높이 쳐올린다(아랫면이 보인다)
+      else flap(q.m, t + i, bf ? 9 : 40, bf ? 0.75 : 0.5);
       const P = q.m.userData.parts; if (P && P.glow) P.glow.visible = Math.sin(t * 2 + i) > -0.2;
     };
     ex.add(e);

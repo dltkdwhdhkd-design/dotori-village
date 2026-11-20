@@ -75,6 +75,7 @@ list.forEach((e, i) => {
   if (top && e.look.f === 'flat') o.rotation.set(Math.PI / 2, (e.look.flat || 'L') === 'L' ? Math.PI : 0, 0);      // 넙치·가자미: 등지느러미가 위로 오게(넙치는 머리가 왼쪽, 가자미는 오른쪽)
   else if (top) o.rotation.set(Math.PI / 2, Math.PI, 0);  // 등이 화면을 보고 머리가 위로 오게 세운다
   else if (b === 'bugs' && e.look.view === 'side') { o.rotation.order = 'XYZ'; o.rotation.set(0.32, Math.PI / 2 - 0.35, 0); }      // 옆모습(머리가 오른쪽, 살짝 위에서)
+  if (q.get('under') && o.userData.parts && o.userData.parts.wing_L) o.rotation.set(-Math.PI / 2, Math.PI, 0);      // &under=1: 배 쪽에서 본 모습(날개 아랫면)
   g.add(o);
   const box = new THREE.Box3().setFromObject(g), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const s = Math.min((CW - 0.3) / sz.x, (CH - 0.5) / sz.y);

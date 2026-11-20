@@ -135,6 +135,35 @@ export class Critters {
     this.bugs.push(b);
     return b;
   }
+  /** 나비: 날아다니다가 가까운 꽃에 내려앉아 날개를 접고 잠시 쉬었다가 다시 난다. 앉으러 가거나 앉아 있으면 true */
+  flowerVisit(b, dt, dp, fast) {
+    const lk = b.sp.look;
+    if (lk.f !== 'butterfly' || /^(moth|saturn|hawk|lantern)$/.test(lk.w || '') || b.sp.where !== 'air') return false;
+    if (b.perch) {
+      b.perch -= dt;
+      if (b.perch <= 0 || (dp < 1.6 && fast)) { b.perch = 0; b.target = null; b.landT = 6 + rand() * 8; b.baseY = 0.75; return false; }   // 다 쉬었거나 놀라면 다시 난다
+      b.y = b.target.y; return true;
+    }
+    if (b.target) {
+      const dx = b.target.x - b.x, dz = b.target.z - b.z, d = Math.hypot(dx, dz);
+      b.dir = Math.atan2(dx, dz);
+      if (d < 0.05) { b.x = b.target.x; b.z = b.target.z; b.y = b.target.y; b.perch = 4 + rand() * 6; b.m.rotation.y = rand() * TAU; return true; }
+      const st = Math.min(d, dt * 0.8);
+      b.x += (dx / d) * st; b.z += (dz / d) * st;
+      b.y += (b.target.y + Math.min(0.5, d * 0.4) - b.y) * Math.min(1, dt * 2.5) + Math.sin(b.t * 9) * 0.004;
+      b.m.rotation.y = b.dir;
+      return true;
+    }
+    b.landT = (b.landT ?? 3 + rand() * 6) - dt;
+    if (b.landT > 0) return false;
+    const v = G.village, cx = Math.floor(b.x), cz = Math.floor(b.z), list = [];
+    for (let y = cz - 3; y <= cz + 3; y++) for (let x = cx - 3; x <= cx + 3; x++) { const o = v.obj(x, y); if (o && o.t === 'flower') list.push([x, y]); }
+    if (!list.length) { b.landT = 5; return false; }
+    const [fx, fz] = list[Math.floor(rand() * list.length)];
+    b.target = { x: fx + 0.5 + (rand() - 0.5) * 0.12, z: fz + 0.42, y: 0.4 };
+    return true;
+  }
+
   removeBug(b) { const i = this.bugs.indexOf(b); if (i >= 0) { this.root.remove(b.m); this.bugs.splice(i, 1); } }
 
   /** 지금 철·시간·날씨에 나오는 곤충들. 종류가 적은 철에는 곤충도 드물게 나온다. */
@@ -234,6 +263,7 @@ export class Critters {
         const alert = b.glow ? 1.2 : 1.5;
         if (dp < alert && fast) { b.dir = Math.atan2(b.x - p.x, b.z - p.z); b.state = 'flee'; b.ft = 0; Sound.sfx('flutter'); continue; }
         if (b.orbit) { b.x = b.hx + Math.cos(b.t * 2.2) * b.orbit; b.z = b.hz + Math.sin(b.t * 2.6) * b.orbit * 0.7; b.y = b.baseY + Math.sin(b.t * 3.1) * 0.15; }
+        else if (this.flowerVisit(b, dt, dp, fast)) { /* 꽃에 앉으러 가거나 앉아 있다 */ }
         else {
           b.dir += (Math.sin(b.t * 0.9 + i) * 1.2) * dt;
           const nx = b.x + Math.sin(b.dir) * dt * 0.9, nz = b.z + Math.cos(b.dir) * dt * 0.9;
@@ -282,7 +312,7 @@ export class Critters {
         const lk = b.sp.look, bf = lk.f === 'butterfly';
         const moth = bf && /^(moth|saturn|hawk|lantern)$/.test(lk.w || '');           // 나방은 날개를 펴거나 지붕처럼 덮고 앉는다
         let fl;
-        if (b.fly || b.state === 'flee') fl = bf && !moth ? 0.5 + Math.sin(b.t * 14) * 0.9 : Math.sin(b.t * (bf ? 16 : 60)) * 0.8;   // 나비는 날개를 거의 맞닿을 만큼 위로 쳐올린다(아랫면이 보인다)
+        if ((b.fly && !b.perch) || b.state === 'flee') fl = bf && !moth ? 0.5 + Math.sin(b.t * 14) * 0.9 : Math.sin(b.t * (bf ? 16 : 60)) * 0.8;   // 나비는 날개를 거의 맞닿을 만큼 위로 쳐올린다(아랫면이 보인다)
         else fl = bf && !moth ? (lk.w === 'skipper' ? 0.7 : 1.42 - Math.max(0, Math.sin(b.t * 0.9 + i)) * 0.5) : 0.1;              // 앉은 나비는 날개를 접고 가끔 살짝 편다
         P.wing_L.rotation.z = fl; P.wing_R.rotation.z = -fl;
       }

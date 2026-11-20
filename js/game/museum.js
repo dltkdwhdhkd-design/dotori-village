@@ -89,8 +89,13 @@ function swimmer(ex, sp, tk, i, n, scale) {
   e.move = (q, t, dt) => {
     q.x += q.dir * q.sp * dt;
     if (q.x > tk.x1 - q.half) { q.x = tk.x1 - q.half; q.dir = -1; } else if (q.x < tk.x0 + q.half) { q.x = tk.x0 + q.half; q.dir = 1; }
-    const want = q.dir > 0 ? 0 : Math.PI;
-    q.turn += (want - q.turn) * Math.min(1, dt * 4);
+    q.zT = (q.zT ?? 0) - dt;                         // 수조 안쪽과 앞쪽 사이도 오간다: 가끔 새 깊이를 골라 비스듬히 헤엄쳐 간다
+    if (q.zT <= 0) { q.zT = 3 + Math.random() * 5; q.zt = tk.z0 + (tk.z1 - tk.z0) * Math.random(); }
+    const vz = Math.max(-0.14, Math.min(0.14, ((q.zt ?? q.tz) - q.tz) * 0.5));
+    q.tz += vz * dt;
+    const want = Math.atan2(-vz, q.dir * q.sp);      // 가는 쪽으로 머리를 돌린다(모델의 머리는 +X)
+    let dA = want - q.turn; dA -= Math.round(dA / TAU) * TAU;
+    q.turn += dA * Math.min(1, dt * 4);
     q.m.rotation.y = q.turn + Math.sin(t * 3 + q.ph) * 0.08;
     q.m.position.set(q.x, q.y + Math.sin(t * 0.8 + q.ph) * 0.05, q.tz);
   };

@@ -570,6 +570,29 @@ function roomSpec(b) {
   };
 }
 
+function openBuildingRoom(b, spec) {
+  G.room = new Room(spec);
+  G.room.building = b;
+  G.stage.setMode(true, G.room.cameraDepth || G.room.h, G.room.id);
+  G.player.setPos(G.room.w / 2, G.room.h - 0.7); G.player.yaw = Math.PI; G.player.actor.face(Math.PI, true);
+  const f = G.room.focus(G.player.x, G.player.z); G.stage.setFocus(f.x, 0, f.z, true);
+}
+
+function refreshDailyRoom() {
+  const room = G.room;
+  if (!room) return syncVillagers();
+  if (!['home', 'shop', 'museum', 'hall'].includes(room.id) || !room.building) return;
+  const spec = roomSpec(room.building);
+  if (room.w !== spec.w || room.h !== spec.h || room.wall !== spec.wall) {
+    room.dispose();
+    openBuildingRoom(room.building, spec);
+  } else if (room.id === 'shop') {
+    room.items = spec.items;
+    room.rebuildItems();
+    if (!room.free(Math.floor(G.player.x), Math.floor(G.player.z))) G.player.setPos(room.w / 2, room.h - 0.7);
+  }
+}
+
 export async function enter(b) {
   await runScript(async () => {
     if (G.visit) { await narr('놀러 온 마을에서는 건물에 들어가지 않는다. 밖에서 같이 놀자!'); return; }
@@ -589,11 +612,7 @@ export async function enter(b) {
     S.player.x = b.doors[0] + 0.5; S.player.z = b.y + b.d + 0.5;
     if (G.player.fishing) G.player.endFishing();
     G.world.setVisible(false); G.critters.setVisible(false); setVillagersVisible(false);
-    G.room = new Room(roomSpec(b));
-    G.room.building = b;
-    G.stage.setMode(true, G.room.cameraDepth || G.room.h,G.room.id);
-    G.player.setPos(G.room.w / 2, G.room.h - 0.7); G.player.yaw = Math.PI; G.player.actor.face(Math.PI, true);
-    const f = G.room.focus(G.player.x, G.player.z); G.stage.setFocus(f.x, 0, f.z, true);
+    openBuildingRoom(b, roomSpec(b));
     refreshTime(true);
     await UI.fade(false);
     if(G.room.cameraDepth)UI.toast(HALL_KO.museum+' · 서쪽 곤충관 / 가운데 화석관 / 동쪽 수족관',3800);
@@ -688,7 +707,7 @@ export function registerScripts() {
     enter, exit: exitRoom, portal, caughtFish, caughtBug, stung,
     talkDuru: () => runScript(talkDuru),
     exhibit: (name, text) => runScript(async () => { await Dialog.say(name, text); }), buyDisplay: (room, i) => runScript(() => buyDisplay(room, i)),
-    syncVillagers: () => { if (!G.room) syncVillagers(); },
+    refreshDailyRoom,
     minute: () => { if (!G.room) syncVillagers(); },
   });
 }

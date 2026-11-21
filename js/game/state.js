@@ -30,7 +30,7 @@ export function newState({ name, village, model, look = null, seed, villageData,
     village: { name: village },
     inv: Array(INV_SIZE).fill(null),
     storage: [],
-    day,
+    day, clockAdvanceMs: 0,
     villagers, residents, waiting: ids.slice(2),
     dex: { fish: {}, bug: {}, fossil: {} },
     museum: { fish: [], bug: [], fossil: [] },
@@ -68,6 +68,7 @@ export function loadGame() {
     for (const k of Object.keys(S)) delete S[k];
     Object.assign(S, st);
     // 옛 저장에 없는 항목 채우기
+    if (!Number.isSafeInteger(S.clockAdvanceMs) || S.clockAdvanceMs < 0 || !Number.isFinite(new Date(Date.now() + S.clockAdvanceMs).getTime())) S.clockAdvanceMs = 0;
     S.daily = Object.assign({ coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} }, S.daily || {});
     S.stats = Object.assign({ fish: 0, bug: 0, days: 1, earned: 0 }, S.stats || {});
     S.flags = S.flags || {}; S.mail = S.mail || []; S.storage = S.storage || []; S.waiting = S.waiting || VILLAGER_IDS.filter(id=>!S.residents.includes(id));

@@ -39,7 +39,12 @@ export const UI = {
   showHud(v) { for (const id of ['hud-clock', 'hud-money', 'hud-tools', 'hud-menu']) $(id).classList.toggle('hidden', !v); if (!v) { $('hud-hint').classList.add('hidden'); $('hud-goal').classList.add('hidden'); } },
   loading(p, msg) { const L = $('loading'); if (p == null) { L.classList.add('hidden'); return; } L.classList.remove('hidden'); L.querySelector('i').style.width = Math.round(p * 100) + '%'; if (msg) L.querySelector('.msg').textContent = msg; },
 
-  setClock(date, time, wx) { const c = $('hud-clock'); c.querySelector('.date').textContent = date; c.querySelector('.time').textContent = time; c.querySelector('.wx').textContent = wx; },
+  setClock(date, time, wx) {
+    const c = $('hud-clock');
+    c.querySelector('.date').textContent = date; c.querySelector('.time').textContent = time; c.querySelector('.wx').textContent = wx;
+    const menuClock = $('st-time');
+    if (menuClock) menuClock.textContent = date + ' ' + time;
+  },
   /** 화면 위쪽의 '할 일' 한 줄(빈 글이면 숨긴다) */
   setGoal(text) { const g = $('hud-goal'); g.textContent = text || ''; g.classList.toggle('hidden', !text || $('hud-clock').classList.contains('hidden')); },
   setMoney(n) { $('hud-money').querySelector('span').textContent = fmt(n); },

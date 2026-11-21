@@ -3,16 +3,17 @@ import { hash01, clamp } from './util.js';
 
 export const Clock = {
   offsetMin: 0,          // 설정에서 조정하는 시간(분)
+  advanceMs: 0,          // 이 마을에서 보낸 추가 시간
   frozen: null,          // 테스트용: 고정 시각(Date)
   seed: 1,
-  now() { return this.frozen ? new Date(this.frozen.getTime()) : new Date(Date.now() + this.offsetMin * 60000); },
+  now() { return new Date((this.frozen?.getTime() ?? Date.now()) + this.offsetMin * 60000 + this.advanceMs); },
 };
 
 const DAY = 86400000;
 /** 하루는 새벽 5시에 바뀐다. 날짜 번호(정수). */
 export function dayKey(d = Clock.now()) {
-  const t = new Date(d.getTime() - 5 * 3600000);
-  return Math.floor((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / DAY);
+  const calendarDay = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
+  return calendarDay - (d.getHours() < 5 ? 1 : 0);
 }
 export function dateOfDay(k) { const d = new Date(k * DAY); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12); }
 export const hourF = (d = Clock.now()) => d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;

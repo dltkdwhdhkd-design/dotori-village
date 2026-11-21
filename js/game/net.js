@@ -261,7 +261,7 @@ function applyTiles(m, fromHost) {
 
 // ---------------------------------------------------------------- 방장: 문 열기
 function sendSnap(to) {
-  send({ t: 'snap', to, v: G.village.serialize(), info: worldInfo(), seed: S.seed, off: Clock.offsetMin, vn: S.village.name, hn: S.player.name });
+  send({ t: 'snap', to, v: G.village.serialize(), info: worldInfo(), seed: S.seed, off: Clock.offsetMin, advanceMs: Clock.advanceMs, vn: S.village.name, hn: S.player.name });
 }
 export async function openGate() {
   if(G.room?.area)return UI.toast('귀가한 뒤 우리 마을의 문을 열 수 있어요.');
@@ -309,7 +309,8 @@ function enterVisit(m) {
     if (G.player.fishing) G.player.endFishing();
   }
   Object.assign(G.visit, { info, name: str(m.vn, 8) || '친구', host: str(m.hn, 8) || '방장' });
-  Clock.seed = num(m.seed, -2147483648, 2147483647, 1) | 0; Clock.offsetMin = num(m.off, -720, 720, 0);
+  Clock.seed = num(m.seed, -2147483648, 2147483647, 1) | 0;
+  readHostClock(m);
   buildWorld(v);
   watchVillage(v);
   G.critters.clear(); G.critters._water = null;
@@ -326,6 +327,7 @@ function leaveVisit() {
   if (G.player.fishing) G.player.endFishing();
   G.visit = null;
   S.daily = V.daily; Clock.seed = V.seed; Clock.offsetMin = V.off;
+  Clock.advanceMs = S.clockAdvanceMs;
   G.npcs = V.npcs;
   buildWorld(V.home);
   G.critters.clear(); G.critters._water = null;
@@ -372,6 +374,10 @@ function onMsg(m) {
     if (sp) { r.tag.say(`${josa(sp.name, '을/를')} ${m.k === 'fish' ? '낚았다' : '잡았다'}!`, 4); r.actor.play('joy', 0.9); }
   }
 }
+function readHostClock(m) {
+  Clock.offsetMin = num(m.off, -720, 720);
+  Clock.advanceMs = num(m.advanceMs, 0, 8.64e15 - Date.now() - 86400000);
+}
 function onNpc(m) {
   if (Array.isArray(m.l)) {
     const seen = new Set();
@@ -386,6 +392,7 @@ function onNpc(m) {
     G.npcs = [...Net.puppets.values()];
   }
   if (m.info && G.visit) {                           // 건물이 새로 섰거나 이웃이 이사 왔으면 겉모습을 다시 그린다
+    if (typeof m.off === 'number') readHostClock(m);
     const info = cleanInfo(m.info);
     if (JSON.stringify(info) !== JSON.stringify(G.visit.info)) { G.visit.info = info; for (const b of G.village.buildings) G.world.refreshBuilding(b); }
   }
@@ -414,7 +421,7 @@ export function updateNet(dt) {
     if (t - Net.npcT > 0.25) {                       // 이웃 주민의 자리
       Net.npcT = t;
       const o = { t: 'npc', l: G.npcs.map((n) => [n.id, +n.x.toFixed(2), +n.z.toFixed(2), +(n.actor.yaw || 0).toFixed(2), n.actor.speed ? 1 : 0, n.visible && !G.room ? 1 : 0]) };
-      if (t - Net.infoT > 4) { Net.infoT = t; o.info = worldInfo(); }
+      if (t - Net.infoT > 4) { Net.infoT = t; o.info = worldInfo(); o.off = Clock.offsetMin; o.advanceMs = Clock.advanceMs; }
       if (Net.peers.size) send(o);
     }
     if (S.day !== Net.day) { Net.day = S.day; Net.dirty.clear(); if (Net.peers.size) sendSnap('*'); }      // 날이 바뀌면 마을을 다시 보낸다

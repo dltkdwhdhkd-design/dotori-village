@@ -1,5 +1,5 @@
 // 시작점: 자산을 불러오고, 타이틀을 보여 주고, 마을을 연다
-import { G, initStage, loadAssets, buildWorld, startLoop, refreshTime, runScript, save } from './game/game.js';
+import { G, initStage, loadAssets, buildWorld, startLoop, refreshTime, advanceVillageTime, runScript, save } from './game/game.js';
 import { Player } from './game/player.js';
 import { Critters } from './game/critters.js';
 import { syncVillagers } from './game/npc.js';
@@ -43,13 +43,13 @@ function start(isNew) {
   refreshTime(true);
   updateMailFlag();
   if (isNew) runScript(intro);
-  else if (S.day !== dayKey()) newDay(dayKey());
   save();
 }
 
 function onNew({ name, village, model, look = null, seed }) {
   seed = seed || ((Math.random() * 0x7fffffff) | 0);
   const v = Village.create(seed);
+  Clock.advanceMs = 0;
   Clock.seed = seed;
   // 새 마을은 다리가 하나뿐이다. 둘째 다리 자리는 강물로 되돌려 두었다가, 마을을 키우면서 놓는다.
   if (v.bridges.length > 1) {
@@ -73,6 +73,7 @@ function onNew({ name, village, model, look = null, seed }) {
 }
 function onContinue() {
   if (!loadGame()) return onNew({ name: '도토리', village: '솔바람', model: MODEL, look: defaultLook() });
+  Clock.advanceMs = S.clockAdvanceMs;
   Clock.seed = S.seed;
   buildWorld(Village.deserialize(S.village.data));
   start(false);
@@ -114,11 +115,11 @@ async function boot() {
 // 개발·점검용 도구 (브라우저 콘솔에서 DV.* 로 쓴다)
 window.DV = {
   G, S, Input,
-  time(iso) { Clock.frozen = iso ? new Date(iso) : null; refreshTime(true); },
+  time(iso) { Clock.frozen = iso ? new Date(new Date(iso).getTime() - Clock.advanceMs - Clock.offsetMin * 60000) : null; refreshTime(true); },
   tp(x, z) { G.player.setPos(x, z); G.stage.setFocus(x, 0, z, true); },
   give(id, n = 1) { return addItem(id, n); },
   money(n) { addMoney(n); },
-  day() { newDay(S.day + 1); },
+  day() { return advanceVillageTime(true); },
 };
 
 boot();

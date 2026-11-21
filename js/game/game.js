@@ -7,7 +7,7 @@ import { registerImageChar } from '../gfx/actor.js';
 import { Village } from '../world/village.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { WATER_Y } from '../gfx/terrain.js';
-import { Clock, dayKey, daylight, twilight, weatherAt, seasonLook, dateLabel, timeLabel, WEATHER_KO, SEASON_KO, season, hourF } from '../core/clock.js';
+import { Clock, dayKey, dateOfDay, daylight, twilight, weatherAt, seasonLook, dateLabel, timeLabel, WEATHER_KO, SEASON_KO, season, hourF } from '../core/clock.js';
 import { Input } from '../core/input.js';
 import { Sound } from '../core/audio.js';
 import { UI, Dialog } from '../ui/ui.js';
@@ -92,16 +92,33 @@ export function buildWorld(village) {
     itemTint: (id) => (ITEMS[id] && ITEMS[id].tint && !['wall', 'floor'].includes(ITEMS[id].kind) ? ITEMS[id].tint : undefined),
     itemScale: (id) => { const it = ITEMS[id]; if (!it) return 1; if (it.kind === 'fish' || it.kind === 'misc') return 0.8; if (it.kind === 'tool') return 0.7; return it.scale ? Math.min(it.scale, 1.5) : 1; },
   });
+  if (G.room) G.world.setVisible(false);
   refreshTime(true);
 }
 
 // ---------------------------------------------------------------- 시간·날씨
+export function advanceVillageTime(nextMorning) {
+  if (!G.started || G.visit) return false;
+  const now = Clock.now();
+  let elapsed = 3600000;
+  if (nextMorning) {
+    const morning = dateOfDay(Math.max(S.day, dayKey(now)) + 1);
+    morning.setHours(8, 0, 0, 0);
+    elapsed = morning - now;
+  }
+  S.clockAdvanceMs += elapsed;
+  Clock.advanceMs = S.clockAdvanceMs;
+  return refreshTime(true, true) ?? save();
+}
+
 let lastMinute = -1;
-export function refreshTime(force = false) {
+export function refreshTime(force = false, advanceFromMenu = false) {
   const now = Clock.now();
   G.now = now;
-  const minute = now.getHours() * 60 + now.getMinutes();
-  if (!force && minute === lastMinute) return;
+  const k = dayKey(now);
+  const newDayDue = G.started && !G.visit && k > S.day && (advanceFromMenu || (!G.busy && !UI.blocking()));
+  const minute = Math.floor(now.getTime() / 60000);
+  if (!force && minute === lastMinute && !newDayDue) return;
   lastMinute = minute;
   G.look = seasonLook(now);
   G.weather = weatherAt(now);
@@ -110,11 +127,11 @@ export function refreshTime(force = false) {
   G.stage.setLighting(G.dayLight, twilight(now), G.weather, hourF(now),G.room?.id);
   if (G.started) {
     UI.setClock(dateLabel(now), timeLabel(now), `${SEASON_KO[season(now)]} · ${WEATHER_KO[G.weather]}`);
-    const k = dayKey(now);
-    if (S.day !== k && G.hooks.newDay && !G.busy && !UI.blocking() && !G.visit) G.hooks.newDay(k);      // 놀러 가 있을 때는 돌아와서 넘긴다
+    const saved = newDayDue ? G.hooks.newDay?.(k) : undefined;
     if (G.hooks.minute) G.hooks.minute(now);
     const h = hourF(now);
     Sound.music(G.room ? 'indoor' : h < 5 || h >= 21 ? 'night' : h < 10 ? 'morning' : h < 17 ? 'day' : 'evening');
+    return saved;
   }
 }
 

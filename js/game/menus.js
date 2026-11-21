@@ -1,6 +1,6 @@
 // 창: 가방, 도감, 지도, 설정, 우체통, 창고, 게시판, 타이틀 화면
 import { journal } from './fieldwork.js';
-import { G, runScript, save, burst, refreshTime, worldInfo } from './game.js';
+import { G, runScript, save, burst, refreshTime, advanceVillageTime, worldInfo } from './game.js';
 import { VERSION } from '../core/version.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, INV_SIZE, hasSave } from './state.js';
@@ -8,7 +8,7 @@ import { ITEMS, FISH, BUGS, FOSSILS, FISH_BY_ID, BUG_BY_ID, itemName, sellPrice,
 import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
 import { UI, Dialog, slotEl, itemRow, acorns } from '../ui/ui.js';
 import { Sound } from '../core/audio.js';
-import { Clock, dayKey, dateLabel, season, SEASON_KO, WEATHER_KO } from '../core/clock.js';
+import { Clock, dayKey, dateLabel, timeLabel, season, SEASON_KO, WEATHER_KO } from '../core/clock.js';
 import { el, fmt, josa, rand } from '../core/util.js';
 import { museumProgress } from './scripts.js';
 import { track, openNote } from './quests.js';
@@ -263,13 +263,15 @@ export function bigTree() {
 }
 export function rest() {
   runScript(async () => {
-    const c = await (async () => { await narr('폭신해 보인다. 잠깐 누워서 쉴까?'); return Dialog.choose(['쉰다 (저장)', '그만둔다'], { cancel: 1 }); })();
-    if (c !== 0) return;
+    await narr('폭신해 보인다. 얼마나 쉴까?');
+    const c = await Dialog.choose(['잠깐 쉬고 저장하기', '다음 날 아침 8시까지 자기', '일어나기'], { cancel: 2 });
+    if (c !== 0 && c !== 1) return;
     await UI.fade(true);
-    const ok = save(); Sound.sfx('save');
+    const ok = c === 1 ? advanceVillageTime(true) : save(); Sound.sfx('save');
     await new Promise((r) => setTimeout(r, 500));
     await UI.fade(false);
-    await narr(ok ? '푹 쉬었다. 지금까지의 일이 저장되었다.' : '쉬긴 했는데… 저장에는 실패했다. 브라우저 저장 공간을 확인하자.');
+    const woke = c === 1 ? dateLabel(Clock.now()) + ' 아침이다. 기지개를 켜고 일어났다.' : '푹 쉬었다. 지금까지의 일이 저장되었다.';
+    await narr(ok ? woke : '쉬긴 했는데… 저장에는 실패했다. 브라우저 저장 공간을 확인하자.');
   });
 }
 
@@ -280,14 +282,17 @@ export function openMenu() {
     <div class="kv">
       <span>배경음</span><input type="range" id="st-bgm" min="0" max="100" value="${Math.round(Settings.bgm * 100)}">
       <span>효과음</span><input type="range" id="st-sfx" min="0" max="100" value="${Math.round(Settings.sfx * 100)}">
-      <span>게임 시계</span><span><select id="st-off"></select> <span class="note">밤에만 접속한다면 시계를 앞뒤로 옮길 수 있다.</span></span>
+      <span>마을 시계</span><div><strong id="st-time"></strong>
+        <div class="clock-actions"><button class="btn" id="st-hour">1시간 보내기</button><button class="btn go" id="st-morning">다음 날 아침 8시까지</button></div>
+        <span class="note">${G.visit ? '친구 마을에서는 그 마을의 시계를 따라요.' : '새벽 5시가 지나면 공사가 끝나고 가게 물건과 일감이 바뀌어요.'}</span></div>
+      <label for="st-off">기본 시차</label><select id="st-off"></select>
       <span>해 그림자</span><span><label><input type="checkbox" id="st-shadow" ${Settings.shadow !== false ? 'checked' : ''}> 켜기</label> <span class="note">느린 컴퓨터에서는 끄면 가벼워진다.</span></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 6px">
       <button class="btn go" id="st-look">캐릭터 꾸미기</button><button class="btn go" id="st-net">같이 하기</button><button class="btn go" id="st-save">지금 저장</button><button class="btn" id="st-exp">저장 내보내기</button><button class="btn" id="st-imp">저장 가져오기</button><button class="btn warn" id="st-reset">처음부터 다시</button>
     </div>
     <textarea id="st-text" class="hidden" style="width:100%;height:90px;font-size:12px"></textarea>
-    <div class="note">${S.village.name} 마을에서 ${S.stats.days}일째 · 낚은 물고기 ${S.stats.fish}마리 · 잡은 곤충 ${S.stats.bug}마리 · 번 도토리 ${fmt(S.stats.earned)}</div>
+    <div class="note">${S.village.name} 마을에서 <span id="st-days">${S.stats.days}</span>일째 · 낚은 물고기 ${S.stats.fish}마리 · 잡은 곤충 ${S.stats.bug}마리 · 번 도토리 ${fmt(S.stats.earned)}</div>
     <h3 style="font-weight:normal;margin:12px 0 6px">조작법</h3>
     <div class="keys">
       <span><b>W</b><b>A</b><b>S</b><b>D</b> / 방향키</span><span>걷기 (Shift를 누르면 달리기)</span>
@@ -303,7 +308,18 @@ export function openMenu() {
   UI.openPanel('메뉴', box);
   const $ = (id) => box.querySelector('#' + id);
   const off = $('st-off');
-  for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '실제 시간 그대로' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Settings.offsetMin) o.selected = true; off.appendChild(o); }
+  for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '시차 없음' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Clock.offsetMin) o.selected = true; off.appendChild(o); }
+  const now = Clock.now();
+  $('st-time').textContent = dateLabel(now) + ' ' + timeLabel(now);
+  for (const id of ['st-hour', 'st-morning']) {
+    const button = $(id);
+    button.disabled = !!G.visit;
+    button.onclick = () => {
+      if (!advanceVillageTime(id === 'st-morning')) UI.toast('마을 시간을 저장하지 못했어요.');
+      $('st-days').textContent = S.stats.days;
+    };
+  }
+  off.disabled = !!G.visit;
   const activities=el('div','island-actions');
   box.prepend(activities);
   if(!G.visit){action(activities,'먼작귀 생활 수첩',journal);action(activities,G.room?.area?'여행 안내':'마을 여행',()=>G.hooks.travel(),!G.room||!!G.room.area);
@@ -313,7 +329,7 @@ export function openMenu() {
   $('st-look').onclick = openMirror;
   $('st-bgm').oninput = (e) => { Settings.bgm = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); };
   $('st-sfx').oninput = (e) => { Settings.sfx = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); Sound.sfx('ui'); };
-  off.onchange = () => { Settings.offsetMin = +off.value; Clock.offsetMin = Settings.offsetMin; saveSettings(); refreshTime(true); UI.toast('게임 시계를 바꿨다.'); };
+  off.onchange = () => { Settings.offsetMin = +off.value; Clock.offsetMin = Settings.offsetMin; saveSettings(); refreshTime(true, true); $('st-days').textContent = S.stats.days; UI.toast('기본 시차를 바꿨어요.'); };
   $('st-shadow').onchange = (e) => { Settings.shadow = e.target.checked; G.stage.setShadows(Settings.shadow); G.noAutoQuality = true; saveSettings(); };
   $('st-save').onclick = () => { UI.toast(save() ? '저장했다.' : '저장에 실패했다.'); Sound.sfx('save'); };
   $('st-exp').onclick = () => { save(); const t = $('st-text'); t.classList.remove('hidden'); t.value = exportSave(); t.select(); UI.toast('아래 글자를 전부 복사해 보관하세요.'); };

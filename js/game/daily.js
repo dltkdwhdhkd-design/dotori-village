@@ -164,6 +164,7 @@ function progressDay(day) {
 /** 날짜가 바뀌었을 때(또는 오랜만에 접속했을 때) 부른다 */
 export function newDay(k, quiet = false) {
   const from = S.day;
+  if (k <= from) return;
   const gap = Math.max(1, Math.min(10, k - from));
   for (let d = k - gap + 1; d <= k; d++) growDay(d);
   S.day = k;
@@ -171,10 +172,11 @@ export function newDay(k, quiet = false) {
   setupToday(k);
   progressDay(k);
   dailyMail(k);
-  if (G.hooks.syncVillagers) G.hooks.syncVillagers();
-  save();
+  G.hooks.refreshDailyRoom?.();
+  const saved = save();
   if (!quiet) { const d = dateOfDay(k); UI.toast(`${d.getMonth() + 1}월 ${d.getDate()}일, 새 하루가 시작됐다.`, 3500); }
   if (S.mail.some((m) => !m.read)) UI.toast('우체통에 편지가 와 있다.', 3500);
+  return saved;
 }
 
 /** 새 게임 첫날 준비 */

@@ -9,7 +9,9 @@ import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisibl
 import { S, addItem, canAdd, takeItem, hasItem, countItem, freeSlots, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
 import { ITEMS, FISH, BUGS, FISH_BY_ID, BUG_BY_ID, FOSSILS, FURNITURE, WALLS, FLOORS, FRUIT_KO, SHELL_IDS, itemName, sellPrice, isDonatable } from '../data/items.js';
 import { VILLAGERS, PERSONALITY, NPCS, HOME_LAYOUT, HOME_STYLE } from '../data/villagers.js';
-import { TALK, NPC_TALK } from '../data/talk.js';
+import { VOICES, voice, seasonalVoice } from '../data/voices.js';
+import { speak } from './speech.js';
+import { NPC_TALK } from '../data/talk.js';
 import { UI, Dialog, fill, itemRow, acorns } from '../ui/ui.js';
 import { Sound } from '../core/audio.js';
 import { make } from '../gfx/models.js';
@@ -20,7 +22,7 @@ import { rand, fmt, josa, el, wait } from '../core/util.js';
 
 const pick = (a) => a[Math.floor(rand() * a.length)];
 const narr = (t) => Dialog.say('', t);
-const say = (who, text, vars = {}) => Dialog.say(who.name, fill(text, { p: S.player.name, v: S.village.name, ...vars }), { pitch: who.pitch || 1, actor: who.actor || null });
+const say = (who, text, vars = {}) => VOICES[who.id] ? speak(who,text,vars) : Dialog.say(who.name, fill(text, { p: S.player.name, v: S.village.name, ...vars }), { pitch: who.pitch || 1, actor: who.actor || null });
 const npcOf = (k) => ({ name: NPCS[k].name, pitch: NPCS[k].pitch });
 const haveMat = (c) => Object.entries(c).map(([k, n]) => `${{ wood: '나무', stone: '돌', money: '도토리' }[k]} ${fmt(Math.min(n, k === 'money' ? S.player.money : countItem('mat_' + k)))}/${fmt(n)}`).join(', ');
 function payCost(c) { for (const [k, n] of Object.entries(c)) { if (k === 'money') addMoney(-n); else takeItem('mat_' + k, n); } }
@@ -41,21 +43,18 @@ function vvars(n, extra = {}) { const def = VILLAGERS[n.id]; return { me: def.na
 function otherName(id) { const o = S.residents.filter((x) => x !== id); return o.length ? VILLAGERS[pick(o)].name : '이장님'; }
 
 function chatLine(n) {
-  const def = VILLAGERS[n.id], L = TALK[def.p], now = G.now, m = now.getMonth() + 1, h = now.getHours();
-  if (def.bday[0] === m && def.bday[1] === now.getDate()) return pick(L.bday);
-  const pool = [];
-  if (G.weather === 'rain') pool.push(...L.rain, ...L.rain);
-  if (G.weather === 'snow') pool.push(...L.snow, ...L.snow);
-  if ((m === 7 || m === 8) && h >= 11 && h < 17 && G.weather === 'clear') pool.push(...L.hot);
-  if (m === 12 || m <= 2) pool.push(...L.cold);
-  pool.push(...L[season(now)]);
-  pool.push(...L.about);
-  pool.push(...L.chat, ...L.chat);
-  return pick(pool);
+  const v=VILLAGERS[n.id],lines=[...voice(n.id,'chat')],now=G.now;
+  if(v.bday[0]===now.getMonth()+1 && v.bday[1]===now.getDate())return voice(n.id,'bday');
+  lines.push(seasonalVoice(n.id,season(now)));
+  if(G.weather==='rain' || G.weather==='snow')lines.push(voice(n.id,G.weather),voice(n.id,G.weather));
+  const memory=S.islandLife?.story;
+  if(memory?.rescue===6 && VOICES[n.id].rescue)lines.push(VOICES[n.id].rescue);
+  if(memory?.grade===5 && VOICES[n.id].grade)lines.push(VOICES[n.id].grade);
+  const choices=lines.filter(line=>line!==n.lastChat);
+  n.lastChat=pick(choices.length?choices:lines);return n.lastChat;
 }
 function greetLine(n) {
-  const L = TALK[VILLAGERS[n.id].p], h = hourF();
-  return pick(h >= 5 && h < 11 ? L.morning : h < 17 ? L.day : h < 21 ? L.evening : L.night);
+  const h=hourF();return voice(n.id,'greet')[h>=5 && h<11?0:h>=11 && h<17?1:h>=17 && h<21?2:3];
 }
 
 async function giveReward(n, scale = 1) {
@@ -105,7 +104,7 @@ function pickFromBag(title, filter) {
 }
 
 export async function talkVillager(n) {
-  const id = n.id, st = S.villagers[id], def = VILLAGERS[id], L = TALK[def.p], today = dayKey(), p = G.player;
+  const id = n.id, st = S.villagers[id], def = VILLAGERS[id], L = VOICES[id], today = dayKey(), p = G.player;
   if (!st) return;
   n.talking = true;
   p.actor.faceTo(n.x, n.z); n.actor.faceTo(p.x, p.z);
@@ -114,13 +113,13 @@ export async function talkVillager(n) {
     let h = hourF(); if (h < 5) h += 24;
     const sleepy = h > PERSONALITY[def.p].sleep - 0.5;
     if (st.talkT !== today) { st.talkT = today; track('talk'); }
-    if (!st.met) { st.met = true; refreshGoal(); st.friend += 3; st.talkDay = today; n.actor.play('wave', 0.9); await say(n, pick(L.hello), V()); }
+    if (!st.met) { st.met = true; refreshGoal(); st.friend += 3; st.talkDay = today; n.actor.play('wave', 0.9); await say(n, L.hello, V()); }
     else {
       const par = (S.parcels || []).find((q) => q.to === id);
       if (par && hasItem('parcel')) {
         takeItem('parcel'); S.parcels = S.parcels.filter((q) => q !== par);
         n.actor.play('joy', 0.8);
-        await say(n, pick(L.recv), V({ o: VILLAGERS[par.from].name }));
+        await say(n, L.recv, V({ o: VILLAGERS[par.from].name }));
         await giveReward(n, 1);
         st.friend += 3;
         if (S.villagers[par.from]) { S.villagers[par.from].friend += 4; S.villagers[par.from].req = null; }
@@ -130,32 +129,32 @@ export async function talkVillager(n) {
         if (c === 0) {
           takeItem(st.req.item); const price = sellPrice(st.req.item, G.village.fruit);
           st.req = null; st.friend += 5; n.actor.play('joy', 0.8); n.actor.emote('heart', 1.4);
-          await say(n, pick(L.reqDone), V());
+          await say(n, L.thanks, V());
           await giveReward(n, 1 + Math.min(3, price / 400));
         }
-      } else if (S.player.stung && st.stungSeen !== today) { st.stungSeen = today; n.actor.play('surprise', 0.6); await say(n, pick(L.stung), V()); }
-      else if (st.talkDay !== today) { st.talkDay = today; st.friend += 2; n.actor.play('nod', 0.5); await say(n, sleepy ? pick(L.sleepy) : greetLine(n), V()); }
-      else if (st.talkN > 5) { n.actor.emote('sweat', 1.2); await say(n, pick(L.annoyed), V()); return; }
+      } else if (S.player.stung && st.stungSeen !== today) { st.stungSeen = today; n.actor.play('surprise', 0.6); await say(n, L.stung, V()); }
+      else if (st.talkDay !== today) { st.talkDay = today; st.friend += 2; n.actor.play('nod', 0.5); await say(n, sleepy ? voice(id,'sleepy') : greetLine(n), V()); }
+      else if (st.talkN > 5) { n.actor.emote('sweat', 1.2); await say(n, voice(id,'annoyed'), V()); return; }
       else await say(n, chatLine(n), V({ o: otherName(id) }));
     }
     for (;;) {
       const c = await Dialog.choose(['얘기하자', '부탁할 일 없어?', '선물 줄게', '그만 가 볼게'], { cancel: 3 });
       if (c === 0) {
         st.talkN = (st.talkN || 0) + 1;
-        if (st.talkN > 5) { n.actor.emote('sweat', 1.2); await say(n, pick(L.annoyed), V()); break; }
+        if (st.talkN > 5) { n.actor.emote('sweat', 1.2); await say(n, voice(id,'annoyed'), V()); break; }
         n.actor.play('nod', 0.5);
         await say(n, chatLine(n), V({ o: otherName(id) }));
       } else if (c === 1) {
         if (st.req) {
-          await say(n, pick(L.reqWait), V());
+          await say(n, L.wait, V());
           if (st.req.type !== 'deliver') await narr(`(${def.name}의 부탁: <b>${itemName(st.req.item)}</b> 구해다 주기)`);
           else await narr(`(${def.name}의 부탁: <b>${VILLAGERS[st.req.to].name}</b>에게 꾸러미 전하기)`);
         } else if (st.reqAsked === today) await narr(`${josa(def.name, '은/는')} 지금은 딱히 부탁할 일이 없는 모양이다.`);
         else {
           const rq = makeRequest(id);
           if (rq.type === 'deliver' && !canAdd('parcel')) { await narr('가방이 가득 차서 부탁을 받을 수 없다.'); continue; }
-          const key = { fish: 'reqFish', bug: 'reqBug', fruit: 'reqFruit', shell: 'reqShell', deliver: 'reqDeliver' }[rq.type];
-          await say(n, pick(L[key]), V({ i: rq.item ? itemName(rq.item) : '', o: rq.to ? VILLAGERS[rq.to].name : '' }));
+          const key=rq.type==='deliver'?'deliver':'request';
+          await say(n, L[key], V({ i: rq.item ? itemName(rq.item) : '', o: rq.to ? VILLAGERS[rq.to].name : '' }));
           const a = await Dialog.choose(['맡겨 줘', '미안, 다음에'], { cancel: 1 });
           st.reqAsked = today;
           if (a === 0) {
@@ -176,10 +175,10 @@ export async function talkVillager(n) {
         st.friend += st.giftDay === today ? 1 : (like ? 4 : 2) + (bday ? 8 : 0);
         st.giftDay = today;
         n.actor.play(like ? 'joy' : 'nod', 0.8); if (like) n.actor.emote('heart', 1.4);
-        await say(n, pick(like ? L.giftLike : L.giftOk), V());
+        await say(n, like ? L.giftLike : L.giftOk, V());
       } else break;
     }
-    await say(n, pick(L.bye), V());
+    await say(n, L.bye, V());
   } finally { n.talking = false; }
 }
 
@@ -243,9 +242,9 @@ async function talkKkami() {
   const k = npcOf('kkami'), P = S.prog, tent = P.shop < 2;
   if (!P.met.kkami) {
     P.met.kkami = true; refreshGoal();
-    await say(k, '반가워요! 새로 이사 온 {p} 맞죠? 난 까미예요. 이 마을에서 장사를 맡고 있답니다.');
+    await say(k, '어서 와요, {p}! 이 포셰트, 제가 한 땀씩 꿰맨 거예요. 작은데 제법 많이 들어가죠? 전 여기서 만물상을 맡은 까미예요.');
     await say(k, tent ? '지금은 천막 좌판이지만, 언젠가는 번듯한 가게를 차릴 거예요. 물고기든 과일이든 뭐든 사 드릴게요!' : '필요한 건 뭐든 말해요. 물고기든 과일이든 뭐든 사 드릴게요!');
-  } else await say(k, pick(tent ? ['어서 와요! 아직은 좌판뿐이지만 쓸 만한 건 다 있어요.', '{p} 손님 오셨네! 오늘은 뭘 도와드릴까?'] : ['어서 와요, 어서 와! 까미네 만물상입니다. 오늘은 뭘 도와드릴까?', '{p} 손님 오셨네! 반짝이는 건 못 드려도 쓸 만한 건 다 있어요.', '어서 오세요. 천천히 둘러봐요.']));
+  } else await say(k,pick(tent?['아, 천 조각이 소매에 붙었네요. 방금 포셰트 안감을 다는 중이었어요. 뭘 찾으세요?','천막 안으로 오세요. 오늘은 단추를 색깔별로 놓아 봤어요.']:['새 끈을 달았더니 가방이 꼭 새 물건 같죠? 편히 둘러보세요.','작은 주머니 하나면 주운 도토리도 잃어버리지 않더라고요. 뭐 도와드릴까요?']));
   for (;;) {
     const build = stepId() === 'shop' && tent && !P.pend.shop;
     const opts = ['물건을 사고 싶어', '팔 물건이 있어'].concat(build ? ['가게 지을 재료를 가져왔어'] : [], ['그냥 구경할게']);
@@ -294,9 +293,9 @@ async function talkDuru() {
   const d = npcOf('duru'), P = S.prog;
   if (P.museum < 2 && !P.met.duru) {
     P.met.duru = true;
-    await say(d, '처음 뵙겠습니다. 두루라고 합니다. 우직 이장님의 부름을 받고 이 마을의 생물을 조사하러 왔지요.');
+    await say(d, '두루라고 해요. 라멘 가게 로의 주방을 잠깐 맡기고 나왔어요. 이 마을에선 생물 조사도 돕기로 했거든요.');
     await say(d, `물고기든 곤충이든 화석이든, 처음 보는 것이 있으면 가져다주십시오. <b>${COST.museum}점</b>이 모이면 박물관을 지을 수 있습니다.`);
-  } else await say(d, pick(P.museum < 2 ? ['어서 오세요. 조사 천막의 두루입니다. 오늘은 어떤 걸 가져오셨는지요?'] : ['어서 오세요. 마을 박물관의 두루입니다. 오늘은 어떤 걸 가져오셨는지요?', '흠흠, {p} 님이시군요. 조용히 둘러보셔도 좋고, 기증은 언제나 환영입니다.']));
+  } else await say(d,pick(P.museum<2?['어서 와요. 가져온 걸 하나씩 볼까요? 이쪽에 차례대로 놓아 줘요.']:['어서 와요. 새로 들어온 표본부터 볼까요?','잠깐 앞치마 좀 풀고요. 어떤 걸 가져왔어요?']));
   await museumGrow(d);
   for (;;) {
     const c = await Dialog.choose(['기증할게요', '화석을 감정해 주세요', '전시 현황이 궁금해요', '안녕히 계세요'], { cancel: 3 });
@@ -446,8 +445,8 @@ async function festival(u) {
   pop();
   await say(mayor, '천막 하나로 시작한 마을에 가게가 서고, 박물관이 서고, 다리가 놓였네. 이게 다 {p|이/가} 발로 뛰어 준 덕분이지.');
   for (const n of guests) n.actor.play('wave', 1.0);
-  const lines = ['{p}, 정말 고마워! 덕분에 살기 좋은 마을이 됐어.', '처음 왔을 땐 허허벌판이었는데… 이제 제법 마을 같지?', '오늘은 실컷 놀자! 잔치니까!'];
-  for (const [i, n] of guests.slice(0, 3).entries()) { const def = VILLAGERS[n.id]; n.actor.play('wave', 1.0); await say({ name: def.name, pitch: PERSONALITY[def.p].pitch, actor: n.actor }, lines[i]); }
+
+  for(const n of guests.slice(0,3)){n.actor.play('wave',1);await speak(n,voice(n.id,'fest'));}
   front[1].play('joy', 1.0);
   await say({ ...npcOf('kkami'), actor: front[1] }, '우리 가게도 잔치 기념으로 좋은 물건 많이 들여놓을게요!');
   front[2].play('wave', 1.0);
@@ -470,7 +469,7 @@ async function festival(u) {
 async function talkUjik() {
   const u = npcOf('ujik'), P = S.player, Q = S.prog;
   if (stepId() === 'hello') { await storyUjik(u); await say(u, '그럼 살펴 가게!'); return; }
-  await say(u, pick(['어서 오게, {p}! 마을 살림은 할 만한가?', '오, 왔는가. 무슨 일로 왔나?']));
+  await say(u, pick(['왔구나, {p}. 오늘 일한 몫은 잘 챙겼니?', '작업표는 잠깐 여기 두고. 무슨 일인지 들어 보자.']));
   for (;;) {
     const story = !Q.done;
     const opts = (story ? ['마을 일로 왔어요'] : []).concat(['집 문제로 왔어요', '마을 소식이 궁금해요', '아니에요']);
@@ -526,9 +525,8 @@ function mailLetter() {
 
 /** 놀러 간 마을의 이웃과는 가볍게 인사만 나눈다 */
 async function talkVisit(n) {
-  const def = VILLAGERS[n.id], who = { name: def.name, pitch: PERSONALITY[def.p].pitch, actor: n.actor };
-  n.talking = true;
-  try { await say(who, pick(['어, 처음 보는 얼굴이네! {v} 마을에 놀러 왔구나.', '놀러 왔어? 천천히 구경하다 가!', '{v} 마을 어때? 살기 좋은 곳이야.', '손님이구나! 여기 물고기가 잘 잡혀.']), { v: G.visit ? G.visit.name : S.village.name }); } finally { n.talking = false; }
+  n.talking=true;
+  try{await speak(n,voice(n.id,'home'));}finally{n.talking=false;}
 }
 
 // ---------------------------------------------------------------- 건물 드나들기
@@ -568,7 +566,7 @@ function roomSpec(b) {
   const n = wrapNpc(vid);
   return {
     id: 'v:' + vid, w: 6, h: 5, wall, floor, items: HOME_LAYOUT[def.set].map(([id, x, y]) => ({ id, x, y, r: 0 })),
-    npcDefs: [{ ...n, model: 'villager_' + vid, x: 3.5, z: 2.5, talk: (self) => runScript(async () => { if (!S.villagers[vid].homeSeen || S.villagers[vid].homeSeen !== dayKey()) { S.villagers[vid].homeSeen = dayKey(); await say(n, pick(TALK[def.p].home), vvars(n)); } await talkVillager(self); }) }],
+    npcDefs: [{ ...n, model: 'villager_' + vid, x: 3.5, z: 2.5, talk: (self) => runScript(async () => { if (!S.villagers[vid].homeSeen || S.villagers[vid].homeSeen !== dayKey()) { S.villagers[vid].homeSeen = dayKey(); await speak(self,voice(vid,'home'),vvars(n)); } await talkVillager(self); }) }],
   };
 }
 

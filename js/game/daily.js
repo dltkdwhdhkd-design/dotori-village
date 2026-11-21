@@ -4,7 +4,7 @@ import { G as T, MAP_W, MAP_H, FRUITS, FLOWER_SPECIES } from '../world/mapgen.js
 import { S } from './state.js';
 import { ITEMS, FURNITURE, WALLS, FLOORS, SHELL_IDS } from '../data/items.js';
 import { VILLAGERS } from '../data/villagers.js';
-import { TALK } from '../data/talk.js';
+import { voice } from '../data/voices.js';
 import { RNG, hash32, weighted } from '../core/util.js';
 import { UI, fill } from '../ui/ui.js';
 import { dateOfDay } from '../core/clock.js';
@@ -90,7 +90,7 @@ function dailyMail(day) {
     if (lv > st.ms) {
       st.ms = lv;
       const pool = FURNITURE.filter((f) => f[5] === def.set || lv === 3).map((f) => f[0]);
-      const text = fill(TALK[def.p].letter[0], { p: S.player.name, me: def.name, c: def.catch });
+      const text = fill(voice(id,'letter'), { p: S.player.name, me: def.name, c: def.catch });
       mail(id, def.name, text, r.pick(pool.length ? pool : FURNITURE.map((f) => f[0])));
     }
   }

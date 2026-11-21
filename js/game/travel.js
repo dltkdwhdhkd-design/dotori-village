@@ -12,11 +12,16 @@ import { VILLAGERS } from '../data/villagers.js';
 import { Sound } from '../core/audio.js';
 import { action,life,learn,available } from './workshop.js';
 import { invite } from './island.js';
+import { certifiedPlots, fieldDesk, gradeWork, inspectPlot, plantModel, story, study, openResults } from './fieldwork.js';
+import { ramenDesk, setBowl } from './ramen.js';
+import { VOICES } from '../data/voices.js';
+import { speakScene } from './speech.js';
+import { buildRescue, rescueDesk, rescueFrame, rescueProbe } from './rescue.js';
 
 const places={
-  meadow:{name:'풀잎 들녘',desc:'노동 갑옷 씨의 접수처 너머로 풀밭이 이어져요.',task:'밭의 잡초 뽑기',mat:'weed1',tint:'#a6c783', path:'#e6ce93',ids:['dalgom','beomi','dahong','dungdung'],props:[['tent_shop',2,2,.67],['board',6,2,.83],['tree_fruit',11,1,1.12],['tree_blossom',13,4,1],['bench',2,6,.85],['flower_cosmos',8,2,1.5]]},
-  cave:{name:'동굴 등불 마을',desc:'바위 처마 밑에서 하치와레가 등불을 밝히는 마을이에요.',task:'등불 돌 모으기',mat:'mat_stone',tint:'#a3b396',path:'#dcc9ac',ids:['goran','nureong','sandeul','pogeun'],props:[['boulder1',1,2,1.65],['boulder2',3,1,1.8],['boulder1',5,1,1.42],['f_log_stool',3,3,.85],['f_deungjan',4,3,1.1],['f_bookpile',5,3,.9],['lamp',9,2,.88],['tree_pine',12,2,1.17],['boulder1',13,5,1.1]]},
-  ramen:{name:'라멘 골목',desc:'시사가 손님을 맞는 작은 가게 앞에 고소한 냄새가 퍼져요.',task:'가게에 파 잎 모아 주기',mat:'weed2',tint:'#b8c495',path:'#d8b598',ids:['pongdang','jangkki','kkokki','dodam'],props:[['shop',3,1,.7],['f_stove',6,2,.8],['f_soban',8,3,.9],['f_log_stool',9,3,.8],['f_jangdok',1,5,1.1],['lamp',11,2,.9],['tree_blossom',13,4,1.06],['f_flowerpot',10,2,.88]]}
+  meadow:{name:'풀잎 들녘',desc:'노동 갑옷 씨에게 풀 뽑기와 토벌을 접수하고, 5급 검정에 도전해요.',task:'밭의 잡초 뽑기',mat:'weed1',tint:'#a6c783', path:'#e6ce93',ids:['dalgom','beomi','dahong','dungdung'],props:[['tent_shop',2,2,.67],['board',6,2,.83],['tree_fruit',11,1,1.12],['tree_blossom',13,4,1],['bench',2,6,.85],['flower_cosmos',8,2,1.5]]},
+  cave:{name:'동굴 등불 마을',desc:'하치와레와 검정 공부를 하고, 동쪽 구덩이에서 들리는 소리를 따라가요.',task:'등불 돌 모으기',mat:'mat_stone',tint:'#a3b396',path:'#dcc9ac',ids:['goran','nureong','sandeul','pogeun'],props:[['boulder1',1,2,1.65],['boulder2',3,1,1.8],['boulder1',5,1,1.42],['f_log_stool',3,3,.85],['f_deungjan',4,3,1.1],['f_bookpile',5,3,.9],['lamp',9,2,.88],['tree_pine',12,2,1.17],['boulder1',13,5,1.1]]},
+  ramen:{name:'라멘 골목',desc:'라멘 가게 로(郎)에서 시사와 손님의 주문을 맞추고 내 라멘도 주문해요.',task:'가게에 파 잎 모아 주기',mat:'weed2',tint:'#b8c495',path:'#d8b598',ids:['pongdang','jangkki','kkokki','dodam'],props:[['shop',3,1,.7],['f_stove',6,2,.8],['f_soban',8,3,.9],['f_log_stool',9,3,.8],['f_jangdok',1,5,1.1],['lamp',11,2,.9],['tree_blossom',13,4,1.06],['f_flowerpot',10,2,.88]]}
 };
 const spots=[[2.4,7],[9.9,6.4],[12,8.1]];
 function place(room,name,x,z,scale=1){
@@ -36,33 +41,74 @@ function landscape(room){
   for(const [n,x,z,s] of d.props){place(room,n,x,z,s);room.block(Math.floor(x),Math.floor(z));}
   for(let i=0;i<8;i++)place(room,i%2?'tree_pine':'tree_blossom',i*2-1,-1.3,.72+(i%3)*.16);
   for(const [x,z] of [[.1,4],[.1,8],[13.7,7],[12.9,1],[1.2,1.2],[11.7,2.2]])place(room,'flower_cosmos',x,z,.85);
-  place(room,'board',5.95,9.8,.61);room.resources=spots.map(([x,z])=>place(room,d.mat,x,z,1.4));
+  place(room,'board',5.95,9.8,.61);
+  refreshPlots(room);
+  if(room.area==='ramen'){
+    place(room,'f_soban',4.6,3.1,1.08);
+    room.counterBowl=place(room,'story_ramen',4.6,3.1,1.12);room.counterBowl.position.y=.49;
+    setBowl(room.counterBowl,story().lastBowl ?? 9);
+  }
   room.floorResource=ground;
+}
+function refreshPlots(room){
+  if(room.plotDay===S.day)return;
+  room.plotDay=S.day;
+  for(const old of [...(room.resources||[]),...(room.gradePlants||[])])room.group.remove(old);
+  const field=room.area==='meadow',job=dayWork(room.area);
+  room.resources=spots.map(([x,z],i)=>{
+    const node=place(room,field?plantModel(i):places[room.area].mat,x,z,1.4);
+    node.visible=!job.picked.includes(i);return node;
+  });
+  if(field){
+    const special=gradeWork();
+    room.gradePlants=certifiedPlots.map(([x,z],i)=>{
+      const node=place(room,plantModel(i,true),x,z,1.65);
+      node.visible=special.active && !special.picked.includes(i);return node;
+    });
+  }
 }
 function dayWork(area){
   const log=life().work;
   if(log[area]?.day!==S.day)log[area]={day:S.day,picked:[],paid:false};
   return log[area];
 }
-function villageTalk(id,area,n){
+function villageTalk(id,area,n,chatOnly=false){
+  if(!chatOnly && ((area==='ramen'&&id==='pongdang')||(area==='cave'&&id==='goran')||(area==='meadow'&&id==='beomi'))){
+    const room=G.room,b=el('div','story-page');
+    b.append(el('p','note',id==='pongdang'?VOICES.pongdang.kitchen:id==='beomi'?VOICES.beomi.hunt:'풀 그림을 같이 보면 잘 기억나더라. 같이 볼래?'));
+    if(id==='pongdang')ramenDesk(b,room);
+    if(id==='goran')action(b,'함께 풀 뽑기 공부하기',study);
+    if(id==='beomi')action(b,'함께 토벌하러 가기',()=>huntDesk(room));
+    action(b,'이야기 나누기',()=>{UI.closePanel();villageTalk(id,area,n,true);});
+    UI.openPanel(VILLAGERS[id].name,b);return;
+  }
   runScript(async()=>{
-    const d=places[area],v=VILLAGERS[id],msgs={meadow:'풀을 다 뽑고 나면 바람 냄새가 달라져.',cave:'조금만 더 있다 가. 동굴 앞에서 보면 등불이 참 예뻐.',ramen:'따끈한 한 그릇 먹고 갈래? 오늘도 손님이 많아.'};
-    await Dialog.say(v.name,msgs[area],{actor:n.actor});
-    if(S.residents.includes(id)){await Dialog.say(v.name,'집에 돌아가면 또 만나자!');return;}
-    if(life().contacts.includes(id)||life().projects.some(p=>p.id===id)){await Dialog.say(v.name,'우리 집터 소식 기다릴게!');return;}
+    const memo=story();
+    const cue=memo.rescue===6 && VOICES[id].rescue?'rescue':memo.grade===5 && VOICES[id].grade?'grade':'travel';
+    await speakScene(n,cue);
+    if(S.residents.includes(id)){await speakScene(n,'resident');return;}
+    if(life().contacts.includes(id)||life().projects.some(p=>p.id===id)){
+      await speakScene(n,'pending');UI.toast('이웃 초대와 집터에서 준비 상황을 볼 수 있어요.');return;
+    }
     if(await Dialog.choose(['우리 마을로 이사 올래?','여행 이야기 더 듣기'],{cancel:1})===0){
-      invite(id);await Dialog.say(v.name,'좋아! 돌아가면 집터를 골라 줘. 화분하고 마당에 놓을 의자 하나면 충분해.');
-    }else await Dialog.say(v.name,d.desc);
+      invite(id);await speakScene(n,'invite');UI.toast('이웃 초대와 집터에서 터를 고르고 화분과 의자를 준비하세요.');
+    }else await speakScene(n,'camp');
   });
 }
 function workDesk(room){
   const area=room.area,w=dayWork(area),b=el('div');
-  b.append(el('p','note',places[area].task+' · '+w.picked.length+'/3'));
+  b.append(el('p','',area==='ramen'?'어서 와. 자리는 여기다. 주문은 시사랑 같이 들어 보자.':'왔구나. 작업표는 챙겼니? 끝나면 나한테 와. 보수는 맡아 둘게.'),
+    el('p','note',places[area].task+' · '+w.picked.length+'/3'));
   if(!w.paid && w.picked.length===3)action(b,'일손 보수 받기',()=>{
-    if(w.paid)return;w.paid=true;learn(area);addMoney(180);save();UI.closePanel();UI.toast('도토리 180개와 마을 가구 레시피를 받았어요.');
+    if(w!==dayWork(area)||w.paid||w.picked.length!==3)return;w.paid=true;learn(area);addMoney(180);save();UI.closePanel();UI.toast('도토리 180개와 마을 가구 레시피를 받았어요.');
   }); else b.append(el('p','note',w.paid?'오늘의 일손을 마쳤어요.':'길 옆에 놓인 재료 세 곳에 다가가서 행동하세요.'));
-  if(area==='meadow')action(b,'토벌 의뢰 보기',()=>huntDesk(room));
-  UI.openPanel(area==='meadow'?'노동 갑옷 씨의 접수처':'마을 일손 돕기',b);
+  if(area==='meadow'){
+    action(b,'토벌 의뢰 보기',()=>huntDesk(room));
+    fieldDesk(b,room);
+  }
+  if(area==='cave'){rescueDesk(b,room);action(b,'풀 뽑기 연습장 읽기',study);}
+  if(area==='ramen')ramenDesk(b,room);
+  UI.openPanel(area==='meadow'?'노동 갑옷 씨의 접수처':area==='ramen'?'라멘 가게 로(郎)':'마을 일손 돕기',b);
 }
 function huntDesk(room){
   const b=el('div'),l=life(),h=l.contract;
@@ -89,7 +135,7 @@ function huntDesk(room){
             UI.toast('오른쪽 풀밭에 괴이가 나타났어요. 가까이 가면 동료가 장비를 꺼내요.');
           };
           if(!available('hunt_bell')) return start('hunt_fork');
-          const gear=el('div');action(gear,'분홍 토벌봉 · 대여',()=>start('hunt_fork'));
+          const gear=el('div');action(gear,'분홍 사스마타 · 대여',()=>start('hunt_fork'));
           action(gear,'내 잎새 방울봉 · 첫 호응에 용기 회복',()=>start('hunt_bell'));
           UI.openPanel('토벌 장비 선택',gear);
         });UI.openPanel('토벌 동료',party);
@@ -111,7 +157,7 @@ function spawnHunt(room){
   ally.setPos(G.player.x+.62,0,G.player.z+.37);
   room.endHunt=()=>endField(room);
   room.hunt={foe,ally,ring,local,rig:ally.parts.blade_tip && ally.parts.hand ? new RakkoSword(ally) : null,
-    weapon:c.weapon==='hunt_bell'?'hunt_bell':'hunt_fork',draw:0,engaged:false,swing:0,ending:false,x:10.6,z:7.9,time:0,hit:false,cycle:-1,hp:c.hp ?? c.level+2,hearts:c.hearts ?? (c.ally==='goran'?4:3),chimed:!!c.chimed,level:c.level};
+    allyId:c.ally,weapon:c.weapon==='hunt_bell'?'hunt_bell':'hunt_fork',draw:0,engaged:false,swing:0,ending:false,x:10.6,z:7.9,time:0,hit:false,cycle:-1,hp:c.hp ?? c.level+2,hearts:c.hearts ?? (c.ally==='goran'?4:3),chimed:!!c.chimed,level:c.level};
 }
 function finishHunt(room, won){
   const h=room.hunt;if(!h || h.ending)return;
@@ -121,6 +167,7 @@ function stepParty(h,dt){
   const p=G.player, distance=Math.hypot(p.x-h.x,p.z-h.z);
   if(!h.engaged && !h.ending && distance<3.5){
     h.engaged=true; p.setHuntGear(h.weapon);
+    UI.toast(h.allyId==='beomi'?'랏코　“곁에 있다. 신호를 기다려라.”':'하치와레　“저 빛, 아까도 봤어! 다음엔 같이 맞춰 볼까?”');
     if(!h.rig)h.ally.hold('hunt_blue');
   }
   const advance=h.swing>0 ? Math.sin(Math.PI*(1-h.swing/SWING_TIME)) : 0;
@@ -146,7 +193,8 @@ function huntFrame(room,dt){
     if(h.won){h.foe.scale.multiplyScalar(Math.exp(-dt*4));h.foe.position.y+=dt*.6;}
     if(!h.draw && !h.swing){
       endField(room);
-      UI.toast(h.won?'괴이가 달아났어요! 노동 갑옷 씨에게 보고하세요.':'동료와 무사히 돌아왔어요.');
+      const parting=h.allyId==='beomi'?'랏코　“다친 곳은 없나? 돌아가자.”':'하치와레　“우리 둘 다 여기 있네. 다행이다!”';
+      UI.toast(h.won?parting+' · 접수처에 보고하세요.':parting);
     }
     return;
   }
@@ -182,11 +230,31 @@ function fieldProbe(room,p){
   if(room.hunt && !room.hunt.ending && dist(room.hunt.foe.position.x,room.hunt.foe.position.z)<1.85){
     const h=room.hunt;return {label:h.draw<1?'토벌 준비 중':h.ready&&!h.hit?'동료와 토벌하기':'물러서기 · 용기 '+h.hearts,act:()=>strike(room)};
   }
+  if(room.area==='meadow' && story().posted && dist(5.95,9.8)<1.20)return {label:'풀 뽑기 검정 합격자 명단',act:openResults};
   if(dist(7,10.35)<1.15)return {label:'우리 마을로 귀가',act:()=>G.hooks.exit()};
+  if(room.area==='cave'){
+    const rescue=rescueProbe(room,p);if(rescue)return rescue;
+  }
+  if(room.area==='meadow'){
+    const job=gradeWork();
+    for(const [i,pos] of certifiedPlots.entries()){
+      if(!job.active || job.picked.includes(i) || dist(...pos)>=1.05)continue;
+      return {label:'5급 구역 작업표 확인',act:()=>inspectPlot(room,i,true,job,()=>{
+        job.picked.push(i);room.gradePlants[i].visible=false;save();Sound.sfx('pick');
+        UI.toast(job.picked.length===3?'서쪽 밭 작업 완료! 접수처에서 보수를 받으세요.':job.picked.length+' / 3곳 완료');
+      })};
+    }
+  }
   const w=dayWork(room.area);
-  for(let i=0;i<spots.length;i++)if(!w.picked.includes(i)&&dist(...spots[i])<1.25)return {label:places[room.area].task,act:()=>{
-    if(w.picked.includes(i))return;w.picked.push(i);room.resources[i].visible=false;save();Sound.sfx('pick');
-    UI.toast(w.picked.length===3?'모두 모았어요. 접수처에서 보수를 받으세요.':w.picked.length+' / 3');}};
+  for(const [i,pos] of spots.entries()){
+    if(w.picked.includes(i)||dist(...pos)>=1.25)continue;
+    const pick=()=>{
+      if(w!==dayWork(room.area)||w.picked.includes(i))return;
+      w.picked.push(i);room.resources[i].visible=false;save();Sound.sfx('pick');
+      UI.toast(w.picked.length===3?'모두 모았어요. 접수처에서 보수를 받으세요.':w.picked.length+' / 3');
+    };
+    return {label:places[room.area].task,act:room.area==='meadow'?()=>inspectPlot(room,i,false,w,pick):pick};
+  }
   return null;
 }
 export function visitArea(area){
@@ -197,10 +265,11 @@ export function visitArea(area){
     const npcDefs=ids.map((id,i)=>({id,model:'villager_'+id,name:VILLAGERS[id].name,x:[4.3,8.1,11.3][i],z:[4.1,4.7,3.7][i],fixed:true,talk:n=>villageTalk(id,area,n)}));
     npcDefs.push({id:'desk',model:area==='ramen'?'npc_duru':'npc_ujik',name:area==='ramen'?'라멘 갑옷 씨':'노동 갑옷 씨',x:5.9,z:4.9,fixed:true,talk:()=>workDesk(G.room)});
     G.world.setVisible(false);G.critters.setVisible(false);setVillagersVisible(false);
-    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>huntFrame(r,dt)})});
-    room.building={doors:[S.player.x-.5],y:S.player.z-.45,d:0};room.resources.forEach((o,i)=>o.visible=!dayWork(area).picked.includes(i));
+    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>{refreshPlots(r);huntFrame(r,dt);rescueFrame(r,dt);}})});
+    room.building={doors:[S.player.x-.5],y:S.player.z-.45,d:0};
     G.stage.setMode(true,11);p.setPos(7,8.8);p.yaw=Math.PI;p.actor.face(Math.PI,true);
     const f=room.focus(p.x,p.z);G.stage.setFocus(f.x,0,f.z,true);
+    if(area==='cave')buildRescue(room);
     if(area==='meadow')spawnHunt(room);refreshTime(true);await UI.fade(false);UI.toast(d.name+' 도착 · 갑옷 씨에게 말을 걸어 보세요.');
   });
 }

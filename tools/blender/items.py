@@ -192,5 +192,46 @@ def patrol_gear():
                 ball((0,-.01,.604),.039,trim,sub=2)
 
 
+def story_props():
+    with Model('story_ramen') as m:
+        # Glazed bowl and its foot, broth, rolled pork, curly noodles and sprouts.
+        lathe([(.13,0),(.14,.035),(.22,.065),(.31,.16),(.35,.245),
+               (.35,.255),(.325,.257),(.305,.225),(.20,.085)],'#f8e3cb',seg=48)
+        torus((0,0,.247),.342,.013,'#a64e43',seg=48,tseg=8)
+        lathe([(.317,.223),(.322,.232),(.001,.233)],'#b78145',seg=40)
+        for i in range(9):
+            x=-.15+i*.040
+            pts=[(x+.018*math.sin(j*1.85+i),-.19+j*.064,.24+.008*math.sin(j*.8+i)) for j in range(6)]
+            for a,b in zip(pts,pts[1:]):tube(a,b,.009,'#efd287',seg=6)
+        ball((-.152,.07,.25),1,'#ae7254',(.112,.096,.024),sub=3)
+        torus((-.152,.07,.267),.061,.009,'#e7b695',seg=18,tseg=6,scale=(1,.81,1))
+        for part,n,col,rad in [('sprouts',26,'#f1e6b1',.014),('garlic',13,'#fbe8b4',.025),('fat',12,'#f6d5a3',.020)]:
+            with m.part(part):
+                for i in range(n):
+                    a=i*2.4;r=.118*math.sqrt((i+.5)/n)
+                    x=(.02 if part=='sprouts' else .17 if part=='garlic' else -.13)+r*math.cos(a)
+                    y=(-.015 if part=='sprouts' else .04 if part=='garlic' else -.11)+r*.7*math.sin(a)
+                    z=.25+.066*(1-r/.14) if part=='sprouts' else .25+.02*(1-r/.14)
+                    if part=='sprouts':
+                        tube((x-.025,y-.025,z),(x+.027,y+.018,z+.024),rad,'#e7e4a8',r2=.008,seg=6)
+                        ball((x+.027,y+.018,z+.024),.012,'#8ba461',sub=1)
+                    else:ball((x,y,z),rad,col,(1,.8,.6),sub=2)
+        with m.part('sauce'):
+            for i in range(4):
+                ball((.14-i*.054,-.15+.015*i,.243),.031,'#915c37',(1,.55,.12),sub=2)
+    with Model('story_vine'):
+        for z,r in [(.028,.15),(.046,.14),(.062,.121)]:
+            torus((0,0,z),r,.014,'#688045',seg=24,tseg=7,scale=(1,.77,1))
+        for s in (-1,1):
+            ball((s*.12,-.085,.046),1,'#87a555',(.055,.026,.013),rot=(0,15,s*35),sub=2)
+    with Model('story_hollow'):
+        ball((0,0,.004),1,'#503d37',(.81,.60,.037),sub=3)
+        ball((0,-.012,.019),1,'#362e32',(.67,.48,.025),sub=3)
+        for i in range(14):
+            a=i*math.tau/14
+            ball((.755*math.cos(a),.55*math.sin(a),.046),1,'#937d64' if i%3 else '#ac9472',
+                 (.139,.088,.065+.020*(i%3)),rot=(0,i%3*9,math.degrees(a)+85),sub=2)
+
+
 def build():
-    tools(); misc(); fossils(); materials(); patrol_gear()
+    tools(); misc(); fossils(); materials(); patrol_gear(); story_props()

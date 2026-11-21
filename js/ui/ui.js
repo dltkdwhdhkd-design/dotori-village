@@ -25,7 +25,7 @@ export const UI = {
       <div id="card" class="hidden"></div>
       <div id="shade" class="hidden"></div>
       <div id="panel" class="hidden"><div class="head"><span class="ttl"></span><button class="x">✕</button></div><div class="body"></div></div>
-      <div id="dlg" class="hidden"><div class="name"></div><div class="text"></div><div class="next">▼</div></div>
+      <div id="dlg" class="hidden"><div class="name"></div><div class="text"></div><div class="gesture" hidden></div><div class="next">▼</div></div>
       <div id="dlg-choices" class="hidden"></div>
       <div id="title" class="hidden"></div>
       <div id="loading"><div>도토리 마을</div><div class="pbar"><i></i></div><div class="msg" style="font-size:16px">짐을 푸는 중…</div></div>
@@ -124,13 +124,15 @@ export const UI = {
 export const Dialog = {
   active: false, full: '', shown: 0, acc: 0, done: false, resolve: null, choices: null, sel: 0, pitch: 1, holdT: 0,
   /** 한 마디. 주인공이 넘길 때까지 기다린다. */
-  say(name, text, { pitch = 1, color = null, actor = null } = {}) {
+  say(name, text, { pitch = 1, color = null, actor = null, gesture = '' } = {}) {
     return new Promise((res) => {
       const d = $('dlg');
       d.classList.remove('hidden');
       const nm = d.querySelector('.name');
       nm.textContent = name || ''; nm.style.display = name ? '' : 'none';
       nm.style.background = color || '';
+      const note=d.querySelector('.gesture');note.textContent=gesture;note.hidden=!gesture;
+      d.classList.toggle('gesture-only',!text && !!gesture);
       this.active = true; this.full = text; this.shown = 0; this.acc = 0; this.done = false; this.resolve = res; this.pitch = pitch; this.choices = null; this.actor = actor;
       d.querySelector('.text').innerHTML = ''; d.querySelector('.next').style.visibility = 'hidden';
       $('dlg-choices').classList.add('hidden');

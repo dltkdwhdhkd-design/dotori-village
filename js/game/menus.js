@@ -1,4 +1,5 @@
 // 창: 가방, 도감, 지도, 설정, 우체통, 창고, 게시판, 타이틀 화면
+import { journal } from './fieldwork.js';
 import { G, runScript, save, burst, refreshTime, worldInfo } from './game.js';
 import { VERSION } from '../core/version.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
@@ -303,7 +304,7 @@ export function openMenu() {
   for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '실제 시간 그대로' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Settings.offsetMin) o.selected = true; off.appendChild(o); }
   const activities=el('div','island-actions');
   box.prepend(activities);
-  if(!G.visit){action(activities,G.room?.area?'여행 안내':'마을 여행',()=>G.hooks.travel(),!G.room||!!G.room.area);
+  if(!G.visit){action(activities,'먼작귀 생활 수첩',journal);action(activities,G.room?.area?'여행 안내':'마을 여행',()=>G.hooks.travel(),!G.room||!!G.room.area);
     if(!G.room){action(activities,'이웃 초대와 집터',()=>G.hooks.housing());action(activities,'섬 공사',()=>G.hooks.islandTools());}
   }
   $('st-net').onclick = () => G.hooks.openNet();
@@ -363,7 +364,7 @@ export function openMirror() {
   UI.openPanel('캐릭터 꾸미기', box, { onClose: () => { ed.dispose(); if (!done) Sound.sfx('close'); } });
 }
 
-function noticeboard(){const b=el('div');action(b,'마을 소식',()=>{UI.closePanel();board();});action(b,'마을 여행과 토벌',()=>G.hooks.travel());action(b,'이웃 초대와 집터',()=>G.hooks.housing());action(b,'섬 공사',()=>G.hooks.islandTools());UI.openPanel('광장 게시판',b);}
+function noticeboard(){const b=el('div');action(b,'마을 소식',()=>{UI.closePanel();board();});action(b,'먼작귀 생활 수첩',journal);action(b,'마을 여행과 토벌',()=>G.hooks.travel());action(b,'이웃 초대와 집터',()=>G.hooks.housing());action(b,'섬 공사',()=>G.hooks.islandTools());UI.openPanel('광장 게시판',b);}
 export function registerMenus() {
   G.hooks.noticeboard=noticeboard;
   Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openNote, openMail, openStorage, openMirror, board, bigTree, rest });

@@ -1,3 +1,4 @@
+import { speakScene } from './speech.js';
 import { G, save, runScript } from './game.js';
 import { S, countItem, takeItem, addItem, canAdd } from './state.js';
 import { G as T, WK } from '../world/mapgen.js';
@@ -151,9 +152,9 @@ export function campsiteSpec(){
   const pool=S.waiting.filter(id=>!life().projects.some(p=>p.id===id)),id=pool.length?pool[Math.abs(S.day+S.seed)%pool.length]:S.residents[0],v=VILLAGERS[id];
   return {id:'campsite',w:5,h:4,wall:'wall_tent',floor:'floor_mat',items:[{id:'f_yo',x:0,y:0,r:0},{id:'f_deungjan',x:4,y:0,r:0}],
     npcDefs:[{id,model:'villager_'+id,name:v.name,x:2.3,z:1.7,fixed:true,talk:n=>runScript(async()=>{
-      await Dialog.say(v.name,'텐트에 떨어지는 빗소리가 좋더라. 마을을 좀 더 둘러보고 싶어.',{actor:n.actor});
+      await speakScene(n,'camp');
       if(S.residents.includes(id)||life().contacts.includes(id))return;
-      if(await Dialog.choose(['우리 마을에 이사 올래?','편히 쉬다 가!'],{cancel:1})===0){invite(id);await Dialog.say(v.name,'좋아! 집터를 정하면 짐을 꾸릴게.');}
+      if(await Dialog.choose(['우리 마을에 이사 올래?','편히 쉬다 가!'],{cancel:1})===0){invite(id);await speakScene(n,'invite');}
     })}]};
 }
 export function atelierSpec(){return {id:'atelier',w:6,h:5,wall:'wall_wood',floor:'floor_wood',items:[{id:'f_desk',x:2,y:1,r:0,act:()=>workshop(),actLabel:'DIY 작업대'},{id:'f_log_shelf',x:0,y:0,r:0},{id:'f_deungjan',x:5,y:0,r:0}]};}

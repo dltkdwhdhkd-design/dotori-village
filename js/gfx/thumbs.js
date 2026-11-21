@@ -21,12 +21,15 @@ function init() {
 
 /** 모델 이름으로 그림을 만든다. view: 'front'(기본, 살짝 위에서) | 'side' | 'top' | 'profile'(곤충의 옆모습, 머리가 오른쪽)   yaw: 세운 축으로 돌려 놓고 그린다 */
 export function thumbOfModel(model, opts = {}) {
-  const key = model + '|' + JSON.stringify(opts.tint || {}) + '|' + (opts.view || '') + '|' + (opts.yaw || 0);
+  const key = model + '|' + JSON.stringify(opts.tint || {}) + '|' + (opts.view || '') + '|' + (opts.yaw || 0) + '|' + JSON.stringify(opts.parts || {});
   if (cache.has(key)) return cache.get(key);
   if (!renderer) init();
   if (!has(model)) { cache.set(key, ''); return ''; }
   const o = make(model, { tint: opts.tint });
   if (o.userData.parts && o.userData.parts.snow) o.userData.parts.snow.visible = false;
+  for(const [name,visible] of Object.entries(opts.parts || {})){
+    if(o.userData.parts[name])o.userData.parts[name].visible=visible;
+  }
   if (opts.yaw) o.rotation.y = opts.yaw;
   holder.add(o);
   const box = new THREE.Box3().setFromObject(o);

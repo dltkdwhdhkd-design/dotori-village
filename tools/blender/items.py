@@ -172,6 +172,10 @@ def materials():
 
 
 def patrol_gear():
+    with Model('hunt_staff'):
+        tube((0,0,-.24),(0,0,.68),.045,'#f1cf52',seg=16)
+        for z in (-.24,.68):
+            ball((0,0,z),1,'#fff4da',(.046,.046,.042),sub=3)
     for name,body,trim in [('hunt_fork','#e994aa','#f8ced1'),('hunt_blue','#71adc6','#bde8e8'),('hunt_bell','#77a888','#b9d6a0')]:
         with Model(name):
             tube((0,0,-.16),(0,0,.63),.029,body,r2=.024,seg=12)
@@ -233,5 +237,46 @@ def story_props():
                  (.139,.088,.065+.020*(i%3)),rot=(0,i%3*9,math.degrees(a)+85),sub=2)
 
 
+def gallery_skeleton():
+    # A long-necked dinosaur cast for the museum's central island.
+    ivory, joint, frame = '#dfcc9c', '#c4ab80', '#465057'
+    with Model('gallery_sauropod'):
+        spine = [(-4.9,1.00),(-4.2,1.15),(-3.4,1.39),(-2.6,1.68),(-1.9,1.98),
+                 (-1.25,2.16),(-.55,2.27),(.15,2.31),(.80,2.27),(1.36,2.23),
+                 (1.83,2.46),(2.23,2.84),(2.57,3.27),(2.83,3.68),(3.10,3.96),(3.43,4.08)]
+        for i,((x,z),(xx,zz)) in enumerate(zip(spine,spine[1:])):
+            radius=.045 if i<3 else .10 if i<10 else .072
+            tube((x,0,z),(xx,0,zz),radius,ivory,r2=radius*.86,seg=10)
+            for t in (.18,.64):
+                px=x+(xx-x)*t; pz=z+(zz-z)*t
+                ball((px,0,pz),1,ivory,(radius*1.2,radius*1.5,radius*1.55),sub=2)
+                tube((px,0,pz),(px-.055,0,pz+radius*2.2),radius*.5,joint,r2=.016,seg=7)
+        for i in range(11):
+            x=-1.55+i*.25
+            spread=.25+.41*math.sin((i+.55)/11.5*math.pi)
+            z=2.22+.08*math.cos(x+0.1)
+            for s in (-1,1):
+                ribs=[(x,0,z),(x-.06,s*spread*.72,z-.13),(x-.10,s*spread,z-.38),
+                      (x-.13,s*spread*.85,z-.65),(x-.10,s*spread*.38,z-.82)]
+                for a,b in zip(ribs,ribs[1:]):tube(a,b,.041,ivory,r2=.033,seg=8)
+        for x,z in [(-1.36,1.90),(.90,1.96)]:
+            for s in (-1,1):
+                y=.39*s
+                ball((x,y*.50,z+.10),1,joint,(.30,.18,.22),sub=2)
+                leg=[(x,y,z),(x+(.14 if x>0 else -.19),y*1.18,1.18),(x-.01,y*1.22,.55),(x+.06,y*1.25,.18)]
+                for j,(a,b) in enumerate(zip(leg,leg[1:])):
+                    tube(a,b,.10-j*.015,ivory,r2=.080-j*.013,seg=10)
+                    ball(b,.102-j*.010,joint,sub=2)
+                ball((x+.14,y*1.25,.15),1,ivory,(.19,.12,.07),sub=2)
+        ball((3.51,0,4.07),1,ivory,(.27,.145,.165),sub=3)
+        ball((3.76,0,4.025),1,ivory,(.22,.108,.089),sub=2)
+        for s in (-1,1):
+            ball((3.57,s*.128,4.09),1,frame,(.072,.018,.056),sub=2)
+            tube((3.49,s*.10,3.99),(3.86,s*.055,3.91),.033,ivory,r2=.023,seg=8)
+        for x,z in [(-2.92,1.51),(-.74,2.19),(2.56,3.21)]:
+            tube((x,0,.08),(x,0,z-.04),.024,frame,seg=8)
+            cyl((x,0,.04),.13,.08,frame,seg=12)
+
+
 def build():
-    tools(); misc(); fossils(); materials(); patrol_gear(); story_props()
+    tools(); misc(); fossils(); materials(); patrol_gear(); story_props(); gallery_skeleton()

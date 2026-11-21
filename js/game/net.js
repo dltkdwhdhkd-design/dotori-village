@@ -25,6 +25,7 @@ import { Sound } from '../core/audio.js';
 import { Clock } from '../core/clock.js';
 import { el, josa } from '../core/util.js';
 import { refreshGoal } from './quests.js';
+import { clearNetMood, updateNetMood } from './netplay.js';
 
 const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt', 'wss://test.mosquitto.org:8081/mqtt'];
 const BASE = 'dotori-village/v1/';
@@ -170,7 +171,8 @@ class Puppet {
   }
   update(dt) {
     this.actor.root.visible = this.visible;
-    if (!this.visible) return;
+    if (!this.visible) { if (this.netMood) clearNetMood(this); return; }
+    if (updateNetMood(this,dt)) return;
     const dx = this.tx - this.x, dz = this.tz - this.z, d = Math.hypot(dx, dz);
     if (d > 6) { this.x = this.tx; this.z = this.tz; } else if (!this.talking) { const k = Math.min(1, dt * 6); this.x += dx * k; this.z += dz * k; }
     this.actor.speed = d > 0.06 && !this.talking ? 1 : 0;
@@ -301,7 +303,7 @@ function enterVisit(m) {
   if (!again) {
     save();                                       // 내 마을을 저장해 두고 떠난다
     G.visit = { home: G.village, npcs: G.npcs, daily: S.daily, seed: Clock.seed, off: Clock.offsetMin, x: G.player.x, z: G.player.z };
-    for (const n of G.npcs) n.actor.root.visible = false;
+    for (const n of G.npcs) { clearNetMood(n); n.actor.root.visible = false; }
     G.npcs = [];
     S.daily = { coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} };
     if (G.player.fishing) G.player.endFishing();

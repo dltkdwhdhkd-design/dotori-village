@@ -5,6 +5,7 @@ import { G, save } from './game.js';
 import { S, addMoney } from './state.js';
 import { action } from './workshop.js';
 import { story, modelImage } from './fieldwork.js';
+import { cookRamen } from './ramenGame.js';
 
 // Four toppings from the shop's ordering call. Each bit corresponds to a visible bowl part.
 const toppings=[
@@ -25,47 +26,49 @@ export function setBowl(object,mask){
 }
 export function ramenDesk(box,room){
   const w=shift();
-  action(box,'시사와 라멘 주문 받기 · '+w.served+'/3',()=>counter(room,true),w.served<3);
+  action(box,'시사와 라멘 주문 받기 · '+w.served+'/3',()=>startRamenShift(room),w.served<3);
   action(box,'내 라멘 주문하기 · 70 도토리',()=>counter(room,false));
+}
+export function startRamenShift(room){
+  if(room!==G.room)return;
+  if(shift().served>=3){UI.toast('오늘 세 손님의 식사를 모두 냈어요. 내일 다시 만나요!');return;}
+  counter(room,true);
 }
 function counter(room,working){
   const s=story(),w=shift(),ticket=w.served;
   if(working && ticket>=3)return;
-  let mask=working?w.selection:0, submitted=false;
+  const current=()=>room===G.room && w===shift() && w.served===ticket;
   const order=orders[(S.day*3+ticket)%orders.length],guest=guests[(S.day+ticket)%3];
+  function finish(mask,perfect=false){
+    if(!current())return;
+    if(working){
+      if(mask!==order)return;
+      w.served++;w.selection=0;w.added=[];w.plated=false;w.perfect=false;
+      s.servings=(s.servings||0)+1;if(perfect)s.perfectBowls=(s.perfectBowls||0)+1;
+      addMoney(50);
+    }else{if(S.player.money<70)return;addMoney(-70);s.meals=(s.meals||0)+1;}
+    s.lastBowl=mask;setBowl(room.counterBowl,mask);save();Sound.sfx(working?'coin':'fanfare');
+    const done=el('div','story-page');
+    done.append(modelImage('story_ramen',call(mask),{parts:parts(mask),view:'top'}),el('h3','',working?guest+'에게 라멘을 내줬어요.':'따뜻한 라멘이 나왔어요.'),
+      el('p','note',working?(perfect?'꼬들꼬들하게 익었어요!　':'')+'시사와 일한 보수 50 도토리 · 오늘 '+w.served+'/3그릇':call(mask)+' 한 그릇을 다 먹었어요.'));
+    if(working&&w.served<3)action(done,'다음 손님 맞이하기',()=>counter(room,true));
+    action(done,'자리에서 일어나기',()=>UI.closePanel());UI.openPanel('라멘 가게 로(郎)',done);
+  }
+  if(working){
+    const request=guest==='하치와레'?'하치와레　“'+call(order)+'! 이번엔 잘 말했지?”':guest==='치이카와'?'치이카와　“와…!”　주문표에 '+call(order)+' 표시가 있어요.':'우사기　“야하!”　'+call(order)+'에 동그라미가 쳐져 있어요.';
+    return cookRamen({guest,order,orderText:call(order),request,work:w,store:save,serve:finish,valid:current});
+  }
+  let mask=0;
   const box=el('div','story-page'),kitchen=el('div','story-kitchen'),art=el('div'),labels=el('div');
-  box.append(el('p','story-count',working?'시사와 함께　'+(ticket+1)+' / 3번째 손님':'라멘 갑옷 씨의 카운터'),
-    el('h3','',working?guest+'의 주문':'오늘은 어떻게 드릴까요?'),
-    el('p','',working?(guest==='하치와레'?'“연습한 대로 말해 볼게. '+call(order)+'!”':guest==='치이카와'?'“와…!” 치이카와가 손에 꼭 쥔 주문표를 펴 보인다.':'“야하!” 우사기가 원하는 토핑에 동그라미를 치고 종이를 번쩍 든다.'):'“뜨거우니까 그릇은 여기 놓을게.”'),
-    el('p','story-order',working?'주문표 · '+call(order):'원하는 토핑을 골라 주문하세요.'),kitchen);
+  box.append(el('h3','','오늘은 어떻게 드릴까요?'),el('p','','라멘 갑옷 씨　“뜨거우니까 그릇은 여기 놓을게.”'),kitchen);
   kitchen.append(art,labels);
-  const status=el('p','story-status');status.setAttribute('aria-live','polite');
   function draw(){
-    art.replaceChildren(modelImage('story_ramen',call(mask),{parts:parts(mask),view:'top'}));
-    labels.replaceChildren();
+    art.replaceChildren(modelImage('story_ramen',call(mask),{parts:parts(mask),view:'top'}));labels.replaceChildren();
     toppings.forEach(([,name,extra],i)=>{
-      const selected=!!(mask&(1<<i)),btn=action(labels,selected?extra:name+' 기본',()=>{
-        mask^=1<<i;if(working){w.selection=mask;save();}status.textContent='';draw();
-      });
+      const selected=!!(mask&(1<<i)),btn=action(labels,selected?extra:name+' 기본',()=>{mask^=1<<i;draw();});
       btn.setAttribute('aria-pressed',String(selected));btn.dataset.topping=String(i);
     });
   }
-  draw();box.append(status);
-  action(box,working?'손님에게 내어 주기':'70 도토리 내고 먹기',()=>{
-    if(submitted||room!==G.room||w!==shift()||w.served!==ticket)return;
-    if(working){
-      if(mask!==order){status.textContent='시사　“앗, 여기 한 번만 더 볼까요? 아직 손님한테 내기 전이라 괜찮아요!”';return;}
-      w.served++;w.selection=0;s.servings=(s.servings||0)+1;addMoney(50);
-    }else{
-      if(S.player.money<70){status.textContent='70 도토리가 필요해요. 시사와 일하고 보수를 받을 수 있어요.';return;}
-      addMoney(-70);s.meals=(s.meals||0)+1;
-    }
-    submitted=true;s.lastBowl=mask;setBowl(room.counterBowl,mask);save();Sound.sfx(working?'coin':'fanfare');
-    const done=el('div','story-page');done.append(modelImage('story_ramen',call(mask),{parts:parts(mask),view:'top'}),
-      el('h3','',working?guest+'에게 라멘을 내줬어요.':'따뜻한 라멘이 나왔어요.'),
-      el('p','note',working?'시사와 일한 보수 50 도토리 · 오늘 '+w.served+'/3그릇':call(mask)+' 한 그릇을 다 먹었어요.'));
-    if(working&&w.served<3)action(done,'다음 손님 맞이하기',()=>counter(room,true));
-    action(done,'자리에서 일어나기',()=>UI.closePanel());UI.openPanel('라멘 가게 로(郎)',done);
-  });
+  draw();action(box,'70 도토리 내고 먹기',()=>{if(S.player.money<70){UI.toast('70 도토리가 필요해요.');return;}finish(mask);});
   UI.openPanel('라멘 가게 로(郎)',box);
 }

@@ -5,6 +5,7 @@ import { UI } from '../ui/ui.js';
 import { G, save } from './game.js';
 import { S, addMoney } from './state.js';
 import { action, life } from './workshop.js';
+import { pullWeeds } from './weedGame.js';
 
 const specimens = [
   { model:'weed1', name:'갈래풀', detail:'가운데 줄기 끝이 뾰족하고 잎이 여러 갈래로 퍼진다.' },
@@ -107,17 +108,15 @@ export function fieldDesk(box,room){
 }
 export function inspectPlot(room,i,advanced,record,onPick){
   if(record.picked.includes(i))return;
-  const target=specimenAt(i,advanced),box=el('div','story-page');
-  box.append(el('p','story-count',(advanced?'5급 구역':'일반 구역')+'　'+(i+1)+'번 밭'),
-    el('h3','',advanced?'작업표의 특징을 보고 풀을 고르세요.':'오늘 작업표와 같은 풀을 뽑으세요.'),
-    el('p','note',advanced?specimens[target].detail:specimens[target].name+'을 모으는 날이에요. 어린나무는 남겨 주세요.'));
-  const status=el('p','story-status');status.setAttribute('aria-live','polite');
-  choices(box,shuffle([0,1,2]),n=>{
-    if(G.room!==room || record.day!==S.day || record.picked.includes(i))return;
-    if(n!==target){status.textContent=n===2?'어린나무예요. 잎을 남겨 두고 다시 살펴보세요.':'작업표와 달라요. 줄기의 끝을 비교해 보세요.';return;}
-    UI.closePanel();G.player.do('pick',.3);onPick();
-  });
-  box.append(status);UI.openPanel('풀밭 살펴보기',box);
+  const target=specimenAt(i,advanced);
+  record.roots ||= {};
+  const harvested=record.roots[i] ||= [];
+  const active=()=>G.room===room && record.day===S.day && !record.picked.includes(i);
+  pullWeeds({target,name:specimens[target].name,advanced,seed:S.day*31+i*19+(advanced?17:0),record:harvested,
+    checkpoint:()=>save(),done:()=>{
+      UI.closePanel();if(!active())return;
+      delete record.roots[i];G.player.do('pick',.3);onPick();
+    }});
 }
 export function journal(){
   const s=story(),box=el('div','story-page');
@@ -125,7 +124,7 @@ export function journal(){
   for(const [title,detail] of [
     ['풀 뽑기 검정',s.grade===5?'5급 보유 · 특별 작업 '+(s.gradeJobs||0)+'회 완료':s.posted?'수험 번호 '+s.posted.number+' · 들녘 남쪽 게시판에서 결과 확인':s.exam?'응시 중 · '+s.exam.step+' / 3문제 완료':'풀잎 들녘에서 공부하고 5급 시험 보기'],
     ['구덩이에 빠진 하치와레',rescue],
-    ['라멘 가게 로(郎)','라멘 골목에서 시사와 주문 맞추기 · 내어 준 그릇 '+(s.servings||0)+'개'],
+    ['라멘 가게 로(郎)','시사와 면을 삶고 토핑을 올려 서빙하기 · 내어 준 그릇 '+(s.servings||0)+'개 · 꼬들꼬들하게 익힌 그릇 '+(s.perfectBowls||0)+'개'],
     ['토벌', '완료 보고 '+life().hunts+'건 · 풀잎 들녘의 노동 갑옷 씨에게 접수']
   ]){const row=el('div','story-line');row.append(el('b','',title),el('p','',detail));box.append(row);}
   const sources=el('details','story-sources');

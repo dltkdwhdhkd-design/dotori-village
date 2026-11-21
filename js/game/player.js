@@ -13,6 +13,7 @@ import { clamp, rand, josa, hash01 } from '../core/util.js';
 import { dayKey } from '../core/clock.js';
 import { track } from './quests.js';
 import { MODEL as LOOK_MODEL, dress, cleanLook } from './look.js';
+import { canNetResident, netTarget, tapResident, netTalk } from './netplay.js';
 
 const WALK = 3.3, RUN = 5.4, SNEAK = 1.25, R = 0.27;
 const K = (k, t) => `<b>${k}</b>${t}`;
@@ -71,7 +72,7 @@ export class Player {
     this.place();
   }
   place() { this.actor.setPos(this.x, groundY(this.x, this.z), this.z); }
-  setPos(x, z) { this.x = x; this.z = z; this.place(); }
+  setPos(x, z) { this.recoil = null; this.x = x; this.z = z; this.place(); }
   front(d = 0.8) { const x = this.x + Math.sin(this.yaw) * d, z = this.z + Math.cos(this.yaw) * d; return { x, z, tx: Math.floor(x), ty: Math.floor(z) }; }
   busy() { return this.lock > 0 || !!this.fishing; }
   /** 동작을 하고 그동안 움직이지 못하게 한다. after는 동작의 at(0~1) 지점에서 실행한다(휘두르기는 내려친 순간). */
@@ -102,7 +103,7 @@ export class Player {
     if (this.fishing) this.endFishing();
     S.player.tool = id;
     this.actor.hold(this.huntGear || ITEMS[id]?.model);
-    this.netHold = false; this.actor.sneak = false;
+    this.lowerNet();
     if (!silent) Sound.sfx(id ? 'pick' : 'drop');
     if (G.net && G.net.role) G.net.refresh();
   }
@@ -116,16 +117,41 @@ export class Player {
   /** sec초 뒤에 fn을 실행한다(동작 도중의 효과용) */
   later(sec, fn) { (this.queue || (this.queue = [])).push({ t: sec, fn }); }
 
+  lowerNet() {
+    this.netHold = false; this.netTalkTarget = null; this.actor.sneak = false;
+    if (this.actor.playing('raise')) this.actor.anim = null;
+  }
+
+  recoilFrom(n) {
+    if (this.fishing) this.endFishing();
+    this.lowerNet();
+    this.do('surprise',.46);
+    const dx=this.x-n.x, dz=this.z-n.z, d=Math.hypot(dx,dz)||1;
+    this.recoil={x:dx/d,z:dz/d,room:G.room,world:G.world};
+    this.actor.emote('!',.85); G.stage.shake=.07; Sound.sfx('bonk');
+    burst('spark',this.x,groundY(this.x,this.z)+.8,this.z,6);
+  }
+
   update(dt, free) {
     const a = this.actor;
     if (this.queue && this.queue.length) { for (const q of this.queue) q.t -= dt; const due = this.queue.filter((q) => q.t <= 0); this.queue = this.queue.filter((q) => q.t > 0); for (const q of due) q.fn(); }
     if (this.lock > 0) {
+      if (this.recoil) {
+        const r=this.recoil;
+        if (free && r.room===G.room && r.world===G.world) {
+          const step=2.4*Math.min(dt,this.lock)*this.lock/.46;
+          const x=this.x+r.x*step, z=this.z+r.z*step;
+          const q=G.room ? G.room.resolve(x,z,R) : resolveVillage(x,z,R);
+          this.x=q.x; this.z=q.z; this.place();
+        }
+        if (!free || this.lock<=dt || r.room!==G.room || r.world!==G.world) this.recoil=null;
+      }
       this.lock -= dt; a.speed = 0;
       if (this.after && this.lock <= (this.afterT || 0)) { const f = this.after; this.after = null; f(); }
       a.update(dt); return;
     }
     if (this.fishing) { this.updateFishing(dt, free); a.update(dt); return; }
-    if (!free) { a.speed = 0; if (this.netHold) { this.netHold = false; a.sneak = false; a.anim = null; } a.update(dt); return; }
+    if (!free) { a.speed = 0; if (this.netHold) this.lowerNet(); a.update(dt); return; }
 
     // 도구 바꾸기
     const all = ['tool_net', 'tool_rod', 'tool_shovel', 'tool_axe', 'tool_can'];
@@ -164,13 +190,31 @@ export class Player {
     if (G.room) { if (G.room.checkExit(this)) return; }
 
     // 행동
-    if (S.player.tool === 'tool_net' && !G.room) {
-      if (!this.netHold && Input.hit('act') && !this.wouldTalk()) { Input.take('act'); this.netHold = true; a.sneak = true; a.play('raise', 99); }
-      else if (this.netHold && !Input.held('act')) { this.netHold = false; a.sneak = false; this.swingNet(); }
-    }
+    if (S.player.tool === 'tool_net' && !this.huntGear) this.useNetInput();
     if (Input.take('act')) this.act();
     else if (Input.take('pick')) this.pickup();
     a.update(dt);
+  }
+
+  useNetInput() {
+    const a=this.actor;
+    if (!this.netHold) {
+      if (!Input.hit('act')) return;
+      const n=this.npcInFront();
+      if (!canNetResident(n) && (G.room || this.wouldTalk())) return;
+      Input.take('act'); this.netHold=true; this.netTalkTarget=n;
+      this.netPressedAt=performance.now(); this.netScene=G.room || G.world;
+    }
+    if (this.netScene!==(G.room || G.world)) { this.lowerNet(); return; }
+    const quickTalk=this.netTalkTarget && performance.now()-this.netPressedAt<300;
+    if (!Input.held('act')) {
+      const target=this.netTalkTarget;
+      this.lowerNet();
+      if (!quickTalk) this.swingNet();
+      else if (target===this.npcInFront()) this.act();
+    } else if (!quickTalk && !a.sneak) {
+      a.sneak=true; a.play('raise',99);
+    }
   }
 
   npcInFront() {
@@ -203,6 +247,8 @@ export class Player {
   hint() {
     if (this.fishing) return this.fishing.state === 'bite' ? K('Space', '지금 당기기!') : K('Space', '거두기');
     if (this.lock > 0) return '';
+    if (this.netHold && this.actor.sneak) return K('Space','떼면 잠자리채 휘두르기');
+    if (S.player.tool==='tool_net' && canNetResident(this.npcInFront())) return K('Space','짧게 말 걸기 · 길게 눌렀다 떼면 채 휘두르기');
     if (G.room) return G.room.hint(this);
     if (this.npcInFront()) return K('Space', '말 걸기');
     if (this.doorInFront()) return K('Space', '들어가기');
@@ -229,8 +275,9 @@ export class Player {
 
   // ---------------------------------------------------------------- 행동
   act() {
-    if (G.room) return G.room.act(this);
     const npc = this.npcInFront();
+    if (netTalk(npc)) return;
+    if (G.room) return G.room.act(this);
     if (npc) return G.hooks.talk(npc);
     const door = this.doorInFront();
     if (door) return G.hooks.enter(door);
@@ -382,11 +429,15 @@ export class Player {
   }
 
   swingNet() {
+    const scene=G.room || G.world;
     Sound.sfx('swing');
     this.do('swing', 0.4, () => {
+      if (scene!==(G.room || G.world) || G.busy || UI.blocking() || S.player.tool!=='tool_net' || this.huntGear) return;
       const f = this.front(0.85);
-      const bug = G.critters.netAt(f.x, f.z, 0.95);
-      if (bug) G.hooks.caughtBug(bug);
+      const bug = !G.room && G.critters.netAt(f.x, f.z, 0.95);
+      if (bug) return G.hooks.caughtBug(bug);
+      const resident=netTarget(this);
+      if (resident) tapResident(resident);
     });
   }
 
@@ -427,12 +478,12 @@ export class Player {
     if (F.state === 'fly') {
       const k = Math.min(1, F.t / 0.5);
       bx = F.sx + (F.x - F.sx) * k; bz = F.sz + (F.z - F.sz) * k; by = WATER_Y + 0.03 + Math.sin(k * Math.PI) * 1.6 + (1 - k) * 1.0;
-      if (k >= 1) { F.state = 'wait'; F.t = 0; Sound.sfx('plop'); burst('splash', F.x, WATER_Y + 0.1, F.z, 5); G.critters.bobber = { x: F.x, z: F.z, state: 'idle', fish: null }; a.play('holdrod', 99); }
+      if (k >= 1) { F.state = 'wait'; F.t = 0; Sound.sfx('plop'); burst('splash', F.x, WATER_Y + 0.1, F.z, 5); G.world.terrain.ripple(F.x,F.z); G.critters.bobber = { x: F.x, z: F.z, state: 'idle', fish: null }; a.play('holdrod', 99); }
     } else {
       const B = G.critters.bobber;
       if (B) {
         if (B.state === 'nibble' && B.dipT > 0) { by -= 0.05; }
-        if (B.state === 'bite') { by -= 0.16; if (F.state !== 'bite') { F.state = 'bite'; a.emote('!', 0.9); G.stage.shake = 0.05; } }
+        if (B.state === 'bite') { by -= 0.16; if (F.state !== 'bite') { F.state = 'bite'; G.world.terrain.ripple(F.x,F.z); a.emote('!', 0.9); G.stage.shake = 0.05; } }
         else if (F.state === 'bite') F.state = 'wait';
         by += Math.sin(G.time * 3) * 0.012;
       }

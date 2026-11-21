@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { G, runScript, save, refreshTime, burst, groundY } from './game.js';
 import { Room } from './rooms.js';
 import { atelierSpec, campsiteSpec, freeLots } from './island.js';
-import { museumSpec } from './museum.js';
+import { museumSpec, HALL_KO } from './museum.js';
 import { COST, stepId, advance, canPay, costText, donated, species, greeted, festivalReady, track, refreshGoal } from './quests.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
 import { S, addItem, canAdd, takeItem, hasItem, countItem, freeSlots, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
@@ -591,11 +591,12 @@ export async function enter(b) {
     G.world.setVisible(false); G.critters.setVisible(false); setVillagersVisible(false);
     G.room = new Room(roomSpec(b));
     G.room.building = b;
-    G.stage.setMode(true, G.room.h);
+    G.stage.setMode(true, G.room.cameraDepth || G.room.h,G.room.id);
     G.player.setPos(G.room.w / 2, G.room.h - 0.7); G.player.yaw = Math.PI; G.player.actor.face(Math.PI, true);
     const f = G.room.focus(G.player.x, G.player.z); G.stage.setFocus(f.x, 0, f.z, true);
     refreshTime(true);
     await UI.fade(false);
+    if(G.room.cameraDepth)UI.toast(HALL_KO.museum+' · 서쪽 곤충관 / 가운데 화석관 / 동쪽 수족관',3800);
   });
 }
 /** 박물관 안에서 방과 방 사이를 오간다 */
@@ -606,12 +607,14 @@ export async function portal(to) {
     const from = G.room.id, b = G.room.building;
     G.room.dispose();
     G.room = new Room(museumSpec(to)); G.room.building = b;
-    G.stage.setMode(true, G.room.h);
+    G.stage.setMode(true, G.room.cameraDepth || G.room.h,G.room.id);
     const pt = (G.room.portals || []).find((q) => q.to === from);
     if (pt) { G.player.setPos(pt.x, 0.8); G.player.yaw = 0; G.player.actor.face(0, true); }          // 전시관에서 로비로: 그 문 앞에
     else { G.player.setPos(G.room.w / 2, G.room.h - 0.7); G.player.yaw = Math.PI; G.player.actor.face(Math.PI, true); }
     const f = G.room.focus(G.player.x, G.player.z); G.stage.setFocus(f.x, 0, f.z, true);
+    refreshTime(true);
     await UI.fade(false);
+    UI.toast(HALL_KO[G.room.id]);
   });
 }
 export async function exitRoom() {

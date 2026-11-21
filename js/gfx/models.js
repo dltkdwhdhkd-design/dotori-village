@@ -224,6 +224,7 @@ export function make(name, opts = {}) {
     return g;
   }
   const o = src.clone(true);
+  o.userData.assetInstance=true;
   if (opts.tint) {
     o.traverse((n) => {
       if (!n.isMesh) return;

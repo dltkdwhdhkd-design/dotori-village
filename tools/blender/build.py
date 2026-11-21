@@ -6,7 +6,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import lib
 
-CATS = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs']
+CATS = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs','places']
 # 묶음 이름 → (모듈, 만드는 함수, 그림을 webp로 줄여 넣을지)
 SPEC = {'fish': ('critters', 'build_fish', True), 'bugs': ('critters', 'build_bugs', True)}
 

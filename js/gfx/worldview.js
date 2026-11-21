@@ -352,7 +352,7 @@ export class WorldView {
   update(dt, time, fx, fz) {
     FX.time.value = time;
     this.terrain.update(time);
-    this.terrain.setLight(this.stage.waterLight);
+    this.terrain.setLight(this.stage.waterLight,this.stage.light.wet);
     for (let k = this.anims.length - 1; k >= 0; k--) {
       const a = this.anims[k]; a.t += dt;
       if (a.bump) { const s = 1 + Math.sin(Math.min(1, a.t / 0.25) * Math.PI) * 0.18; a.g.scale.y = a.sy * s; if (a.t > 0.25) { a.g.scale.y = a.sy; this.anims.splice(k, 1); } continue; }

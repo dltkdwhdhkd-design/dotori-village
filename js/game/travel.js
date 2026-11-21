@@ -13,15 +13,16 @@ import { Sound } from '../core/audio.js';
 import { action,life,learn,available } from './workshop.js';
 import { invite } from './island.js';
 import { certifiedPlots, fieldDesk, gradeWork, inspectPlot, plantModel, story, study, openResults } from './fieldwork.js';
-import { ramenDesk, setBowl } from './ramen.js';
+import { ramenDesk, setBowl, startRamenShift } from './ramen.js';
 import { VOICES } from '../data/voices.js';
 import { speakScene } from './speech.js';
 import { buildRescue, rescueDesk, rescueFrame, rescueProbe } from './rescue.js';
+import { paintVillage, dressVillage, steamFrame } from './travelDesign.js';
 
 const places={
-  meadow:{name:'풀잎 들녘',desc:'노동 갑옷 씨에게 풀 뽑기와 토벌을 접수하고, 5급 검정에 도전해요.',task:'밭의 잡초 뽑기',mat:'weed1',tint:'#a6c783', path:'#e6ce93',ids:['dalgom','beomi','dahong','dungdung'],props:[['tent_shop',2,2,.67],['board',6,2,.83],['tree_fruit',11,1,1.12],['tree_blossom',13,4,1],['bench',2,6,.85],['flower_cosmos',8,2,1.5]]},
-  cave:{name:'동굴 등불 마을',desc:'하치와레와 검정 공부를 하고, 동쪽 구덩이에서 들리는 소리를 따라가요.',task:'등불 돌 모으기',mat:'mat_stone',tint:'#a3b396',path:'#dcc9ac',ids:['goran','nureong','sandeul','pogeun'],props:[['boulder1',1,2,1.65],['boulder2',3,1,1.8],['boulder1',5,1,1.42],['f_log_stool',3,3,.85],['f_deungjan',4,3,1.1],['f_bookpile',5,3,.9],['lamp',9,2,.88],['tree_pine',12,2,1.17],['boulder1',13,5,1.1]]},
-  ramen:{name:'라멘 골목',desc:'라멘 가게 로(郎)에서 시사와 손님의 주문을 맞추고 내 라멘도 주문해요.',task:'가게에 파 잎 모아 주기',mat:'weed2',tint:'#b8c495',path:'#d8b598',ids:['pongdang','jangkki','kkokki','dodam'],props:[['shop',3,1,.7],['f_stove',6,2,.8],['f_soban',8,3,.9],['f_log_stool',9,3,.8],['f_jangdok',1,5,1.1],['lamp',11,2,.9],['tree_blossom',13,4,1.06],['f_flowerpot',10,2,.88]]}
+  meadow:{name:'풀잎 들녘',desc:'노동 갑옷 씨에게 풀 뽑기와 토벌을 접수하고, 5급 검정에 도전해요.',task:'밭의 잡초 뽑기',mat:'weed1',tint:'#a6c783', path:'#e6ce93',ids:['dalgom','beomi','dahong','dungdung'],props:[['board',2,2,.80],['tree_fruit',11,1,1.12],['tree_blossom',13,4,1.06],['bench',2,6,.78]]},
+  cave:{name:'동굴 등불 마을',desc:'하치와레와 검정 공부를 하고, 동쪽 구덩이에서 들리는 소리를 따라가요.',task:'등불 돌 모으기',mat:'mat_stone',tint:'#a3b396',path:'#dcc9ac',ids:['goran','nureong','sandeul','pogeun'],props:[['boulder2',.6,2.2,1.2],['f_deungjan',5.25,3.15,.85],['boulder1',13,5,1.06]]},
+  ramen:{name:'라멘 골목',desc:'라멘 가게 로(郎)에서 시사와 손님의 주문을 맞추고 내 라멘도 주문해요.',task:'가게에 파 잎 모아 주기',mat:'weed2',tint:'#b8c495',path:'#d8b598',ids:['pongdang','jangkki','kkokki','dodam'],props:[['f_jangdok',1.2,5.45,.9],['lamp',11.8,2.05,.9],['tree_blossom',13.1,4.7,1.05],['f_flowerpot',10.7,2.8,.84]]}
 };
 const spots=[[2.4,7],[9.9,6.4],[12,8.1]];
 function place(room,name,x,z,scale=1){
@@ -30,22 +31,18 @@ function place(room,name,x,z,scale=1){
 function landscape(room){
   const d=places[room.area], c=document.createElement('canvas');c.width=768;c.height=576;
   const cx=c.getContext('2d');cx.fillStyle=d.tint;cx.fillRect(0,0,c.width,c.height);
-  cx.lineCap='round';cx.strokeStyle=d.path;cx.lineWidth=89;cx.beginPath();cx.moveTo(386,610);cx.bezierCurveTo(426,388,246,280,222,72);cx.stroke();
-  cx.lineWidth=49;cx.beginPath();cx.moveTo(330,326);cx.quadraticCurveTo(460,265,685,229);cx.stroke();
-  let seed=31;const rnd=()=>((seed=Math.imul(1664525,seed)+1013904223>>>0)/4294967296);
-  for(let i=0;i<4100;i++){const x=rnd()*768,y=rnd()*576;cx.fillStyle=i%3?'#ffffff23':'#66572e22';cx.fillRect(x,y,1+rnd()*3,1+rnd()*2);}
+  paintVillage(cx,room,spots);
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(room.w+2,room.h+2),new THREE.MeshLambertMaterial({map:tex}));
   ground.rotation.x=-Math.PI/2;ground.position.set(room.w/2,-.015,room.h/2);ground.receiveShadow=true;room.group.add(ground);
   const meadow=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshLambertMaterial({color:d.tint}));meadow.rotation.x=-Math.PI/2;meadow.position.y=-.024;room.group.add(meadow);room.outskirts=meadow;
   for(const [n,x,z,s] of d.props){place(room,n,x,z,s);room.block(Math.floor(x),Math.floor(z));}
-  for(let i=0;i<8;i++)place(room,i%2?'tree_pine':'tree_blossom',i*2-1,-1.3,.72+(i%3)*.16);
-  for(const [x,z] of [[.1,4],[.1,8],[13.7,7],[12.9,1],[1.2,1.2],[11.7,2.2]])place(room,'flower_cosmos',x,z,.85);
-  place(room,'board',5.95,9.8,.61);
+  for(let i=0;i<8;i++)place(room,room.area==='cave'?'boulder2':room.area==='ramen'?'tree_blossom':'tree_pine',i*2-1,-1.55,1.00+(i%3)*.18);
+  dressVillage(room);
+  if(room.area==='meadow')place(room,'board',5.95,9.8,.61);
   refreshPlots(room);
   if(room.area==='ramen'){
-    place(room,'f_soban',4.6,3.1,1.08);
-    room.counterBowl=place(room,'story_ramen',4.6,3.1,1.12);room.counterBowl.position.y=.49;
+    room.counterBowl=place(room,'story_ramen',5.05,2.33,.86);room.counterBowl.position.y=.92;
     setBowl(room.counterBowl,story().lastBowl ?? 9);
   }
   room.floorResource=ground;
@@ -227,6 +224,7 @@ function strike(room){
 }
 function fieldProbe(room,p){
   const dist=(x,z)=>Math.hypot(p.x-x,p.z-z);
+  if(room.area==='ramen' && dist(7.18,3.18)<1.04)return {label:'시사의 조리대 · 라멘 만들기',act:()=>startRamenShift(room)};
   if(room.hunt && !room.hunt.ending && dist(room.hunt.foe.position.x,room.hunt.foe.position.z)<1.85){
     const h=room.hunt;return {label:h.draw<1?'토벌 준비 중':h.ready&&!h.hit?'동료와 토벌하기':'물러서기 · 용기 '+h.hearts,act:()=>strike(room)};
   }
@@ -265,7 +263,7 @@ export function visitArea(area){
     const npcDefs=ids.map((id,i)=>({id,model:'villager_'+id,name:VILLAGERS[id].name,x:[4.3,8.1,11.3][i],z:[4.1,4.7,3.7][i],fixed:true,talk:n=>villageTalk(id,area,n)}));
     npcDefs.push({id:'desk',model:area==='ramen'?'npc_duru':'npc_ujik',name:area==='ramen'?'라멘 갑옷 씨':'노동 갑옷 씨',x:5.9,z:4.9,fixed:true,talk:()=>workDesk(G.room)});
     G.world.setVisible(false);G.critters.setVisible(false);setVillagersVisible(false);
-    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>{refreshPlots(r);huntFrame(r,dt);rescueFrame(r,dt);}})});
+    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>{refreshPlots(r);huntFrame(r,dt);rescueFrame(r,dt);steamFrame(r,G.time);}})});
     room.building={doors:[S.player.x-.5],y:S.player.z-.45,d:0};
     G.stage.setMode(true,11);p.setPos(7,8.8);p.yaw=Math.PI;p.actor.face(Math.PI,true);
     const f=room.focus(p.x,p.z);G.stage.setFocus(f.x,0,f.z,true);

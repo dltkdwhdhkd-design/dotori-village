@@ -131,6 +131,35 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 .li.q .pr { align-self:center; }
 
 .story-page { display:grid; gap:10px; }
+.activity-game {display:grid;gap:9px;}
+#ui>.touch-controls {display:none;pointer-events:none;position:absolute;inset:0;user-select:none;-webkit-user-select:none;}
+.touch-mode #ui>.touch-controls.active {display:block;}
+.touch-controls>* {position:absolute;pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
+.touch-stick {width:106px;height:106px;bottom:max(13px,env(safe-area-inset-bottom));left:max(14px,env(safe-area-inset-left));background:#fff4cf80;border:3px solid #745b3d88;border-radius:50%;box-shadow:inset 0 0 0 9px #fffae63b;}
+.touch-stick i {position:absolute;left:50%;top:50%;width:43px;height:43px;border-radius:50%;background:#f4dfa9df;border:3px solid #947451;transform:translate(-50%,-50%);box-shadow:0 3px 0 #74553166;}
+.touch-controls button {border:3px solid #816649;border-radius:50%;background:#fff1c9e8;color:#5a452e;box-shadow:0 3px 0 #65472470;font:inherit;}
+.touch-controls .touch-act {width:72px;height:72px;right:max(13px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));}
+.touch-controls .touch-pick {width:52px;height:52px;right:91px;bottom:22px;font-size:14px;}
+.touch-controls .pressed {background:#f2cf83;box-shadow:inset 0 2px 3px #78542d70;}
+.touch-mode #hud-tools {left:8px;bottom:127px;gap:2px;padding:3px;}
+.touch-mode #hud-tools .tool {width:40px;height:40px;}
+.touch-mode #hud-tools .tool img {width:36px;height:36px;}
+.touch-mode #hud-tools .key {display:none;}
+.touch-mode #hud-menu {right:7px;bottom:90px;gap:2px;padding:3px;}
+.touch-mode #hud-menu button {font-size:12px;padding:5px;}
+.touch-mode #hud-menu button span {display:none;}
+.touch-mode #hud-hint {bottom:184px;width:max-content;max-width:93vw;box-sizing:border-box;text-align:center;white-space:normal;font-size:13px;padding:3px 9px;}
+.activity-game p {margin:0;line-height:1.45;}
+.activity-game .activity-objective {color:#3d5745;font-weight:bold;}
+.activity-game canvas {display:block;width:100%;aspect-ratio:16/9;border-radius:15px;background:#416258;touch-action:none;cursor:grab;}
+.activity-game canvas:active {cursor:grabbing;}
+.activity-game canvas:focus-visible {outline:3px solid #dfb74e;outline-offset:2px;}
+.activity-status {color:#58432e;min-height:1.5em;}
+#panel:has(.activity-game) {width:min(740px,94vw);}
+.museum-guide .btn {margin:3px;}
+.museum-watch {position:fixed;z-index:15;left:50%;bottom:10px;transform:translateX(-50%);width:min(570px,90vw);box-sizing:border-box;padding:12px 17px;border-radius:14px;background:#193b49ed;color:#f9f1d7;display:grid;gap:5px;box-shadow:0 3px 12px #162c3950;}
+.museum-watch div {display:flex;gap:7px;}
+.museum-watch .btn {padding:5px 9px;font-size:13px;}
 .story-page h3,.story-page p,.story-line p,.story-specimen p { margin:0; }
 .story-count { font-size:.88em; color:#696c4a; }
 .story-cards,.story-roll { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }

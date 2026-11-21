@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { G, MAP_W, MAP_H, WK } from '../world/mapgen.js';
 import { patchMaterial, CURVE } from './models.js';
 import { clamp, smooth, hash01 } from '../core/util.js';
+import { shoreDepth, waterPatterns } from './water.js';
 
 export const PAD = { w: 14, n: 12, s: 18 };       // 지도 바깥으로 더 그리는 칸 수(서/동, 북, 남)
 const TEX = 20;                                   // 타일 한 칸당 땅 그림 픽셀
@@ -262,8 +263,7 @@ export class Terrain {
 
   buildWater() {
     const R = 4, mw = PW * R, mh = PH * R;
-    const cv = document.createElement('canvas'); cv.width = mw; cv.height = mh;
-    const ctx = cv.getContext('2d'), img = ctx.createImageData(mw, mh), d = img.data;
+    const d = new Uint8Array(mw*mh*4);
     for (let py = 0; py < mh; py++) for (let px = 0; px < mw; px++) {
       const u = (px + 0.5) / R - PAD.w, v = (py + 0.5) / R - PAD.n, o = (py * mw + px) * 4;
       d[o] = this.sample(this.F.water, u, v) * 255;
@@ -271,8 +271,8 @@ export class Terrain {
       d[o + 2] = this.sample(this.F.pond, u, v) * 255;
       d[o + 3] = 255;
     }
-    ctx.putImageData(img, 0, 0);
-    const mask = new THREE.CanvasTexture(cv);
+    shoreDepth(d,mw,mh,R);
+    const mask = new THREE.DataTexture(d,mw,mh);mask.needsUpdate=true;
     mask.minFilter = mask.magFilter = THREE.LinearFilter; mask.generateMipmaps = false;
     mask.flipY = false;                            // 그림의 위쪽이 북쪽 그대로 가도록
     const geo = new THREE.PlaneGeometry(PW, PH, PW, PH);
@@ -281,7 +281,8 @@ export class Terrain {
     this.waterU = {
       uMask: { value: mask }, uTime: { value: 0 }, uCurveZ: CURVE.z, uCurveK: CURVE.k,
       uLight: { value: new THREE.Color(1, 1, 1) },
-      uShallow: { value: new THREE.Color(0x7fd0f2) }, uDeep: { value: new THREE.Color(0x3f9fe0) }, uSea: { value: new THREE.Color(0x2f8fd6) },
+      uShallow: { value: new THREE.Color(0x96dec9) }, uDeep: { value: new THREE.Color(0x47a7b0) }, uSea: { value: new THREE.Color(0x337fa9) },
+      uWet:{value:0},uRipple:{value:new THREE.Vector3(0,0,-20)},
       uOrigin: { value: new THREE.Vector2(-PAD.w, -PAD.n) }, uSize: { value: new THREE.Vector2(PW, PH) },
     };
     const mat = new THREE.ShaderMaterial({
@@ -296,24 +297,34 @@ export class Terrain {
           gl_Position = projectionMatrix * viewMatrix * wp;
         }`,
       fragmentShader: `
-        uniform sampler2D uMask; uniform float uTime; uniform vec3 uLight, uShallow, uDeep, uSea;
+        uniform sampler2D uMask; uniform float uTime,uWet; uniform vec3 uLight, uShallow, uDeep, uSea,uRipple;
         varying vec2 vW; varying vec2 vUv;
+        ${waterPatterns}
         void main() {
           vec4 m = texture2D(uMask, vUv);
-          float w = m.r, sea = m.g;
-          float lap = sea * 0.035 * sin(uTime * 0.7 + vW.x * 0.45);
+          float w=m.r, sea=m.g, pond=m.b, depth=m.a;
+          float lap=sea*.037*sin(uTime*.91+vW.x*.55+.45*sin(vW.x*.95));
           float th = 0.44 + lap;
           if (w < th) discard;
-          vec3 col = mix(uShallow, uDeep, smoothstep(0.55, 0.95, w));
-          col = mix(col, uSea, smoothstep(0.3, 1.0, sea) * 0.75);
-          float r1 = sin(vW.x * 2.1 + uTime * 0.9 + sin(vW.y * 1.3 + uTime * 0.2) * 1.6) * sin(vW.y * 2.7 - uTime * 1.2 + vW.x * 0.4);
-          float r2 = sin(vW.x * 5.3 - uTime * 0.6) * sin(vW.y * 4.1 + uTime * 0.8);
-          col += smoothstep(0.82, 0.98, r1) * 0.22 + smoothstep(0.9, 1.0, r2) * 0.12;
-          float edge = 1.0 - smoothstep(th, th + 0.085, w);
-          float foam = edge * (0.75 + 0.25 * sin(uTime * 1.6 + vW.x * 3.0 + vW.y * 2.2));
-          col = mix(col, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.85);
-          float a = mix(0.62, 0.86, smoothstep(th, 0.9, w));
-          a = max(a, clamp(foam, 0.0, 1.0));
+          float flow=uTime*mix(.68,1.,sea)*(1.-pond*.55);
+          vec2 p=vW+vec2(.65*sin(vW.y*.46),0.)*(1.-sea);
+          vec3 inland=mix(uDeep,vec3(.14,.46,.31),pond*.48);
+          vec3 col=mix(uShallow,mix(inland,uSea,sea),smoothstep(0.,mix(.35,.95,sea),depth));
+          col*=1.+currents(p*.61,flow)*.046;
+          float lace=caustics(p*.91,flow)*(1.-smoothstep(.10,.48,depth))*(1.-uWet*.65);
+          col=mix(col,vec3(.68,.98,.81),lace*.23);
+          float shine=glints(p*vec2(1.6,1.38),flow)*.78+glints(p*vec2(2.45,2.12)+3.1,flow*.83)*.25;
+          col=mix(col,vec3(.84,.98,1.),shine*mix(.22,.46,sea)*(1.-uWet*.67));
+          float roll=sin(vW.x*.92+uTime*.91+.52*sin(vW.x*1.85));
+          float edge=(1.-smoothstep(th,th+.057,w))*mix(.20,.88,sea);
+          float surf=1.-smoothstep(.006,.021,abs(depth-(.075+.027*roll)));
+          float shoreWave=1.-smoothstep(.011,.048,abs(w-(.62+.07*roll+.035*sin(vW.x*2.8-uTime*.65))));
+          float foam=max(edge,max(surf*.75,shoreWave*.65)*sea*smoothstep(-.78,.4,roll));
+          col=mix(col,vec3(.88,.98,.94),foam);
+          float age=uTime-uRipple.z,dist=length(vW-uRipple.xy);
+          float ring=(1.-smoothstep(.017,.058,abs(dist-age*.82)))*(1.-smoothstep(.12,1.6,age));
+          col=mix(col,vec3(.88,.99,.98),clamp(ring,0.,1.)*.70);
+          float a=max(mix(.47,.88,smoothstep(.0,.6,depth)),foam);
           gl_FragColor = vec4(col * uLight, a);
           #include <colorspace_fragment>
         }`,
@@ -325,6 +336,7 @@ export class Terrain {
   }
 
   update(time) { this.waterU.uTime.value = time; }
-  setLight(color) { this.waterU.uLight.value.copy(color); }
+  ripple(x,z) { this.waterU.uRipple.value.set(x,z,this.waterU.uTime.value); }
+  setLight(color,wet=0) { this.waterU.uLight.value.copy(color);this.waterU.uWet.value=wet; }
   setSeason(season) { if (season !== this.season) { this.buildGroundTexture(season); this.buildDetail(season); } }
 }

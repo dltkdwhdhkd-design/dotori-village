@@ -6,6 +6,7 @@ import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
 import { S } from './state.js';
 import { dayKey, hourF } from '../core/clock.js';
 import { rand, hash01 } from '../core/util.js';
+import { clearNetMood, updateNetMood } from './netplay.js';
 
 /** 칸 단위 길 찾기(4방향). 못 찾으면 null */
 export function findPath(sx, sy, gx, gy, limit = 900) {
@@ -75,7 +76,7 @@ export class Villager {
     }
     this.show(false);
   }
-  hide() { this.visible = false; this.actor.root.visible = false; this.path = null; this.goingHome = false; }
+  hide() { clearNetMood(this); this.visible = false; this.actor.root.visible = false; this.path = null; this.goingHome = false; }
   place() { this.actor.setPos(this.x, groundY(this.x, this.z), this.z); }
   goHome() { const d = this.doorFront(); const p = findPath(Math.floor(this.x), Math.floor(this.z), d.x, d.y, 2500); if (p) { this.path = p; this.state = 'walk'; this.goingHome = true; } else this.hide(); }
 
@@ -84,6 +85,7 @@ export class Villager {
     const a = this.actor, p = G.player;
     const dp = Math.hypot(p.x - this.x, p.z - this.z);
     if (this.staged) { a.speed = 0; a.update(dt); return; }                 // 잔치 같은 연출: 세워 둔 자리에서 그대로
+    if (updateNetMood(this,dt)) return;
     if (this.talking) { a.speed = 0; a.faceTo(p.x, p.z); a.update(dt); return; }
     if (this.state === 'idle') {
       a.speed = 0;
@@ -133,4 +135,9 @@ export function syncVillagers(initial = false) {
     else if (!out && n.visible && !n.goingHome && !n.talking) n.goHome();
   }
 }
-export function setVillagersVisible(v) { for (const n of G.npcs) n.actor.root.visible = v && n.visible; }
+export function setVillagersVisible(v) {
+  for (const n of G.npcs) {
+    if (!v) clearNetMood(n);
+    n.actor.root.visible = v && n.visible;
+  }
+}

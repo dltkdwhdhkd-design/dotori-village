@@ -11,6 +11,7 @@ import { UI } from '../ui/ui.js';
 import { S, addItem, canAdd } from './state.js';
 import { clamp, rand } from '../core/util.js';
 import { signMesh } from './museum.js';
+import { clearNetMood, updateNetMood } from './netplay.js';
 
 const WALL_H = 2.5;
 const K = (k, t) => `<b>${k}</b>${t}`;
@@ -58,7 +59,7 @@ export class Room {
     box(w + 0.6, 0.2, 0.3, w / 2, WALL_H + 0.1, -0.15, dark); box(0.3, 0.2, h + 0.3, -0.15, WALL_H + 0.1, h / 2 - 0.15, dark); box(0.3, 0.2, h + 0.3, w + 0.15, WALL_H + 0.1, h / 2 - 0.15, dark);
     box(w, 0.14, 0.05, w / 2, 0.07, 0.025, trim); box(0.05, 0.14, h, 0.025, 0.07, h / 2, trim); box(0.05, 0.14, h, w - 0.025, 0.07, h / 2, trim);
     // 문 앞 깔개와 바닥 아래 어둠
-    const under = new THREE.Mesh(new THREE.PlaneGeometry(w + 30, h + 30), new THREE.MeshBasicMaterial({ color: 0x2a1f18 }));
+    const under = new THREE.Mesh(new THREE.PlaneGeometry(w + 30, h + 30), new THREE.MeshBasicMaterial({ color: this.cameraDepth?0x243238:0x2a1f18 }));
     under.rotation.x = -Math.PI / 2; under.position.set(w / 2, -0.02, h / 2); this.group.add(under);
     const mat = make('doormat'); mat.position.set(w / 2, 0, h + 0.32); this.group.add(mat);
     box(1.5, 0.02, 0.7, w / 2, -0.005, h + 0.3, patchMaterial(new THREE.MeshLambertMaterial({ color: 0xcfb58a })));
@@ -114,8 +115,33 @@ export class Room {
     return n;
   }
 
-  dispose() { G.stage.scene.remove(this.group); if(this.floorResource){this.floorResource.material.map.dispose();this.floorResource.material.dispose();this.floorResource.geometry.dispose();this.outskirts?.material.dispose();this.outskirts?.geometry.dispose();} this.endHunt?.(); }
-  focus(px, pz) { return { x: this.w / 2 + (px - this.w / 2) * 0.45, z: this.h / 2 + (pz - this.h / 2) * 0.5 + 0.9 }; }
+  dispose() {
+    this.observation?.close();
+    G.stage.scene.remove(this.group);
+    if(this.cameraDepth){
+      const actors=new Set(this.npcs.map(n=>n.actor.root)),resources=new Set();
+      const collect=o=>{
+        if(actors.has(o)||o.userData.assetInstance)return;
+        if(o.isInstancedMesh)o.dispose();
+        if(o.geometry)resources.add(o.geometry);
+        if(o.material){resources.add(o.material);if(o.material.map)resources.add(o.material.map);}
+        o.children.forEach(collect);
+      };
+      collect(this.group);for(const resource of resources)resource.dispose();
+    }
+    if(this.floorResource){this.floorResource.material.map.dispose();this.floorResource.material.dispose();this.floorResource.geometry.dispose();this.outskirts?.material.dispose();this.outskirts?.geometry.dispose();}
+    if(this.localGraphics){
+      const materials=new Set();
+      for(const o of this.localGraphics){o.geometry.dispose();materials.add(o.material);}
+      for(const m of materials){m.map?.dispose();m.dispose();}
+    }
+    this.endHunt?.();
+  }
+  focus(px, pz) {
+    if(this.observation){const p=this.observation.target.position;return {x:p.x,y:p.y,z:p.z};}
+    if(this.cameraDepth)return {x:clamp(px,2,this.w-2),z:clamp(pz+.3,2,this.h-1.8)};
+    return { x: this.w / 2 + (px - this.w / 2) * 0.45, z: this.h / 2 + (pz - this.h / 2) * 0.5 + 0.9 };
+  }
 
   free(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.occ[y * this.w + x] === -1; }
   canPlace(it, ignore = -1) {
@@ -159,7 +185,14 @@ export class Room {
     if (pt && p.z < -0.12) { G.hooks.portal(pt.to); return true; }
     return false;
   }
-  probe(p) { return this.ex && this.ex.probe ? this.ex.probe(p) : null; }
+  probe(p) {
+    if(this.cameraDepth){
+      const pt=this.portalAt(p.x);
+      if(pt && p.z<1.35 && Math.cos(p.yaw)<-.4)return {label:pt.label+' 들어가기',act:()=>G.hooks.portal(pt.to)};
+      if(Math.abs(p.x-this.w/2)<.85 && p.z>this.h-1.1 && Math.cos(p.yaw)>.4)return {label:this.exitTo?'이전 전시실로':'마을로 나가기',act:()=>G.hooks.exit()};
+    }
+    return this.ex && this.ex.probe ? this.ex.probe(p) : null;
+  }
 
   itemInFront(p) {
     const f = p.front(0.75);
@@ -241,10 +274,13 @@ export class Room {
   }
 
   update(dt) {
+    this.observation?.update();
     const p = G.player;
     if (this.editable && !UI.blocking() && !G.busy && Input.take('cycle')) this.rotateInFront(p);
     if (this.ex && this.ex.update) this.ex.update(dt);
     for (const n of this.npcs) {
+      if (!n.visible) { if (n.netMood) clearNetMood(n); continue; }
+      if (updateNetMood(n,dt)) continue;
       const a = n.actor;
       const dp = Math.hypot(p.x - n.x, p.z - n.z);
       if (n.fixed || n.talking) { a.speed = 0; if (dp < 2.2 || n.talking) a.faceTo(p.x, p.z); else a.face(n.face || 0); a.update(dt); continue; }

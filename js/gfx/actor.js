@@ -26,7 +26,7 @@ const patrol = {
          [.54,P(80,89,{s:14,t:-12,l:46,w:13}),'in'],[1,P(41,151,{s:26,t:20})]]
 };
 const TOOL = {
-  hunt_blue:patrol, hunt_fork:patrol, hunt_bell:patrol,
+  hunt_blue:patrol, hunt_fork:patrol, hunt_bell:patrol, hunt_staff:patrol,
   net: {
     scale: 0.92,
     idle: P(30, 174, { s: 20, t: 26 }),
@@ -87,7 +87,13 @@ function emoteTexture(kind) {
   x.fillStyle = '#fffdf5'; x.fillRect(38, 66, 20, 8);
   const G = { '!': ['!', '#e8463c'], '?': ['?', '#4a82d6'], note: ['♪', '#3fa39a'], heart: ['♥', '#f0567a'], dots: ['…', '#5a4632'], zzz: ['z', '#6a7fd0'], angry: ['#', '#e8463c'], sweat: [';', '#4a90d9'], spark: ['✦', '#f2b01e'], sad: ['︵', '#6a7fd0'] }[kind] || ['!', '#e8463c'];
   x.fillStyle = G[1]; x.font = 'bold 46px "Jua","Malgun Gothic",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.fillText(G[0], 48, 44);
+  if (kind === 'angry') {
+    x.strokeStyle = G[1]; x.lineCap = 'round'; x.lineWidth = 4;
+    for (let i=0;i<4;i++) {
+      x.save(); x.translate(48,42); x.rotate(i*Math.PI/2);
+      x.beginPath(); x.moveTo(4,-17); x.quadraticCurveTo(4,-5,16,-5); x.stroke(); x.restore();
+    }
+  } else x.fillText(G[0], 48, 44);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   emoteTex[kind] = t;
   return t;
@@ -177,7 +183,7 @@ export class Actor {
   talk(sec = 0.18) { this.talkT = sec; }
 
   emote(kind, dur = 1.6) {
-    if (this.emoteObj) { this.root.remove(this.emoteObj); this.emoteObj.material.dispose(); }
+    if (this.emoteObj) { this.root.remove(this.emoteObj); this.emoteObj.geometry.dispose(); this.emoteObj.material.dispose(); }
     if (!kind) { this.emoteObj = null; return; }
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.62), patchMaterial(new THREE.MeshBasicMaterial({ map: emoteTexture(kind), transparent: true, depthTest: false })));
     m.rotation.x = -0.75; m.renderOrder = 20; m.frustumCulled = false;
@@ -317,7 +323,7 @@ export class Actor {
       const pop = Math.min(1, k2 * 8);
       this.emoteObj.scale.setScalar(pop * (1 + Math.sin(this.t * 6) * 0.04));
       this.emoteObj.position.y = this.topY + 0.42 + jump;
-      if (this.emoteT <= 0) { this.root.remove(this.emoteObj); this.emoteObj = null; }
+      if (this.emoteT <= 0) this.emote(null);
     }
   }
 }

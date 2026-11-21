@@ -57,11 +57,13 @@ export class Stage {
   }
 
   /** 실내/실외에 따라 카메라와 굽은 세계 정도를 바꾼다 */
-  setMode(indoor, roomDepth = 6) {
-    this.indoor = indoor; this._roomDepth = roomDepth;
+  setMode(indoor, roomDepth = 6, gallery) {
+    this.indoor = indoor; this._roomDepth = roomDepth;this._gallery=gallery;
     if (indoor) {
       const k = 0.78 + roomDepth * 0.045;
       this.camOff.set(0, 11.5 * k, 9.6 * k); this.lookOff.set(0, 0.6, -0.6); CURVE.k.value = 0;
+      if(gallery==='m_sea'||gallery==='m_fresh'){this.camOff.set(0,7.0,13.8);this.lookOff.set(0,1.22,-1.55);}
+      if(gallery==='m_fossil'){this.camOff.set(0,9.0,15.1);this.lookOff.set(0,1.10,-1.25);}
     } else { this.camOff.set(...CAM_OUT); this.lookOff.set(...LOOK_OUT); CURVE.k.value = this.curveK; }
     this.camera.layers.enable(1);
     if (this.shadows && !indoor) this.camera.layers.disable(1);     // 해 그림자가 있으면 둥근 그림자(1번 층)는 끈다
@@ -69,7 +71,7 @@ export class Stage {
   }
 
   /** 해 그림자를 켜고 끈다(느린 컴퓨터에서는 끄면 가볍다). 끄면 발밑의 둥근 그림자로 대신한다. */
-  setShadows(on) { this.shadows = !!on; this.setMode(this.indoor, this._roomDepth || 6); }
+  setShadows(on) { this.shadows = !!on; this.setMode(this.indoor, this._roomDepth || 6,this._gallery); }
 
   setFocus(x, y, z, snap = false) {
     if (snap) this.focus.set(x, y, z);
@@ -77,7 +79,7 @@ export class Stage {
   }
 
   /** day: 0(밤)~1(낮), tw: 노을 0~1, weather: clear|cloudy|rain|snow, hour: 지금 시각(0~24) */
-  setLighting(day, tw, weather, hour = 12) {
+  setLighting(day, tw, weather, hour = 12,roomId) {
     const wet = weather === 'rain' || weather === 'snow' ? 1 : weather === 'cloudy' ? 0.6 : 0;
     this.light = { day, tw, wet };
     FX.rim.value = this.indoor ? 0.22 : lerp(0.12, 0.4, day) * (1 - wet * 0.3);
@@ -86,6 +88,10 @@ export class Stage {
       this.scene.background.set(0x2a1f18);
       this.hemi.color.set(0xfff6e6); this.hemi.groundColor.set(0xd9c2a0); this.hemi.intensity = lerp(1.7, 2.0, day);
       this.sun.color.set(0xfff0d8); this.sun.intensity = lerp(1.1, 1.6, day);
+      if(roomId==='m_sea'){
+        this.hemi.color.set(0xb9eeff);this.hemi.groundColor.set(0x73a8bd);this.hemi.intensity=1.6;
+        this.sun.color.set(0xd5f2ff);this.sun.intensity=1.1;
+      }
       return;
     }
     const sky = SKY.night.clone().lerp(SKY.day, day).lerp(SKY.dusk, tw * 0.75);

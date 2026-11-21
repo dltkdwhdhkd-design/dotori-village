@@ -4,6 +4,7 @@ import { Sound } from '../core/audio.js';
 import { el, fmt, josa } from '../core/util.js';
 import { thumb } from '../gfx/thumbs.js';
 import { ITEMS } from '../data/items.js';
+import { touchControls } from './touch.js';
 
 const $ = (id) => document.getElementById(id);
 const root = () => $('ui');
@@ -33,6 +34,7 @@ export const UI = {
     $('panel').querySelector('.x').onclick = () => this.closePanel();
     $('dlg').onclick = () => Dialog.click();
     $('shade').onclick = () => { if (this.panelOpen && !this.panelSticky) this.closePanel(); };
+    this.touch=touchControls(root());
   },
   showHud(v) { for (const id of ['hud-clock', 'hud-money', 'hud-tools', 'hud-menu']) $(id).classList.toggle('hidden', !v); if (!v) { $('hud-hint').classList.add('hidden'); $('hud-goal').classList.add('hidden'); } },
   loading(p, msg) { const L = $('loading'); if (p == null) { L.classList.add('hidden'); return; } L.classList.remove('hidden'); L.querySelector('i').style.width = Math.round(p * 100) + '%'; if (msg) L.querySelector('.msg').textContent = msg; },
@@ -60,6 +62,7 @@ export const UI = {
   },
   hint(text) {
     const h = $('hud-hint');
+    if(this.touch?.active && text)text=text.replaceAll('<b>Space</b>','<b>행동</b>').replaceAll('<b>F</b>','<b>줍기</b>');
     if (!text || this.modal > 0) { h.classList.add('hidden'); this._hint = ''; return; }
     if (this._hint !== text) { h.innerHTML = text; this._hint = text; }
     h.classList.remove('hidden');

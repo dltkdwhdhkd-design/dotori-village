@@ -27,7 +27,7 @@ export const G = {
 
 // ---------------------------------------------------------------- 자산 불러오기
 export async function loadAssets(onProgress) {
-  const bundles = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs'];
+  const bundles = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs','places'];
   let done = 0;
   const V = '?v=' + VERSION;
   const chars = await fetch('./assets/chars/chars.json' + V).then((r) => r.json());
@@ -107,7 +107,7 @@ export function refreshTime(force = false) {
   G.weather = weatherAt(now);
   G.dayLight = daylight(now);
   if (G.world) { G.world.setLook(G.look); G.world.setNight(1 - clamp(G.dayLight * 1.4, 0, 1)); }
-  G.stage.setLighting(G.dayLight, twilight(now), G.weather, hourF(now));
+  G.stage.setLighting(G.dayLight, twilight(now), G.weather, hourF(now),G.room?.id);
   if (G.started) {
     UI.setClock(dateLabel(now), timeLabel(now), `${SEASON_KO[season(now)]} · ${WEATHER_KO[G.weather]}`);
     const k = dayKey(now);
@@ -219,7 +219,8 @@ export function update(dt) {
   timeT += dt;
   if (timeT > 1) { timeT = 0; refreshTime(); }
   if (G.started) {
-    const free = !UI.blocking() && !G.busy;
+    const free = !UI.blocking() && !G.busy && !G.room?.observation;
+    UI.touch?.show(free);
     if (G.player) G.player.update(dt, free);
     if (G.room) G.room.update(dt);
     else {
@@ -240,7 +241,7 @@ export function update(dt) {
     }
     const p = G.player;
     if (p) {
-      if (G.room) { const f = G.room.focus(p.x, p.z); G.stage.setFocus(f.x, 0, f.z); }
+      if (G.room) { const f = G.room.focus(p.x, p.z); G.stage.setFocus(f.x, f.y||0, f.z); }
       else G.stage.setFocus(clamp(p.x, 9, MAP_W - 9), 0, clamp(p.z, 8, MAP_H - 2.5));
       if (G.world && !G.room) G.world.update(dt, G.time, G.stage.focus.x, G.stage.focus.z);
       weather.update(dt, G.room ? 'none' : G.weather, G.stage.focus.x, G.stage.focus.z);

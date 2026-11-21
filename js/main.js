@@ -18,7 +18,12 @@ import { Clock, dayKey } from './core/clock.js';
 import { Input } from './core/input.js';
 import { TitleScene } from './game/titlescene.js';
 
+import { ensureBench, housing, islandTools, yardMenu } from './game/island.js';
+import { travel } from './game/travel.js';
+import { workshop } from './game/workshop.js';
+
 function start(isNew) {
+  ensureBench();
   if (G.title) { G.title.dispose(); G.title = null; }
   Clock.seed = S.seed;
   ensureProg();                                   // 예전 저장은 '다 자란 마을'로 이어받는다
@@ -54,6 +59,14 @@ function onNew({ name, village, model, look = null, seed }) {
   }
   newState({ name, village, model, look, seed, villageData: v, day: dayKey() });
   S.prog = newProg();
+  S.flags.campStart=true;
+  // A branch and loose stone cache around the plaza lets newcomers make their first tools.
+  const goods=['mat_wood','mat_wood','mat_stone','mat_wood','mat_stone','mat_wood','mat_wood','mat_stone'];
+  const p=v.plaza;
+  for(let y=p.y+1;y<p.y+p.h && goods.length;y++)for(let x=p.x+1;x<p.x+p.w-1 && goods.length;x++){
+    if(v.empty(x,y) && (x+y)%2===0 && !(x===p.x+3&&y===p.y+1))v.set(x,y,{t:'item',id:goods.pop()});
+  }
+  for(const [x,y] of [[0,0],[8,6],[0,6],[6,4],[7,4]]){const o=v.obj(p.x+x,p.y+y);if(o?.t==='fix'&&['lamp','platform','part'].includes(o.kind))v.set(p.x+x,p.y+y,null);}
   buildWorld(v);
   firstDay(dayKey());
   start(true);
@@ -71,7 +84,7 @@ async function boot() {
   Clock.offsetMin = Settings.offsetMin || 0;
   Sound.setVolume(Settings.bgm, Settings.sfx);
   initStage(document.getElementById('game'));
-  registerScripts(); registerMenus();
+  registerScripts(); registerMenus(); Object.assign(G.hooks,{housing,islandTools,yardMenu,travel,workshop});
   G.hooks.newDay = (k) => newDay(k);
   G.hooks.openNet = openNet; G.hooks.openChat = openChat;
   G.hooks.rebuildWorld = () => { buildWorld(G.village); if (G.critters) G.critters._water = null; };   // 다리를 놓는 등 땅 모양이 바뀌었을 때

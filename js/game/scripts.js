@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { G, runScript, save, refreshTime, burst, groundY } from './game.js';
 import { Room } from './rooms.js';
+import { atelierSpec, campsiteSpec, freeLots } from './island.js';
 import { museumSpec } from './museum.js';
 import { COST, stepId, advance, canPay, costText, donated, species, greeted, festivalReady, track, refreshGoal } from './quests.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
@@ -28,7 +29,7 @@ const refreshBld = (type) => { const b = G.village.buildings.find((x) => x.type 
 function reserveLot() {
   const used = new Set(Object.values(S.villagers).map((v) => v.lot)), pd = S.prog.pend;
   pd.sites = pd.sites || [];
-  const lot = [...Array(G.village.lots.length).keys()].find((l) => !used.has(l) && !pd.sites.includes(l));
+  const lot = freeLots()[0];
   if (lot == null) return;
   pd.sites.push(lot);
   const b = G.village.buildings.find((x) => x.lot === lot);
@@ -385,6 +386,7 @@ async function storyUjik(u) {
     while (Q.lots < 3) {
       if (!canPay(COST.lot)) { await say(u, `재료가 모자라는구먼. 지금은 ${haveMat(COST.lot)}일세. 모이면 다시 오게.`); return; }
       if (await Dialog.choose(['집터를 마련해 주세요', '다음에요'], { cancel: 1 }) !== 0) return;
+      if (!freeLots().length) { await say(u,'먼저 약속한 이웃의 이사 준비를 마쳐 주게.'); return; }
       payCost(COST.lot); Q.lots++; Q.pend.movein.push(tm); reserveLot(); refreshGoal(); Sound.sfx('coin');
       await say(u, `좋아! ${Q.lots}번째 집터를 다듬어 두겠네. 내일이면 새 식구가 이사 올 걸세.`);
     }
@@ -513,6 +515,7 @@ async function talkUjik() {
 export async function intro() {
   const u = npcOf('ujik');
   for (const [, line] of NPC_TALK.intro) await say(u, line, { loan: fmt(LOANS[0]) });
+  await say(u,'광장 작업대에서 주운 나무와 돌로 도구를 만들 수 있다네. 게시판에서 풀잎 들녘으로 가면 노동 갑옷 씨가 일손과 토벌 동료를 찾고 있어.');
   S.flags.intro = true;
   mailLetter();
   save();
@@ -531,6 +534,9 @@ async function talkVisit(n) {
 // ---------------------------------------------------------------- 건물 드나들기
 function wrapNpc(id) { const def = VILLAGERS[id]; return { id, name: def.name, pitch: PERSONALITY[def.p].pitch }; }
 function roomSpec(b) {
+  if(b.type==='campsite')return campsiteSpec();
+  if(b.type==='atelier')return atelierSpec();
+  if(S.flags.campStart && S.player.houseLv===0 && b.type==='hall')return {id:'hall',w:5,h:4,wall:'wall_tent',floor:'floor_mat',items:[{id:'f_log_stool',x:0,y:0,r:0}],npcDefs:[{model:'npc_ujik',name:NPCS.ujik.name,x:2.6,z:1.4,fixed:true,talk:()=>runScript(talkUjik)}]};
   if (b.type === 'home') {
     const lv = S.player.houseLv, [w, h] = ROOM_SIZE[lv];
     return { id: 'home', w, h, wall: lv < 1 ? 'wall_tent' : S.home.wall, floor: lv < 1 ? 'floor_mat' : S.home.floor, items: S.home.items, editable: true };
@@ -570,6 +576,7 @@ export async function enter(b) {
   await runScript(async () => {
     if (G.visit) { await narr('놀러 온 마을에서는 건물에 들어가지 않는다. 밖에서 같이 놀자!'); return; }
     const h = hourF();
+    if(['atelier','campsite'].includes(b.type) && b.ready>S.day){await narr('공사 중이에요. 내일 문을 열어요.');return;}
     if (b.type === 'museum' && S.prog.museum < 1) { await narr(S.prog.pend.museum ? '말뚝과 줄이 쳐져 있다. 내일이면 두루의 조사 천막이 선다고 한다.' : '아직 빈 터다. 팻말에 "박물관 자리"라고 적혀 있다.'); return; }
     if (b.type === 'shop' && (h < 8 || h >= 22)) { Sound.sfx('fail'); await narr('문이 잠겨 있다. 팻말에 "아침 8시부터 밤 10시까지"라고 적혀 있다.'); return; }
     if (b.type === 'house') {

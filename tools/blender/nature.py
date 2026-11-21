@@ -17,7 +17,13 @@ def puffs(spec):
     """잎 뭉치: [(x, y, z, 반지름, 재질, 세밀함), ...]"""
     big = sorted((q[3] for q in spec), reverse=True)[:3]
     for (x, y, z, r, mt, sub) in spec:
-        ball((x, y, z), r, mt, (1, 1, 0.92), sub=3 if r >= big[-1] else 2)
+        lean = .10*math.sin(x*4+y*2)
+        ball((x+lean, y, z), r, mt, (1.08,.93,.86), rot=(5,lean*74,13),sub=3)
+        if r >= big[-1]:
+            for k in range(4):
+                a = k*1.57+x*3.1
+                ball((x+.66*r*math.cos(a),y+.59*r*math.sin(a),z+r*.41),r*.45,mt,
+                     (1.12,.94,.67),rot=(8,10,k*43),sub=2)
 
 
 def tree_fruit():
@@ -177,7 +183,9 @@ def flower(species):
     with Model('flower_' + species):
         spots = [(-0.2, 0.12, 0.3), (0.2, 0.08, 0.34), (0.0, -0.16, 0.26)]
         for (x, y, h) in spots:
-            cyl((x, y, 0), 0.02, h, 'stem', seg=5)
+            bx,by=x-.035,y+.026
+            tube((bx,by,0),(x-.025,y+.015,h*.51),.014,'stem',r2=.012,seg=7)
+            tube((x-.025,y+.015,h*.51),(x,y,h+.02),.012,'stem',r2=.009,seg=7)
             ball((x - 0.07, y, h * 0.45), 0.07, 'stem', (1, 0.45, 0.3), rot=(0, 25, 0))
             ball((x + 0.07, y, h * 0.6), 0.07, 'stem', (1, 0.45, 0.3), rot=(0, -25, 0))
             z = h + 0.03
@@ -185,7 +193,7 @@ def flower(species):
                 ball((x, y, z + 0.03), 0.085, 'petal', (0.9, 0.9, 1.2))
                 for a in (0, 120, 240):
                     r = math.radians(a)
-                    cone((x + math.cos(r) * 0.04, y + math.sin(r) * 0.04, z + 0.06), 0.045, 0.1, 'petal', seg=5)
+                    ball((x+math.cos(r)*.048,y+math.sin(r)*.048,z+.061),1,'petal',(.044,.045,.074),rot=(10,14,a),sub=3)
             elif species == 'cosmos':
                 for i in range(8):
                     r = 2 * math.pi * i / 8
@@ -278,7 +286,19 @@ def shells():
         ball((0, -0.02, 0.1), 0.06, '#fff6fa', sub=2)
 
 
+def field_wisp():
+    with Model('field_wisp'):
+        ball((0,0,.38),1,'#b69ab9',(.49,.40,.37),sub=3)
+        for s in (-1,1):
+            ball((s*.37,.04,.43),1,'#d4bed4',(.22,.22,.24),sub=3)
+            ball((s*.21,-.07,.62),1,'#ddd1e6',(.24,.24,.23),sub=3)
+            ball((s*.14,-.366,.39),1,'#513e51',(.032,.028,.046),sub=3)
+            ball((s*.235,-.315,.32),1,'#eaa6b8',(.053,.025,.028),sub=2)
+            ball((s*.21,-.03,.09),1,'#876e96',(.125,.15,.08),sub=3)
+        tube((-.045,-.395,.30),(.04,-.395,.30),.012,'#614763',seg=7)
+
 def build():
+    field_wisp()
     tree_fruit(); tree_blossom(); tree_pine(); bigtree(); grass(); small_things()
     for sp in ('tulip', 'cosmos', 'pansy', 'mum'):
         flower(sp)

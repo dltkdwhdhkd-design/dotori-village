@@ -1,7 +1,7 @@
 // 마을의 상태: 지형, 칸마다 놓인 것, 묻힌 것. 저장/불러오기도 여기서.
 import { generateVillage, MAP_W, MAP_H, G, WK, WALKABLE } from './mapgen.js';
 
-const SOLID = new Set(['tree', 'stump', 'rock', 'fix', 'bld', 'hole']);
+const SOLID = new Set(['tree', 'stump', 'rock', 'fix', 'bld', 'hole','decor','decorPart']);
 
 export class Village {
   constructor(d) {

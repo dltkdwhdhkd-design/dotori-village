@@ -57,17 +57,19 @@ export function worldInfo() {
   if (G.visit) return G.visit.info;
   const P = S.prog || { shop: 2, museum: 2, pend: {} }, lots = {};
   for (const [id, v] of Object.entries(S.villagers)) lots[v.lot] = id;
-  return { shop: P.shop, museum: P.museum, pm: !!P.pend.museum, sites: P.pend.sites || [], lv: S.player.houseLv, lots };
+  return { shop:P.shop, museum:P.museum, pm:!!P.pend.museum, sites:[...(P.pend.sites||[]),...(S.islandLife?.projects||[]).map(p=>p.lot)], lv:S.player.houseLv, lots, camp:!!S.flags.campStart && S.player.houseLv===0, day:S.day };
 }
 
 export function buildWorld(village) {
-  if (G.world) { G.stage.scene.remove(G.world.root); }
+  if (G.world) { G.stage.scene.remove(G.world.root); G.world.dispose(); }
   village.listeners = village.listeners.filter((f) => f.keep);      // 앞서 그렸던 화면이 걸어 둔 것은 떼어 낸다
   G.village = village;
   G.world = new WorldView(G.stage, village, {
     buildingLook: (b) => {
-      if (b.type === 'hall') return { model: 'hall' };
       const I = worldInfo();
+      if (b.type === 'hall') return { model: I.camp ? 'tent_museum' : 'hall' };
+      if (b.type==='atelier'||b.type==='campsite') return {model:b.ready>I.day?'site':b.type==='atelier'?'atelier':'tent_home',scale:b.type==='campsite'?.76:1};
+      if (I.camp && b.type==='house' && I.lots[b.lot])return {model:'tent_home',scale:.79};
       if (b.type === 'shop') return { model: I.shop >= 2 ? 'shop' : 'tent_shop' };
       if (b.type === 'museum') return I.museum >= 2 ? { model: 'museum' } : I.museum === 1 ? { model: 'tent_museum' } : I.pm ? { model: 'site' } : null;
       if (b.type === 'home' && I.lv < 1) return { model: 'tent_home' };
@@ -85,6 +87,8 @@ export function buildWorld(village) {
       if (it.kind === 'tool') return it.model;
       return it.model || 'bundle';
     },
+    decorSize:id=>[ITEMS[id]?.w||1,ITEMS[id]?.d||1],
+    decorModel: id=>ITEMS[id]?.model || 'bundle',
     itemTint: (id) => (ITEMS[id] && ITEMS[id].tint && !['wall', 'floor'].includes(ITEMS[id].kind) ? ITEMS[id].tint : undefined),
     itemScale: (id) => { const it = ITEMS[id]; if (!it) return 1; if (it.kind === 'fish' || it.kind === 'misc') return 0.8; if (it.kind === 'tool') return 0.7; return it.scale ? Math.min(it.scale, 1.5) : 1; },
   });

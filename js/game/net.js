@@ -249,7 +249,7 @@ function applyTiles(m, fromHost) {
     for (const e of m.l.slice(0, 60)) {
       if (!Array.isArray(e)) continue;
       const i = e[0] | 0; if (i < 0 || i >= MAP_W * MAP_H) continue;
-      const cur = v.objs[i]; if (cur && (cur.t === 'bld' || cur.t === 'fix')) continue;
+      const cur = v.objs[i]; if (cur && (['bld','fix','decor','decorPart'].includes(cur.t))) continue;
       const o = cleanObj(e[1]); if (o === undefined) continue;
       if (fromHost) { if (typeof e[2] === 'string' && ITEMS[e[2]]) v.buried[i] = e[2]; else delete v.buried[i]; }      // 땅에 묻는 것은 방장만 한다
       v.set(i % MAP_W, (i / MAP_W) | 0, o);
@@ -262,6 +262,7 @@ function sendSnap(to) {
   send({ t: 'snap', to, v: G.village.serialize(), info: worldInfo(), seed: S.seed, off: Clock.offsetMin, vn: S.village.name, hn: S.player.name });
 }
 export async function openGate() {
+  if(G.room?.area)return UI.toast('귀가한 뒤 우리 마을의 문을 열 수 있어요.');
   if (Net.role) return;
   Net.role = 'host'; Net.state = 'opening'; Net.err = ''; Net.code = String(1000 + Math.floor(Math.random() * 9000)); Net.day = S.day;
   changed();
@@ -284,6 +285,7 @@ function cleanInfo(i) {
   const o = { shop: 0, museum: 0, pm: false, sites: [], lv: 1, lots: {} };
   if (!i || typeof i !== 'object') return o;
   o.shop = num(i.shop, 0, 2) | 0; o.museum = num(i.museum, 0, 2) | 0; o.pm = !!i.pm; o.lv = num(i.lv, 0, 3, 1) | 0;
+  o.camp=!!i.camp; o.day=num(i.day,0,100000,0)|0;
   if (Array.isArray(i.sites)) o.sites = i.sites.slice(0, 12).map((n) => n | 0);
   if (i.lots && typeof i.lots === 'object') for (const [k, v] of Object.entries(i.lots).slice(0, 16)) if (VILLAGERS[v]) o.lots[+k | 0] = v;
   return o;

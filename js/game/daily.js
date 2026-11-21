@@ -103,11 +103,18 @@ function dailyMail(day) {
 }
 
 /** 빈 집터 하나에 새 이웃을 들인다 */
-function moveIn(day, r, want = null) {
+function moveIn(day, r, want = null, chosen = null) {
   const used = new Set(Object.values(S.villagers).map((s) => s.lot));
   const free = [...Array(G.village.lots.length).keys()].filter((l) => !used.has(l));
   if (!free.length || !S.waiting.length) return false;
-  const id = S.waiting.shift(), lot = want != null && free.includes(want) ? want : r.pick(free);
+  const held=S.islandLife?.projects||[], contacts=S.islandLife?.contacts||[];
+  const candidates=S.waiting.filter(k=>!held.some(p=>p.id===k));
+  const id=chosen||candidates.find(k=>!contacts.includes(k))||(want!=null?candidates[0]:null);
+  const allowed=free.filter(l=>!held.some(p=>p.lot===l&&p.id!==chosen) && (l===want || !(S.prog.pend.sites||[]).includes(l)));
+  if(!id||!S.waiting.includes(id)||!allowed.length|| (want!=null&&!allowed.includes(want)))return false;
+  const lot=want!=null?want:r.pick(allowed);
+  S.waiting.splice(S.waiting.indexOf(id),1);
+  if(contacts.includes(id))S.islandLife.contacts=contacts.filter(k=>k!==id);
   S.villagers[id] = { lot, friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 };
   S.residents.push(id);
   const b = G.village.buildings.find((bb) => bb.lot === lot);
@@ -139,7 +146,17 @@ function progressDay(day) {
     mail('duru', '두루', P.museum === 1 ? `${S.player.name} 님께.\n\n처음 인사드립니다. 생물을 연구하는 두루입니다.\n마을에 조사 천막을 쳤으니,\n잡으신 물고기와 곤충을 보여 주시면 고맙겠습니다.\n\n두루 드림` : `${S.player.name} 님께.\n\n박물관이 문을 열었습니다.\n화석관과 곤충관, 민물·바다 수족관에서\n기증하신 것들을 직접 보실 수 있습니다.\n\n관장 두루 드림`, null);
   }
   if (pd.bridge && day >= pd.bridge) { delete pd.bridge; P.bridge = 2; buildBridge(); mail('ujik', '우직 이장', `${S.player.name}에게.\n\n강에 둘째 다리가 놓였네.\n이제 오가기가 한결 편할 걸세.\n\n이장 우직`, null); }
-  while (pd.movein.length && day >= pd.movein[0]) { pd.movein.shift(); moveIn(day, r, (pd.sites || []).shift()); }
+  while(pd.movein.length && day>=pd.movein[0]){
+    if(!moveIn(day,r,pd.sites?.[0]))break;
+    pd.movein.shift();pd.sites?.shift();
+  }
+  for(const p of [...(S.islandLife?.projects||[])]){
+    if(p.day && p.day<=day && moveIn(day,r,p.lot,p.id)){
+      S.islandLife.projects=S.islandLife.projects.filter(q=>q!==p);
+      P.lots=Math.min(3,P.lots+1);
+    }
+  }
+  for(const b of G.village.buildings)if(['atelier','campsite'].includes(b.type)||(S.flags.campStart&&['hall','house'].includes(b.type)))G.world?.refreshBuilding(b);
   P.tasks = P.tasks.filter((t) => t.n > 0);            // 손대지 않은 일감은 날마다 새것으로 바뀐다
   fillTasks(); checkAch(); refreshGoal();
 }

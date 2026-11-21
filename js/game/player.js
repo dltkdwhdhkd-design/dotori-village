@@ -24,7 +24,7 @@ export function colliderOf(o) {
   if (o.t === 'rock') return 0.42;
   if (o.t === 'stump') return 0.3;
   if (o.t === 'hole') return 0.36;
-  if (o.t === 'bld') return true;
+  if (o.t === 'bld'||o.t==='decor'||o.t==='decorPart') return true;
   if (o.t === 'fix') return { lamp: 0.2, mailbox: 0.24, bigtree: 0.78 }[o.kind] || true;
   return 0;
 }
@@ -126,7 +126,7 @@ export class Player {
     // 도구 바꾸기
     const all = ['tool_net', 'tool_rod', 'tool_shovel', 'tool_axe', 'tool_can'];
     for (let i = 0; i < 5; i++) if (Input.take('t' + (i + 1)) && hasItem(all[i])) this.equip(S.player.tool === all[i] ? null : all[i]);
-    if (Input.take('cycle')) this.cycleTool();
+    if (!G.room?.editable && Input.take('cycle')) this.cycleTool();
     if (Input.take('put')) this.equip(null);
 
     // 이동
@@ -181,7 +181,12 @@ export class Player {
     }
     return best;
   }
-  wouldTalk() { return !!this.npcInFront() || !!this.doorInFront(); }
+  wouldTalk() {
+    if(this.npcInFront()||this.doorInFront())return true;
+    if(G.room)return false;
+    const {tx,ty}=this.front(),o=G.village.obj(tx,ty);
+    return ['board','mailbox','bigtree','workbench'].includes(o?.kind)||o?.t==='decor'||o?.t==='decorPart'||G.village.terrainAt(tx,ty)===T.DOCK;
+  }
   doorInFront() {
     if (G.room || Math.cos(this.yaw) > -0.5) return null;
     const v = G.village, px = Math.floor(this.x), py = Math.floor(this.z);
@@ -199,6 +204,9 @@ export class Player {
     if (this.doorInFront()) return K('Space', '들어가기');
     const v = G.village, f = this.front(), o = v.obj(f.tx, f.ty), tool = S.player.tool;
     if (o && o.t === 'fix') { if (o.kind === 'mailbox') return K('Space', '우체통 열기'); if (o.kind === 'board') return K('Space', '게시판 보기'); if (o.kind === 'bigtree') return K('Space', '올려다보기'); }
+    if(o?.t==='fix' && o.kind==='workbench')return K('Space','DIY 작업대');
+    if(o?.t==='decor'||o?.t==='decorPart')return K('Space','가구 돌리기 · 회수');
+    if(v.terrainAt(f.tx,f.ty)===T.DOCK && !G.visit)return K('Space','마을 여행');
     const under = v.obj(Math.floor(this.x), Math.floor(this.z));
     const pk = (o && ['item', 'flower', 'weed'].includes(o.t)) || (under && ['item', 'weed'].includes(under.t));
     let h = '';
@@ -229,9 +237,12 @@ export class Player {
     }
     if (o && o.t === 'fix') {
       if (o.kind === 'mailbox') return G.hooks.openMail();
-      if (o.kind === 'board') return G.hooks.board();
+      if (o.kind === 'board') return G.hooks.noticeboard();
+      if (o.kind === 'workbench') return G.hooks.workshop();
       if (o.kind === 'bigtree') return G.hooks.bigTree();
     }
+    if(!G.visit && (o?.t==='decor'||o?.t==='decorPart'))return G.hooks.yardMenu(f.tx,f.ty);
+    if(!G.visit && v.terrainAt(f.tx,f.ty)===T.DOCK)return G.hooks.travel();
     if (tool === 'tool_rod') return this.cast();
     if (tool === 'tool_net') return;
     if (tool === 'tool_shovel') return this.shovel(f, o);

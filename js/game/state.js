@@ -70,7 +70,7 @@ export function loadGame() {
     // 옛 저장에 없는 항목 채우기
     S.daily = Object.assign({ coinTrees: [], nestTrees: [], furnTrees: [], moneyRock: -1, rockHits: 0, shaken: [], stones: {} }, S.daily || {});
     S.stats = Object.assign({ fish: 0, bug: 0, days: 1, earned: 0 }, S.stats || {});
-    S.flags = S.flags || {}; S.mail = S.mail || []; S.storage = S.storage || []; S.waiting = S.waiting || [];
+    S.flags = S.flags || {}; S.mail = S.mail || []; S.storage = S.storage || []; S.waiting = S.waiting || VILLAGER_IDS.filter(id=>!S.residents.includes(id));
     while (S.inv.length < INV_SIZE) S.inv.push(null);
     return S;
   } catch (e) { console.warn('불러오기 실패', e); return null; }

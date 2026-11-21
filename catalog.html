@@ -39,8 +39,8 @@ if (b === 'looks') {
   LK.MOUTH.forEach((n, i) => add('face', n, { mouth: i + 1 }));
   LK.CHEEK.forEach((n, i) => add('face', '볼: ' + n, { cheek: i }));
   LK.GLASS.slice(1).forEach((n, i) => add('face', n, { glass: i + 1 }));
-  LK.OUTFIT.forEach((o, i) => add('wear', o.ko, { outfit: i + 1, top: [0, 5, 2, 9, 4, 8][i], bot: [6, 12, 3, 5, 11, 6][i] }));
-  LK.OUTFIT.forEach((o, i) => add('wear', o.ko + ' (뒤)', { outfit: i + 1, top: [0, 5, 2, 9, 4, 8][i], bot: [6, 12, 3, 5, 11, 6][i] }, { yaw: 2.6 }));
+  LK.OUTFIT.forEach((o, i) => add('wear', o.ko, { outfit: i + 1, top: [0, 5, 2, 9, 4, 8, 9][i], bot: [6, 12, 3, 5, 11, 6, 13][i] }));
+  LK.OUTFIT.forEach((o, i) => add('wear', o.ko + ' (뒤)', { outfit: i + 1, top: [0, 5, 2, 9, 4, 8, 9][i], bot: [6, 12, 3, 5, 11, 6, 13][i] }, { yaw: 2.6 }));
   LK.HAT.slice(1).forEach((h, i) => add('hat', h.ko, { hat: i + 1, hatc: [3, 0, 5, 7, 8, 8, 4][i], hair: [1, 2, 5, 6, 3, 7, 8][i] }));
   LK.HAT.slice(1).forEach((h, i) => add('hat', h.ko + ' (옆)', { hat: i + 1, hatc: [3, 0, 5, 7, 8, 8, 4][i], hair: [1, 2, 5, 6, 3, 7, 8][i] }, { yaw: -1.2 }));
   LK.SKIN.forEach((c, i) => add('color', '피부 ' + (i + 1), { skin: i, hair: 4, hairc: i % 3 }));

@@ -84,6 +84,14 @@ export class WorldView {
     village.onChange((i, x, y) => { this.refresh(i, x, y); this.refreshMark(i); });
   }
 
+  dispose() {
+    const t=this.terrain;
+    for(const m of [t.ground,t.water]) {m.geometry.dispose();m.material.dispose();}
+    for(const tex of [t.groundTex,t.detTex,t.maskTex])tex?.dispose();
+    this.grass.traverse(o=>{if(o.isInstancedMesh)o.geometry.dispose();});
+    this.root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});
+    this.glowMat.dispose();
+  }
   gy(x, z) { return this.terrain.heightAt(x, z); }
 
   // ---------------------------------------------------------------- 고정된 것들
@@ -223,6 +231,7 @@ export class WorldView {
     const look = this.hooks.buildingLook(b);
     const o = look ? make(look.model, { tint: look.tint }) : make('sign_lot');
     o.position.set(b.x + b.w / 2, 0, b.y + b.d / 2 + (look ? 0 : 0.5));
+    if(look?.scale)o.scale.setScalar(look.scale);
     o.userData.b = b;
     this.root.add(o);
     this.bldObjs.set(b.id, o);
@@ -256,9 +265,11 @@ export class WorldView {
       g = make(this.hooks.itemModel(o.id), this.hooks.itemTint ? { tint: this.hooks.itemTint(o.id) } : {});
       g.rotation.y = (h - 0.5) * 1.2; shadow = 0.22;
       if (this.hooks.itemScale) g.scale.setScalar(this.hooks.itemScale(o.id));
+    } else if(o.t==='decor'){
+      g=make(this.hooks.decorModel(o.id));g.rotation.y=-(o.r||0)*Math.PI/2;shadow=.38;
     } else if (o.t === 'fix') {
       if (o.kind === 'part') return null;
-      const nm = o.kind === 'boulder' ? 'boulder' + (o.v || 1) : o.kind;
+      const nm = o.kind === 'boulder' ? 'boulder' + (o.v || 1) : o.kind==='workbench'?'workbench':o.kind;
       g = make(nm);
       if (o.kind === 'boulder') g.rotation.y = h * 6.28;
       shadow = { bigtree: 2.3, lamp: 0.22, boulder: 0.9, mailbox: 0.25, board: 0.6 }[o.kind] || 0;
@@ -273,6 +284,7 @@ export class WorldView {
     if (!g) return null;
     if (o.t === 'flower' || o.t === 'weed' || o.t === 'item' || o.t === 'hole' || (o.t === 'tree' && o.stage === 0)) g.traverse((n) => { n.castShadow = false; });   // 자잘한 것은 그림자 생략
     g.position.set(x + 0.5, this.gy(x + 0.5, y + 0.5), y + 0.5);
+    if(o.t==='decor'){const d=this.hooks.decorSize?.(o.id) || [1,1];g.position.x+=((o.r%2?d[1]:d[0])-1)/2;g.position.z+=((o.r%2?d[0]:d[1])-1)/2;}
     if (shadow) { const sh = makeBlobShadow(shadow / g.scale.x, 0.28); sh.userData.noFade = true; g.add(sh); }
     g.userData.o = o;
     return g;

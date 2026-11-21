@@ -37,6 +37,7 @@ export class Room {
 
   build() {
     const { w, h } = this;
+    if(this.landscape){this.landscape(this);} else {
     const floorT = roomTexture(this.floor).clone(); floorT.needsUpdate = true; floorT.repeat.set(w / 2, h / 2);
     const fm = new THREE.Mesh(new THREE.PlaneGeometry(w, h), patchMaterial(new THREE.MeshLambertMaterial({ map: floorT })));
     fm.rotation.x = -Math.PI / 2; fm.position.set(w / 2, 0, h / 2); this.group.add(fm); this.floorMesh = fm;
@@ -67,6 +68,7 @@ export class Room {
       box(0.12, 2.1, 0.12, pt.x - 0.68, 1.05, 0.06, trim); box(0.12, 2.1, 0.12, pt.x + 0.68, 1.05, 0.06, trim); box(1.48, 0.12, 0.12, pt.x, 2.12, 0.06, trim);
       const s = signMesh(pt.label, 1.16, 0.3); s.position.set(pt.x, 1.74, 0.07); this.group.add(s);
       box(1.1, 0.02, 0.5, pt.x, 0.011, 0.3, patchMaterial(new THREE.MeshLambertMaterial({ color: 0xb85a4a })));
+    }
     }
     this.rebuildItems();
     for (const n of this.npcDefs || []) this.addNpc(n);
@@ -99,7 +101,7 @@ export class Room {
   }
   /** 가구가 아닌 것이 차지한 칸을 막는다 */
   block(x0, y0, x1 = x0, y1 = y0) {
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x >= 0 && y >= 0 && x < this.w && y < this.h) { this.blocks.push([x, y]); this.occ[y * this.w + x] = -2; }
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x >= 0 && y >= 0 && x < this.w && y < this.h) { this.blocks.push([x, y]); if(this.occ)this.occ[y * this.w + x] = -2; }
   }
   portalAt(x) { return (this.portals || []).find((q) => Math.abs(x - q.x) < 0.5) || null; }
 
@@ -112,7 +114,7 @@ export class Room {
     return n;
   }
 
-  dispose() { G.stage.scene.remove(this.group); }
+  dispose() { G.stage.scene.remove(this.group); if(this.floorResource){this.floorResource.material.map.dispose();this.floorResource.material.dispose();this.floorResource.geometry.dispose();this.outskirts?.material.dispose();this.outskirts?.geometry.dispose();} this.hunt?.ring?.material.dispose();this.hunt?.ring?.geometry.dispose(); }
   focus(px, pz) { return { x: this.w / 2 + (px - this.w / 2) * 0.45, z: this.h / 2 + (pz - this.h / 2) * 0.5 + 0.9 }; }
 
   free(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.occ[y * this.w + x] === -1; }
@@ -147,7 +149,7 @@ export class Room {
         }
       }
     }
-    for (const n of this.npcs) { const dx = x - n.x, dz = z - n.z, d = Math.hypot(dx, dz); if (d < 0.6 && d > 1e-4) { x = n.x + (dx / d) * 0.6; z = n.z + (dz / d) * 0.6; } }
+    for (const n of this.npcs) { if(n.visible===false)continue; const dx = x - n.x, dz = z - n.z, d = Math.hypot(dx, dz); if (d < 0.6 && d > 1e-4) { x = n.x + (dx / d) * 0.6; z = n.z + (dz / d) * 0.6; } }
     return { x, z };
   }
 

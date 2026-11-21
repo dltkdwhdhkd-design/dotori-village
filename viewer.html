@@ -19,9 +19,9 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9fd88a);
-scene.add(new THREE.HemisphereLight(0xffffff, 0xa8c890, 2.2));
-const sun = new THREE.DirectionalLight(0xfff2dc, 2.2); sun.position.set(-4, 9, 6); scene.add(sun);
+scene.background = new THREE.Color(b==='chars'?0xf3ede4:0xa9cab4);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xe9d3c4, 2.05));
+const sun = new THREE.DirectionalLight(0xfff4e6, 1.85); sun.position.set(-4, 9, 6); scene.add(sun);
 const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 500);
 function label(text) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 40;
@@ -33,13 +33,13 @@ let names = [];
 const LOOK = await import('./js/game/look.js');
 if (b === 'chars') {
   const list = await (await fetch('./assets/chars/chars.json?v=' + VERSION)).json();
-  for (const id of Object.keys(list)) { try { await loadSingle('./assets/chars/' + list[id].file + '?v=' + VERSION, id); names.push(id); } catch (e) { console.warn(id, e); } }
+  for (const id of ['player_custom', ...Object.keys(list).filter(k => k !== 'player_custom')]) { try { await loadSingle('./assets/chars/' + list[id].file + '?v=' + VERSION, id); names.push(id); } catch (e) { console.warn(id, e); } }
 } else {
-  await loadBundle('./assets/models/' + b + '.glb');
+  await loadBundle('./assets/models/' + b + '.glb?v=' + VERSION);
   names = Object.keys(MODELS);
 }
 const only = q.get('m'); if (only) names = names.filter(n => only.split(',').some(k => n.includes(k)));
-const sp = +(q.get('sp') || (b === 'chars' ? 2.2 : 4)), cols = +(q.get('cols') || Math.ceil(Math.sqrt(names.length * 1.8)));
+const sp = +(q.get('sp') || (b === 'chars' ? 2.2 : 4)), cols = +(q.get('cols') || Math.min(names.length,Math.ceil(Math.sqrt(names.length * 1.8))));
 names.forEach((n, i) => {
   const o = make(n); const x = (i % cols) * sp, z = Math.floor(i / cols) * sp;
   o.position.set(x, 0, z); scene.add(o);

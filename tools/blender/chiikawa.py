@@ -185,14 +185,46 @@ def rakko(head, tail):
     for j in range(3):
         for i in range(32):
             a=j*33+i; faces.append((a,a+1,a+34,a+33))
-    poly(verts,faces,'#fff2db',smooth=True)
-    lathe([(.425,0),(.445,.016),(.462,.053),(.459,.091),(.443,.103)],'#faf2df',
+    poly(verts,faces,'#fffaf2',smooth=True)
+    lathe([(.425,0),(.445,.016),(.462,.053),(.459,.091),(.443,.103)],'#fffaf4',
           center=(0,0,.431),scale=(1,.82),seg=40)
     with tail:
-        ball((0,.281,.264),1,'#f4debb',(.118,.20,.073),sub=3)
-    capsule((.38,-.015,.41),(.475,.09,.77),.024,'#8e604c')
-    tube((.38,-.015,.41),(.28,-.065,.123),.033,'#526475',seg=10)
-    box((.422,.025,.574),(.14,.061,.033),'#d4af6d',rot=(0,-17,0),bevel=.008)
+        ball((0,.250,.264),1,'#f4debb',(.098,.114,.065),sub=3)
+
+
+def back_sword():
+    """랏코 봉제인형 S의 후면 사진. 허리 오른쪽 흰 망토에 붙는 짧은 갈색 칼집."""
+    leather, piping = '#925138', '#693b30'
+    ivory, engraved = '#f6f2ef', '#a8a0a2'
+    # Along-axis coordinates run from the five-sided tip to the little flat pommel.
+    def surface(t,u,depth):
+        x = -.164 - .311*t + .834*u
+        z = .184 + .473*t + .551*u
+        head = DEPTH * math.sqrt(max(0,radius(z)**2-x*x))
+        cloth_r = .557 - .106*max(0,min(1,(z-.177)/.343))
+        cloth = .82*math.sqrt(max(0,cloth_r**2-x*x)) if z<.54 else 0
+        return (x,max(head,cloth)+.031+depth,z)
+    def piece(rows,color,thick):
+        verts,faces=[],[]
+        for t,w in rows:
+            for u,h in [(-w*.87,0),(-w,.008),(-w,thick-.006),(-w*.88,thick),
+                        (w*.88,thick),(w,thick-.006),(w,.008),(w*.87,0)]:
+                verts.append(surface(t,u,h))
+        for j in range(len(rows)-1):
+            for i in range(8):
+                k=j*8+i;n=j*8+(i+1)%8
+                faces.append((k,n,n+8,k+8))
+        faces.extend([tuple(range(7,-1,-1)),tuple(range(len(verts)-8,len(verts)))])
+        poly(verts,[tuple(reversed(f)) for f in faces],color,smooth=False)
+    piece([(0,.005),(.095,.076),(.16,.079),(.39,.068),(.66,.053)],leather,.033)
+    for side in (-1,1):
+        pts=[surface(t,side*w,.035) for t,w in [(.045,.007),(.116,.061),(.18,.064),(.39,.054),(.635,.039)]]
+        for a,b in zip(pts,pts[1:]): tube(a,b,.0025,piping,seg=6)
+    piece([(.64,.070),(.65,.081),(.704,.081),(.71,.069)],ivory,.045)
+    piece([(.71,.040),(.74,.040),(.9,.037),(.944,.040)],ivory,.032)
+    for t in (.766,.835,.898):
+        tube(surface(t,-.034,.033),surface(t+.012,.035,.033),.0032,engraved,seg=6)
+    piece([(.94,.047),(.945,.059),(.993,.059),(1,.05)],ivory,.039)
 
 
 def shisa(head, tail):
@@ -303,7 +335,8 @@ def small_friend(name):
                        (.338,.391),(.339,.495),(.31,.574),(.235,.609),(0,.625)],
                       fur,seg=48,scale=(1,.81))
             else:
-                ball((0,0,.255),1,fur,(.27,.21,.14),sub=3)
+                lathe([(0,.132),(.14,.132),(.216,.154),(.266,.202),(.284,.282),
+                       (.296,.371),(.293,.482),(.247,.546),(0,.566)],fur,seg=40,scale=(1,.78))
         tail=m.part('tail',(0,.235,.31)) if key not in ('jangkki',) and not night else None
         with head:
             profile = PROFILE
@@ -338,11 +371,16 @@ def small_friend(name):
                         x=s*.282+dx
                         stroke([(x-.008,.666),(x+.008,.714)],.007,INK,.018)
                 features(m,style.__name__)
+        if key=='beomi':
+            with body: back_sword()
         for s,side in [(-1,'R'),(1,'L')]:
             shoulder=(s*.316,-.017,.488) if is_hachi else (s*.418,-.026,.544)
             with m.part('arm_'+side,shoulder):
                 if is_hachi:
                     ball((s*.369,-.037,.420),1,fur,(.054,.065,.130),rot=(-6,-s*22,0),sub=3)
+                elif key=='beomi':
+                    capsule((s*.383,-.098,.451),(s*.245,-.247,.372),.063,fur)
+                    ball((s*.223,-.267,.375),1,'#3d2c2b',(.079,.065,.062),sub=3)
                 elif key=='pongdang' or night:
                     ball((s*.445,-.058,.516),1,fur,(.074,.075,.115),rot=(-9,-s*48,0),sub=3)
                 elif key=='jangkki' and s<0:
@@ -354,15 +392,15 @@ def small_friend(name):
                     ball((s*.436,-.073,.488),1,fur,(.067,.077,.110),rot=(-17,-s*12,0),sub=3)
             leg_x = .134 if is_hachi else .196
             with m.part('leg_'+side,(s*leg_x,0,.17)):
-                ball((s*(leg_x+.007),-.038,.093),1,fur,(.065 if is_hachi else .075,.105,.095),rot=(0,s*8,0),sub=3)
+                ball((s*(leg_x+.007),-.038,.093),1,'#3d2c2b' if key=='beomi' else fur,(.065 if is_hachi else .075,.105,.095),rot=(0,s*8,0),sub=3)
         m.anchor('hand',(-.398,-.055,.335) if is_hachi else (-.454,-.097,.427),'arm_R')
         m.anchor('top',(0,0,(1.30 if night else FRIENDS[key][2])+.08))
 
 
 def armor(name, role):
     gold=role=='ramen'
-    steel,light,edge,joint = (('#cfab61','#e8ce83','#a68349','#655746') if gold else
-                              ('#aab1b8','#d4d9d8','#818995','#565765'))
+    steel,light,edge,joint = (('#d5ca65','#e2d978','#aa9d4f','#625843') if gold else
+                              (('#c9c6c7','#dedadb','#969191','#655c5a') if role=='pochette' else ('#b8aeaa','#cfc4be','#90837f','#5c504e')))
     with Model(name) as m:
         with m.part('body',(0,0,.48)):
             ball((0,0,.70),1,joint,(.222,.173,.264),sub=3)
@@ -380,26 +418,46 @@ def armor(name, role):
                 for s in (-1,1):
                     ball((-.154+s*.07,-.169,.608),.036,'#e89dac',sub=2)
                     ball((-.154+s*.036,-.216,.545),.009,INK,sub=2)
-                ball((-.154,-.222,.526),.008,INK,sub=2)
+                ball((-.154,-.214,.515),1,'#fff3dc',(.054,.015,.037),sub=3)
+                ball((-.154,-.230,.529),.009,INK,sub=2)
+                for s in (-1,1):
+                    capsule((-.154,-.231,.515),(-.154+s*.019,-.229,.506),.004,INK)
         with m.part('head',(0,0,.918)):
-            crown='#fbf3e1' if gold else light
-            lathe([(.106,.899),(.181,.923),(.226,1.003),(.242,1.132),
-                   (.226,1.221),(.173,1.285),(.093,1.323),(0,1.334)],crown,seg=32,scale=(1,.94))
-            ball((0,-.195,1.107),1,edge,(.215,.085,.137),sub=3)
-            ball((0,-.212,1.109),1,light,(.201,.079,.127),sub=3)
+            profile=[(.105,.899),(.158,.922),(.209,.982),(.232,1.056),(.242,1.144),
+                     (.235,1.215),(.201,1.270),(.155,1.307),(.09,1.333),(0,1.343)]
+            lathe(profile,steel,seg=56,scale=(1,.94))
+            def plate(x,z,lift=.005):
+                for (r0,z0),(r1,z1) in zip(profile,profile[1:]):
+                    if z0<=z<=z1:
+                        radius=r0+(r1-r0)*(z-z0)/(z1-z0)
+                        return (x,-.94*math.sqrt(max(.0001,radius*radius-x*x))-lift,z)
+                return (x,0,z)
+            def strip(xs,top,bottom,col,lift):
+                vv=[]
+                for x in xs: vv.extend([plate(x,top(x),lift),plate(x,bottom(x),lift)])
+                poly(vv,[(2*j+1,2*j+3,2*j+2,2*j) for j in range(len(xs)-1)],col,smooth=True)
+            def seam(points,col=edge,r=.005):
+                for a,b in zip(points,points[1:]):capsule(plate(*a,.007),plate(*b,.007),r,col)
+            visor='#463032'
+            xs=[i*.226/28 for i in range(-28,29)]
+            strip(xs,lambda x:1.142+.003*abs(x)/.226,
+                  lambda x:1.116-.025*math.sin(abs(x)/.226*math.pi)+.024*(abs(x)/.226)**5,visor,.010)
             for s in (-1,1):
-                ball((s*.078,-.269,1.145),1,joint,(.108,.028,.025),rot=(0,-s*9,0),sub=3)
-                tube((0,-.064,1.321),(s*.116,-.163,1.265),.006,edge,seg=6)
-                tube((s*.116,-.163,1.265),(s*.20,-.157,1.219),.006,edge,seg=6)
-            tube((0,-.207,1.232),(0,-.238,1.172),.006,edge,seg=7)
-            # 아랫면 통풍구의 격자와 턱 중앙 이음선.
-            ball((0,-.271,1.057),1,joint,(.080,.027,.038),sub=3)
-            for x in (-.046,-.016,.016,.046):
-                for z in (1.049,1.071):
-                    box((x,-.295+abs(x)*.10,z),(.025,.011,.016),'#e8dcbe',bevel=.003)
-            tube((0,-.252,1.017),(0,-.173,.945),.006,edge,seg=6)
-            for s in (-1,1):
-                ball((s*.211,-.083,1.119),.024,light,sub=2)
+                seam([(s*.220,1.076),(s*.175,1.058),(s*.116,1.046),(s*.067,1.061)],edge)
+                seam([(s*.209,1.035),(s*.158,1.020),(s*.075,1.009),(0,1.007)],edge,.004)
+            xs=[i*.072/12 for i in range(-12,13)]
+            strip(xs,lambda x:1.083-.021*(x/.072)**2,lambda x:1.016+.004*(x/.072)**2,visor,.014)
+            for x in (-.046,0,.046):
+                for z in (1.034,1.057):
+                    strip([x-.017,x,x+.017],lambda a:z+.007,lambda a:z-.007,'#fff6dd',.021)
+            seam([(0,1.001),(0,.936)],edge)
+            if gold:
+                lathe([(.244,1.148),(.246,1.168),(.239,1.222),(.209,1.277),(.158,1.316),(.08,1.343),(0,1.353)],
+                      '#fffcf5',seg=56,scale=(1,.96))
+            else:
+                for s in (-1,1):
+                    seam([(0,1.312),(s*.050,1.285),(s*.125,1.26),(s*.18,1.227),(s*.207,1.197)])
+                seam([(0,1.272),(0,1.165)],edge,.004)
         for s,side in [(-1,'R'),(1,'L')]:
             with m.part('arm_'+side,(s*.235,0,.831)):
                 capsule((s*.232,0,.806),(s*.292,-.014,.52),.062,joint)
@@ -413,7 +471,14 @@ def armor(name, role):
                 ball((s*.138,-.013,.143),1,steel,(.08,.077,.108),sub=3)
                 ball((s*.14,-.062,.062),1,steel,(.088,.135,.062),sub=3)
         m.anchor('hand',(-.304,-.045,.493),'arm_R')
-        m.anchor('top',(0,0,1.42))
+        # In the original lineup the helmet fits four times into the standing height.
+        for p in m.parts:
+            if p.name == 'head':
+                for v in p.bm.verts:
+                    v.co.x *= .82
+                    v.co.y *= .84
+                    v.co.z = .918 + (v.co.z-.918)*.78
+        m.anchor('top',(0,0,1.31))
 
 
 RESIDENT_MODELS = {'villager_'+key: small_friend for key in (*FRIENDS,*PAJAMAS)}

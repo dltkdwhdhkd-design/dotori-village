@@ -12,25 +12,25 @@ import { tinted } from '../gfx/models.js';
 export const MODEL = 'player_custom';
 
 export const SKIN = ['#ffe6d2', '#ffdcc0', '#f5cba8', '#e8b890', '#cf9c78', '#b07c58', '#8c5c42'];
-export const HAIRC = ['#2e2a36', '#4a3324', '#6a4530', '#b8682e', '#e8c060', '#c8503c', '#f08aa8', '#8a6fd0', '#4a8fd8', '#5fae62', '#e9e7ee'];
-export const EYEC = ['#3b2b28', '#6a4526', '#2f4f8f', '#2f6a44', '#6a3f8a', '#55555e'];
-export const CLOTH = ['#e8574c', '#f08a3c', '#ffd04a', '#6fb86a', '#3fa39a', '#4a90d9', '#40598f', '#8a6fd0', '#f08aa8', '#fff3d6', '#9aa0aa', '#3a3a44', '#7a6a52'];
+export const HAIRC = ['#2e2a36', '#4a3324', '#6a4530', '#b8682e', '#e8c060', '#c8503c', '#f08aa8', '#8a6fd0', '#4a8fd8', '#5fae62', '#e9e7ee', '#a9532d', '#80574c', '#d4ab91'];
+export const EYEC = ['#3b2b28', '#6a4526', '#2f4f8f', '#2f6a44', '#6a3f8a', '#55555e', '#946642', '#6c898b'];
+export const CLOTH = ['#e8574c', '#f08a3c', '#ffd04a', '#6fb86a', '#3fa39a', '#4a90d9', '#40598f', '#8a6fd0', '#f08aa8', '#fff3d6', '#9aa0aa', '#3a3a44', '#7a6a52', '#873f42', '#8d935c', '#bad4db'];
 export const SHOE = ['#8a5a3a', '#e8574c', '#f7f7f2', '#3a3a44', '#4a90d9', '#ffd04a'];
 
-export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리', '옆가르마', '양 갈래 땋기', '웨이브 단발'];
+export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리', '옆가르마', '양 갈래 땋기', '웨이브 단발', '밤톨 가르마', '귀밑 보브', '옆으로 묶은 번'];
 export const FACE = [
   { ko: '기본형', width: 1, height: 1 }, { ko: '동그란 얼굴', width: 1.095, height: .94 },
   { ko: '갸름한 얼굴', width: .93, height: 1.055 },
 ];
 export const BROW = ['부드러운 곡선', '처진 눈썹', '일자 눈썹'];
 export const NOSE = ['삼각 코', '동그란 코', '작은 코'];
-export const EYES = ['또렷한 눈', '동그란 눈', '콩알 눈', '졸린 눈', '웃는 눈', '속눈썹', '놀란 눈'];
+export const EYES = ['또렷한 눈', '동그란 눈', '콩알 눈', '졸린 눈', '웃는 눈', '속눈썹', '놀란 눈', '따뜻한 타원눈'];
 export const MOUTH = ['미소', '고양이 입', '일자 입', '오므린 입', '활짝 웃음'];
 export const CHEEK = ['없음', '발그레', '주근깨', '둘 다'];
 // sl: 소매(sls 짧은 · sll 긴)   leg: pants 긴 바지 · shorts 반바지와 양말 · sock 맨다리와 양말
 export const OUTFIT = [
   { ko: '반소매 티', sl: 'sls', leg: 'pants' }, { ko: '후드티', sl: 'sll', leg: 'pants' }, { ko: '원피스', sl: 'sls', leg: 'sock' },
-  { ko: '멜빵바지', sl: 'sls', leg: 'pants' }, { ko: '줄무늬 옷', sl: 'sll', leg: 'shorts' }, { ko: '저고리와 치마', sl: 'sll', leg: 'sock' },
+  { ko: '멜빵바지', sl: 'sls', leg: 'pants' }, { ko: '줄무늬 옷', sl: 'sll', leg: 'shorts' }, { ko: '저고리와 치마', sl: 'sll', leg: 'sock' }, { ko: '체크 셔츠를 두른 나들이복', sl: 'sls', leg: 'pants' },
 ];
 // cover: 'top' 머리 꼭대기에 얹는 모자(윗머리 hairtop 을 숨긴다) · 'dome' 푹 눌러쓰는 모자(앞머리 hairfr 도 숨긴다)   color: 모자 색을 고를 수 있다
 export const HAT = [
@@ -46,7 +46,7 @@ export const PRESETS = [
   { skin: 1, hair: 3, hairc: 3, eyes: 6, eyec: 1, mouth: 1, cheek: 1, outfit: 3, top: 2, bot: 3, shoe: 1, hat: 0, hatc: 8, glass: 0 },
   { skin: 3, hair: 4, hairc: 1, eyes: 2, eyec: 0, mouth: 5, cheek: 1, outfit: 4, top: 9, bot: 5, shoe: 0, hat: 2, hatc: 3, glass: 0 },
 ];
-export const defaultLook = () => ({ ...PRESETS[0], face: 0, brow: 0, nose: 0 });
+export const defaultLook = () => ({ ...PRESETS[0], hair: 13, hairc: 11, eyes: 8, eyec: 6, outfit: 7, top: 9, bot: 13, shoe: 4, hat: 0, face: 0, brow: 0, nose: 1 });
 
 const LIMIT = { skin: [0, SKIN.length - 1], hair: [1, HAIR.length], hairc: [0, HAIRC.length - 1], eyes: [1, EYES.length], eyec: [0, EYEC.length - 1], mouth: [1, MOUTH.length],
   cheek: [0, CHEEK.length - 1], outfit: [1, OUTFIT.length], top: [0, CLOTH.length - 1], bot: [0, CLOTH.length - 1], shoe: [0, SHOE.length - 1], hat: [0, HAT.length - 1], hatc: [0, CLOTH.length - 1], glass: [0, GLASS.length - 1],
@@ -102,7 +102,7 @@ export function partsOf(L) {
 /** 재질 이름 → 색 */
 export function tintOf(L) {
   const skin = SKIN[L.skin], top = CLOTH[L.top], hat = CLOTH[L.hatc];
-  return { p_skin: skin, p_nose: mix(skin, '#d56343', 0.56), p_hair: HAIRC[L.hairc], p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
+  return { ...Object.fromEntries([1,2,3,4,5].map(i=>['p_blush'+i,mix(skin,'#ec846b',i*.075)])), p_skin: skin, p_nose: mix(skin, '#d56343', 0.56), p_hair: HAIRC[L.hairc], p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
 }
 
 const VARIANT = /^(hair|hairfr|hairtop|eyes|mouth|brow|nose|hat|glass|top)\d+$|^(blush|freckle)$|^(sls|sll|pants|shorts|sock)_[LR]$/;

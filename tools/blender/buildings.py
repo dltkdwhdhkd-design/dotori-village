@@ -33,6 +33,14 @@ def house_a():
         for sx in (-1, 1):
             win(F0, sx * 1.15, fy, 1.42, 0.5, 0.64, shutters='door', flowers=FLOWERS[:3] if sx < 0 else FLOWERS[1:4])
         chimney(1.0, cy + 0.5, 2.7, 1.25)
+        # A little curved portico shelters the landing.
+        for sx in (-1,1):
+            tube((sx*.72,fy-.49,.18),(sx*.72,fy-.49,1.78),.044,'frame',seg=9)
+        for i in range(8):
+            a,b=-.87+i*.2175,-.87+(i+1)*.2175
+            za,zb=1.84+.18*(1-(a/.87)**2),1.84+.18*(1-(b/.87)**2)
+            poly([(a,fy-.02,za+.11),(a,fy-.60,za),(b,fy-.60,zb),(b,fy-.02,zb+.11)],
+                 [(0,1,2,3)],'roof' if i%2==0 else 'roof_d',smooth=True)
         bush(-1.72, fy - 0.2, 0.26, flowers=['#ff9fc2'])
         bush(1.74, fy - 0.18, 0.24)
 
@@ -518,7 +526,27 @@ def tents():
 
     def a_tent(cy, w, d, h, cloth, cloth_d, door_w=1.0):
         """앞뒤가 세모난 천막. 입구는 앞(-Y)"""
-        prism((0, cy, 0), d, w, h, cloth, rot=(0, 0, 90))
+        # Sag the canvas between poles and give its side panels stitched seams.
+        for s in (-1,1):
+            verts,faces=[],[]
+            for j in range(11):
+                u=j/10
+                for i in range(9):
+                    t=i/8
+                    z=h*(1-t)-.10*math.sin(math.pi*t)-.08*math.sin(math.pi*u)*(1-t)
+                    verts.append((s*w*.5*t,cy+d*(u-.5),max(.012,z)))
+            for j in range(10):
+                for i in range(8):
+                    k=j*9+i
+                    f=(k,k+1,k+10,k+9)
+                    faces.append(f if s>0 else tuple(reversed(f)))
+            poly(verts,faces,cloth,smooth=True)
+            for j in (0,5,10):
+                for i in range(8):
+                    a,b=verts[j*9+i],verts[j*9+i+1]
+                    tube(a,b,.012,trim,seg=6)
+        for yy in (cy-d/2,cy+d/2):
+            poly([(-w*.5,yy,0),(w*.5,yy,0),(0,yy,h)],[(0,1,2)] if yy<cy else [(2,1,0)],cloth)
         fy = cy - d / 2
         dh = h * 0.68
         poly([(-door_w / 2, fy - 0.012, 0), (door_w / 2, fy - 0.012, 0), (0, fy - 0.012, dh)], [(0, 1, 2)], dark)
@@ -623,7 +651,28 @@ def tents():
             box((sx * 0.22, -d - 0.32, 0.7), (0.1, 0.02, 0.44), '#3a3a3a', rot=(0, 28, 0))
 
 
+def workshop_models():
+    with Model('workbench'):
+        for x in (-.35,.35):
+            for y in (-.22,.22):
+                box((x,y,.26),(.09,.09,.52),'frame',bevel=.015)
+        for j in range(4):
+            box((0,-.255+j*.17,.55),(.90,.165,.09),'wood',bevel=.015)
+        box((-.20,.035,.615),(.27,.21,.03),'#eee1bc',rot=(0,0,-12),bevel=.012)
+        cyl((.24,.13,.61),.08,.14,'#699895',seg=14)
+        for i in range(3):tube((.22+i*.025,.13,.66),(.20+i*.04,.135,.81-i*.018),.012,'wood_d',seg=7)
+    with Model('atelier'):
+        stone_base(2.7,2.2,.12,0,n=5)
+        boxb((0,.13,.12),(2.37,1.79,1.61),'wall',bevel=.06)
+        gable(Frame((0,.12,0)),2.4,1.9,.65,1.74,over=.22,side=.19,rows=4)
+        door(F0,0,-.773,.70,1.40,kind='arch')
+        for s in (-1,1):
+            win(F0,s*.80,-.773,1.01,.44,.51,shutters='door')
+        steps(F0,0,-.773,1.02,2)
+        acorn_sign(1.05,-.81,.84,.52)
+
 def build():
+    workshop_models()
     house_a(); house_b(); house_c()
     for lv in (1, 2, 3):
         home(lv)

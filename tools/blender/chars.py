@@ -348,9 +348,9 @@ class Char:
         P = self.m.part(name, tuple(p), parent='head')
         with P:
             if style == 'smile' or style == 'wide':
-                R = w * (2.6 if style == 'wide' else 1.25)
-                a = 22 if style == 'wide' else 40
-                arc((p.x, p.y, p.z + R), R, 0.0135, col, 270 - a, 270 + a, seg=8, tseg=5, rot=(90, 0, 0))
+                width=w*(1.48 if style=='wide' else 1.16)
+                pts=[self.hp(width*j/8,z+.031*(j/8)**2,.010)[0] for j in range(-8,9)]
+                for a,b in zip(pts,pts[1:]):capsule(a,b,.0085,col,seg=8,sub=1)
             elif style == 'cat':
                 for s in (1, -1):
                     arc((s * w * 0.5, p.y, p.z + w * 0.16), w * 0.5, 0.0125, col, 200, 340, seg=7, tseg=5, rot=(90, 0, 0))
@@ -517,6 +517,44 @@ def hair_lock(c, start, end, bend, width, depth, color):
     poly(verts,[tuple(reversed(f)) for f in faces],color,smooth=True)
 
 
+def face_disc(c,x,z,w,h,color,lift):
+    verts=[tuple(c.hp(x,z,lift)[0])]
+    faces=[]
+    for j in range(1,5):
+        for i in range(40):
+            a=2*math.pi*i/40
+            verts.append(tuple(c.hp(x+w*j/4*math.cos(a),z+h*j/4*math.sin(a),lift)[0]))
+            k=1+(j-1)*40+i
+            nxt=1+(j-1)*40+(i+1)%40
+            faces.append((0,k,nxt) if j==1 else (k-40,k,nxt,nxt-40))
+    poly(verts,faces,color,smooth=True)
+
+
+def swept_hair(c, color, long=False):
+    # One continuous fringe. The part rises above the right eyebrow and falls towards the temples.
+    n, rows = 96, 22
+    verts, faces = [], []
+    rx, ry, rz = c.hr
+    for j in range(rows):
+        for i in range(n):
+            a = (i / n * 2 - 1) * math.pi
+            front = max(0, math.cos(a))
+            edge = 1.97 - .70 * math.cos(a) + (.21 if long else 0) * (1-front)
+            edge += front * (.14 * math.sin(3*a+.8) - .40*math.exp(-((a-.26)/.17)**2)
+                             - .18*math.exp(-((a+.59)/.12)**2))
+            t = edge * (1 - j/rows)
+            verts.append(((rx+.022)*math.sin(t)*math.sin(a), -(ry+.036)*math.sin(t)*math.cos(a),
+                          c.hc+.012+(rz+.038)*math.cos(t)))
+    for j in range(rows-1):
+        for i in range(n):
+            k = (i+1) % n
+            faces.append((j*n+i,j*n+k,(j+1)*n+k,(j+1)*n+i))
+    peak = len(verts)
+    verts.append((0,0,c.hc+rz+.05))
+    faces.extend(((rows-1)*n+i,(rows-1)*n+(i+1)%n,peak) for i in range(n))
+    c.fit(poly(verts,faces,color,smooth=True))
+
+
 def human_eyes(c, style, color, name='eyes'):
     x,z = .177,c.hc-.041
     with c.m.part(name, tuple(c.hp(0,z)[0]), parent='head'):
@@ -529,6 +567,13 @@ def human_eyes(c, style, color, name='eyes'):
             if style == 'dot':
                 c.dot(ex,z,color,.044,.054,.016,.008)
                 c.dot(ex-.010,z+.014,WHITE,.012,.016,.008,.024)
+                continue
+            if style == 'soft':
+                face_disc(c,ex,z,.079,.100,'#715442',.005)
+                face_disc(c,ex,z-.002,.074,.093,'#fff8e8',.008)
+                face_disc(c,ex-s*.008,z+.002,.053,.071,color,.011)
+                face_disc(c,ex-s*.010,z+.003,.028,.039,'#47362c',.014)
+                face_disc(c,ex-.015,z+.028,.009,.012,'#ffedd5',.017)
                 continue
             w,h = {'oval':(.073,.099),'big':(.088,.091),'lash':(.077,.090),
                    'half':(.076,.054),'pop':(.078,.083)}[style]
@@ -678,12 +723,15 @@ def custom(name):
         # ---------------- 얼굴
         human_head(c, SK, NO, modular=True)
         human_brows(c, HA, modular=True)
-        for i, style in enumerate(('oval','big','dot','half','smile','lash','pop'),1):
+        for i, style in enumerate(('oval','big','dot','half','smile','lash','pop','soft'),1):
             human_eyes(c, style, EY, 'eyes%d' % i)
         for i, st in enumerate(('smile', 'cat', 'flat', 'o', 'wide')):
             c.mouth(st, z=hc - 0.162, w=0.065, name='mouth%d' % (i + 1), open_part=(i == 0))
         with _into(c, 'head', hp('blush')):
-            c.blush(x=.283, z=hc-.126, r=.065, col='#f5a599')
+            for side in (-1,1):
+                for i in range(1,6):
+                    f=1-.105*(i-1)
+                    face_disc(c,side*.277,hc-.129,.060*f,.043*f,'p_blush%d'%i,.002+i*.0013)
         with hp('freckle'):
             for s in (1, -1):
                 for dx, dz in ((0.0, 0.0), (0.04, 0.02), (-0.036, 0.022)):
@@ -803,6 +851,14 @@ def custom(name):
                                    (.354,.005,-.163,.087,34),(.309,.139,-.159,.110,20)]:
                     ball((s*x,y,hc+z),1,HA,(r*.82,r*1.10,r*1.14),rot=(0,s*t,0),sub=3)
 
+        for i in (13, 14, 15):
+            with hp('hair%d' % i):
+                swept_hair(c, HA, long=(i == 14))
+                if i == 14:
+                    ball((0,.17,hc-.08),1,HA,(.36,.22,.23),sub=4)
+                if i == 15:
+                    ball((.13,.28,hc+.13),1,HA,(.16,.15,.16),sub=4)
+
         # ---------------- 모자·머리 장식
         with hp('hat1'):                                   # 1 도토리 깍정이 모자
             lathe([(0.3, 0.0), (0.305, 0.03), (0.27, 0.09), (0.18, 0.14), (0.0, 0.165)], '#a8703c', center=(0, 0.05, hc + 0.27), seg=16, rot=(-14, 0, 0))
@@ -913,6 +969,23 @@ def custom(name):
                 ball(k, 0.024, TP2, sub=2)                                             # 고름
                 tube(k, c.front(0.385, 0.03, 0.02), 0.017, TP2, r2=0.013, seg=6)
                 tube(k, c.front(0.41, 0.03, 0.105), 0.017, TP2, r2=0.013, seg=6)
+
+        with _into(c, 'body', bp('top7')) as P:
+            c.torso(TP, BT, collar='#ecd7ac')
+            with P:
+                c.band(.375,.439,'#788541',.018)
+                for z in (.388,.42): c.band(z,z+.008,'#d6be72',.021)
+                for x in (-.13,-.06,.02,.10):
+                    tube(c.front(.378,.022,x),c.front(.437,.022,x+.009),.007,'#485b42',seg=7)
+                ball(c.front(.409,.034,.067),1,'#677741',(.037,.025,.026),sub=3)
+                for x in (.044,.09):
+                    tube(c.front(.398,.033,.067),c.front(.347,.038,x),.021,'#788541',r2=.012,seg=8)
+                box((0,.163,.531),(.255,.145,.251),'#4976a5',bevel=.043)
+                for side in (-1,1):
+                    pts=[c.front(z,.013,side*x) for z,x in [(.454,.116),(.512,.130),(.573,.137),(.627,.139),(.655,.135)]]
+                    pts.append((side*.133,-.058,.683))
+                    for a,b in zip(pts,pts[1:]):capsule(a,b,.012,'#55483d',seg=7,sub=1)
+                    tube((side*.133,-.058,.683),(side*.11,.168,.61),.013,'#55483d',seg=9)
 
         # ---------------- 팔
         r = 0.06

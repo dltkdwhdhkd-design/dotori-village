@@ -14,6 +14,8 @@ import { track, openNote } from './quests.js';
 import { lookEditor } from './lookui.js';
 import { MODEL as LOOK_MODEL, defaultLook, lookOfModel } from './look.js';
 
+import { placeOutside, designAllowed } from './island.js';
+import { action } from './workshop.js';
 const KIND_KO = { tool: '도구', fruit: '과일', shell: '조개', fish: '물고기', bug: '곤충', fossil: '화석', fossilid: '화석', furniture: '가구', wall: '벽지', floor: '바닥재', seed: '씨앗', sapling: '묘목', flower: '꽃', medicine: '약', misc: '잡동사니', parcel: '부탁받은 물건' };
 const narr = (t) => Dialog.say('', t);
 
@@ -40,6 +42,9 @@ function bagActions(i, close, redraw) {
     G.village.set(f.tx, f.ty, o); track('plant');
     Sound.sfx('dig'); burst('dirt', f.tx + 0.5, 0.1, f.ty + 0.5, 6); close(); p.do('pick', 0.4);
   }, 'go');
+  if (designAllowed() && it.kind==='furniture')add('야외에 장식하기',()=>{
+    if(placeOutside(s.id)){removeAt(i);save();Sound.sfx('drop');close();}
+  },'go');
   if (inHome && it.kind === 'furniture') add('방에 놓기', () => {
     if (G.room.placeFront(p, s.id)) { removeAt(i); Sound.sfx('drop'); close(); } else { UI.toast('앞에 놓을 자리가 없다.'); Sound.sfx('fail'); }
   }, 'go');
@@ -180,7 +185,9 @@ export function openMap() {
   for (const b of v.buildings) {
     let label = { hall: '마을회관', shop: '만물상', museum: '박물관', home: '우리 집' }[b.type], col = { hall: '#4a5568', shop: '#3fa39a', museum: '#7c93b0', home: '#d9584a' }[b.type];
     const I = worldInfo();
-    if (b.type === 'house') { const vid = I.lots[b.lot]; if (!vid) { label = I.sites.includes(b.lot) ? '공사 중' : '빈터'; col = '#b9a98a'; } else { label = G.visit || S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
+    if(b.type==='atelier'||b.type==='campsite'){label=b.type==='atelier'?'공동 공방':'캠핑장';col='#8b7150';}
+    if(b.type==='hall'&&I.camp)label='안내 천막';
+    if (b.type === 'house') { const vid = I.lots[b.lot]; if (!vid) { label = I.sites.includes(b.lot) ? ((b.lot+1)+'번 공사터') : ((b.lot+1)+'번 빈터'); col = '#b9a98a'; } else { label = G.visit || S.villagers[vid].met ? VILLAGERS[vid].name : '?'; col = VILLAGERS[vid].roof; } }
     else if (b.type === 'shop' && I.shop < 2) label = '천막 가게';
     else if (b.type === 'museum' && I.museum < 2) { label = I.museum === 1 ? '조사 천막' : '박물관 터'; if (I.museum < 1) col = '#b9a98a'; }
     else if (b.type === 'home') label = G.visit ? `${G.visit.host}네 ${I.lv < 1 ? '천막' : '집'}` : I.lv < 1 ? '내 천막' : '우리 집';
@@ -294,6 +301,11 @@ export function openMenu() {
   const $ = (id) => box.querySelector('#' + id);
   const off = $('st-off');
   for (let h = -12; h <= 12; h++) { const o = el('option', '', h === 0 ? '실제 시간 그대로' : `${h > 0 ? '+' : ''}${h}시간`); o.value = h * 60; if (h * 60 === Settings.offsetMin) o.selected = true; off.appendChild(o); }
+  const activities=el('div','island-actions');
+  box.prepend(activities);
+  if(!G.visit){action(activities,G.room?.area?'여행 안내':'마을 여행',()=>G.hooks.travel(),!G.room||!!G.room.area);
+    if(!G.room){action(activities,'이웃 초대와 집터',()=>G.hooks.housing());action(activities,'섬 공사',()=>G.hooks.islandTools());}
+  }
   $('st-net').onclick = () => G.hooks.openNet();
   $('st-look').onclick = openMirror;
   $('st-bgm').oninput = (e) => { Settings.bgm = e.target.value / 100; Sound.setVolume(Settings.bgm, Settings.sfx); saveSettings(); };
@@ -351,6 +363,8 @@ export function openMirror() {
   UI.openPanel('캐릭터 꾸미기', box, { onClose: () => { ed.dispose(); if (!done) Sound.sfx('close'); } });
 }
 
+function noticeboard(){const b=el('div');action(b,'마을 소식',()=>{UI.closePanel();board();});action(b,'마을 여행과 토벌',()=>G.hooks.travel());action(b,'이웃 초대와 집터',()=>G.hooks.housing());action(b,'섬 공사',()=>G.hooks.islandTools());UI.openPanel('광장 게시판',b);}
 export function registerMenus() {
+  G.hooks.noticeboard=noticeboard;
   Object.assign(G.hooks, { openBag, openDex, openMap, openMenu, openNote, openMail, openStorage, openMirror, board, bigTree, rest });
 }

@@ -127,7 +127,7 @@ function mergeStatic(root, assoc) {
       const a = assoc && assoc.get(c);
       if (!a || a.nodes !== undefined) return false;
       const m = c.material;
-      return m && !m.map && !m.vertexColors && !DYNAMIC.has(m.name) && c.geometry.attributes.normal;
+      return m && !m.map && !m.vertexColors && !DYNAMIC.has(m.name) && !m.name.startsWith('p_blush') && c.geometry.attributes.normal;
     });
     if (prims.length < 2) continue;
     const geos = prims.map((c) => {

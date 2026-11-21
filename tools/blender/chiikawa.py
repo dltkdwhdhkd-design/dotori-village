@@ -7,7 +7,7 @@ from lib import Model, arc, ball, box, capsule, lathe, poly, torus, tube
 INK = '#382c34'
 MILK = '#fffbf9'
 PINK = '#f6a7ae'
-BLUE = '#83a8c8'
+BLUE = '#559ed2'
 CREAM = '#ffe6ad'
 # 한 덩어리로 이어지는 볼과 배의 단면. (반지름, 발바닥에서의 높이)
 PROFILE = [(0, .105), (.21, .111), (.281, .139), (.351, .215), (.397, .32),
@@ -95,17 +95,17 @@ def little_ears(fur):
 def chiikawa(head, tail):
     little_ears(MILK)
     for s in (-1, 1):
-        stroke([(s*.224,.932),(s*.200,.949),(s*.174,.955)], .009)
+        stroke([(s*.199,.932),(s*.175,.949),(s*.149,.955)], .009)
     with tail:
         ball((0,.29,.30), .088, MILK, sub=3)
 
 
 def hachiware(head, tail):
-    cap(BLUE, lambda a: 1.05 + .113*max(0,1-abs(math.atan2(math.sin(a),math.cos(a)))/.62)**2
-        - .049*(1-math.cos(a)) + .059*math.sin(a)**4)
+    cap(BLUE, lambda a: .997 + .139*max(0,1-abs(math.atan2(math.sin(a),math.cos(a)))/1.16)**2
+        - .029*(1-math.cos(a)))
     for s in (-1,1):
-        tuft(s*.28,.01,1.065,.145,.284,BLUE, s*19)
-        oval(s*.177,.947,.015,.008,INK)
+        tuft(s*.278,.01,1.045,.157,.311,BLUE, s*15)
+        oval(s*.151,.949,.016,.011,INK,tilt=s*12)
     with tail:
         ball((.135,.35,.32),1,BLUE,(.084,.224,.086),rot=(18,0,-25),sub=3)
 
@@ -114,7 +114,7 @@ def usagi(head, tail):
     for s in (-1,1):
         ball((s*.177,.024,1.378),1,CREAM,(.089,.081,.265),rot=(0,s*6,0),sub=3)
         ball((s*.180,-.045,1.401),1,'#f3b3ad',(.050,.020,.187),rot=(0,s*6,0),sub=3)
-        stroke([(s*.277,.926),(s*.263,.964),(s*.230,.997),(s*.192,1.015),(s*.141,1.025)], .0075)
+        stroke([(s*.253,.926),(s*.239,.964),(s*.206,.997),(s*.168,1.015),(s*.117,1.025)], .0075)
     with tail:
         ball((0,.306,.30),.104,CREAM, sub=3)
 
@@ -126,7 +126,7 @@ def momonga(head, tail):
         for j,z in enumerate((.632,.703,.77)):
             tuft(s*(.465+.015*j),.015,z-.045,.063,.132,MILK,s*61)
             stroke([(s*.464,z),(s*.49,z+.012),(s*.510,z+.006)],.0075)
-        stroke([(s*.105,.902),(s*.084,.916)],.008)
+        stroke([(s*.094,.909),(s*.073,.923)],.008)
     oval(0,.829,.037,.041,'#a4d8e6',.010,.019)
     for s in (-1,1):
         oval(s*.012,.838,.005,.009,INK,.028,.005)
@@ -154,7 +154,10 @@ def kurimanju(head, tail):
 
 def rakko(head, tail):
     # 흉터·망토·칼집이 앞뒤와 옆모습에서 모두 보인다.
+    ear_z = .98
     for side in (-1,1):
+        ball((side*(radius(ear_z)-.005), -.012, ear_z), 1, '#412521',
+             (.068, .066, .048), rot=(0, -side*12, 0), sub=3)
         for z in (.63,.72,.81):
             tuft(side*.469,.015,z,.068,.126,'#f4debb',side*61)
     for i in range(-5,6):
@@ -204,9 +207,9 @@ def shisa(head, tail):
             if i in (1,3):
                 arc((s*x,y-.092,z),r*.55,.011,'#c77e54',30,280,
                     seg=16,tseg=6,rot=(90,0,0))
-        oval(s*.194,.961,.072,.048,orange,.009,.021,s*12)
-        oval(s*.166,.979,.042,.038,orange,.013,.020,-s*22)
-        stroke([(s*.214,.965),(s*.194,.982),(s*.181,.978),(s*.179,.960)],.007,'#ac6d4c',.035)
+        oval(s*.170,.961,.072,.048,orange,.009,.021,s*12)
+        oval(s*.142,.979,.042,.038,orange,.013,.020,-s*22)
+        stroke([(s*.190,.965),(s*.170,.982),(s*.157,.978),(s*.155,.960)],.007,'#ac6d4c',.035)
     with tail:
         ball((0,.32,.32),1,orange,(.143,.135,.141),sub=3)
 
@@ -221,7 +224,7 @@ def kanichan(head, tail):
         tuft(x+s*.064,0,1.21,.073,.158,claw,s*14)
         tuft(x-s*.050,-.016,1.211,.059,.125,claw,-s*22)
         for dz in (0,.036):
-            stroke([(s*.222,.928+dz),(s*.20,.940+dz),(s*.167,.945+dz)],.0085)
+            stroke([(s*.198,.928+dz),(s*.176,.940+dz),(s*.143,.945+dz)],.0085)
         tuft(s*.040,0,1.211,.015,.044,INK,s*13)
     with tail:
         ball((0,.275,.268),.055,'#fbe0db',sub=2)
@@ -231,25 +234,25 @@ def features(m, kind):
     eye_z = .823
     with m.part('eyes',front(0,eye_z),parent='head'):
         for s in (-1,1):
-            x=s*.183
+            x=s*.157
             if kind == 'momonga':
-                oval(x,eye_z,.075,.063,INK)
-                oval(x,eye_z+.014,.047,.024,'#fffdf6',.025,.008)
-                oval(x+.005,eye_z-.027,.042,.009,'#f4e6e0',.026,.006)
+                oval(x,eye_z,.081,.065,INK)
+                oval(x,eye_z+.014,.050,.025,'#fffdf6',.025,.008)
+                oval(x+.005,eye_z-.027,.044,.010,'#f4e6e0',.026,.006)
             else:
-                w,h = (.042,.046) if kind=='kurimanju' else (.058,.044) if kind=='rakko' else (.047,.052)
-                oval(x,eye_z,w,h,INK)
-                oval(x-.005,eye_z+.016,.024,.019,'#fffef5',.024,.008)
-                oval(x+.006,eye_z-.023,.019,.007,'#f2ded0',.024,.006)
+                w,h = (.053,.052) if kind=='kurimanju' else (.066,.046) if kind=='rakko' else (.064,.067)
+                face_patch(x,eye_z,w,h,INK,.009)
+                face_patch(x+.004,eye_z+h*.32,w*.41,h*.33,'#fffcf8',.014)
+                stroke([(x-w*.41,eye_z-h*.34),(x-w*.18,eye_z-h*.45),
+                        (x+w*.08,eye_z-h*.47),(x+w*.35,eye_z-h*.32)],.0055,'#fff9f2',.018)
+    if kind == 'hachiware':
+        hachiware_mouth(m)
+        return
     with m.part('mouth',front(0,.737),parent='head'):
         for s in (-1,1):
             stroke([(0,.752),(s*.004,.735),(s*.018,.724),(s*.037,.725),(s*.054,.739)],.0095)
         if kind == 'usagi':
             stroke([(-.020,.722),(-.015,.698),(0,.682),(.023,.680)],.008)
-        elif kind == 'hachiware':
-            oval(0,.709,.028,.021,INK,.015,.009)
-            oval(0,.710,.017,.010,'#ed969a',.027,.007)
-            stroke([(-.015,.675),(0,.672),(.015,.675)],.006)
         elif kind in ('momonga','kanichan'):
             oval(0,.700,.033,.042,INK,.013,.010)
             if kind=='momonga':
@@ -262,6 +265,17 @@ def features(m, kind):
     with m.part('mouth_open',front(0,.73),parent='head'):
         oval(0,.731,.049,.041,INK)
         oval(0,.719,.031,.018,'#f49b9e',.023,.007)
+
+
+def hachiware_mouth(m):
+    for part, half_height in [('mouth',.047),('mouth_open',.061)]:
+        with m.part(part,front(0,.675),parent='head'):
+            face_patch(0,.704-half_height,.050,half_height,INK,.011)
+            face_patch(0,.687-half_height,.027,half_height*.56,'#f3a8aa',.017)
+            for s in (-1,1):
+                stroke([(0,.733),(s*.004,.710),(s*.017,.699),(s*.036,.694),
+                        (s*.055,.699),(s*.071,.716)],.012,INK,.022)
+            stroke([(-.015,.587),(0,.584),(.015,.587)],.0065)
 
 
 # 이름은 저장·멀티플레이에서 쓰는 기존 ID로 등록한다.
@@ -278,15 +292,26 @@ PAJAMAS = {'dungdung':'#a3ca80', 'kkokki':'#ed9fa9',
 def small_friend(name):
     key = name.removeprefix('villager_')
     night = key in PAJAMAS
+    is_hachi = key == 'goran'
     fur = PAJAMAS[key] if night else FRIENDS[key][1]
     with Model(name) as m:
         head=m.part('head',(0,0,.54))
         body=m.part('body',(0,0,.26))
         with body:
-            ball((0,0,.255),1,fur,(.27,.21,.14),sub=3)
+            if is_hachi:
+                lathe([(0,.118),(.12,.120),(.216,.143),(.27,.192),(.312,.281),
+                       (.338,.391),(.339,.495),(.31,.574),(.235,.609),(0,.625)],
+                      fur,seg=48,scale=(1,.81))
+            else:
+                ball((0,0,.255),1,fur,(.27,.21,.14),sub=3)
         tail=m.part('tail',(0,.235,.31)) if key not in ('jangkki',) and not night else None
         with head:
-            lathe(PROFILE,fur,seg=48,scale=(1,DEPTH))
+            profile = PROFILE
+            if is_hachi:
+                # 턱 아래를 닫고 몸통을 안쪽으로 겹쳐 고개를 돌려도 목이 이어진다.
+                profile = [(0,.452),(.172,.454),(.299,.466),(.394,.492),(.458,.531),
+                           (radius(.575),.575)] + [(r,z) for r,z in PROFILE if z>.575]
+            lathe(profile,fur,seg=64,scale=(1,DEPTH))
             if night:
                 face_patch(0,.814,.418,.295,'#e1dbce',.011)
                 face_patch(0,.818,.387,.268,'#667678',.019)
@@ -308,15 +333,17 @@ def small_friend(name):
                 style = FRIENDS[key][0]
                 style(head,tail)
                 for s in (-1,1):
-                    face_patch(s*.326,.727,.094,.054,PINK,.008)
-                    for dx in (-.045,-.015,.015,.045):
-                        x=s*.326+dx
-                        stroke([(x-.006,.710),(x+.006,.741)],.0065,'#745154',.019)
+                    face_patch(s*.282,.691,.080,.061,PINK,.008)
+                    for dx in (-.047,-.016,.016,.047):
+                        x=s*.282+dx
+                        stroke([(x-.008,.666),(x+.008,.714)],.007,INK,.018)
                 features(m,style.__name__)
         for s,side in [(-1,'R'),(1,'L')]:
-            shoulder=(s*.418,-.026,.544)
+            shoulder=(s*.316,-.017,.488) if is_hachi else (s*.418,-.026,.544)
             with m.part('arm_'+side,shoulder):
-                if key in ('goran','pongdang') or night:
+                if is_hachi:
+                    ball((s*.369,-.037,.420),1,fur,(.054,.065,.130),rot=(-6,-s*22,0),sub=3)
+                elif key=='pongdang' or night:
                     ball((s*.445,-.058,.516),1,fur,(.074,.075,.115),rot=(-9,-s*48,0),sub=3)
                 elif key=='jangkki' and s<0:
                     capsule((-.405,-.08,.491),(-.350,-.301,.421),.060,fur)
@@ -325,9 +352,10 @@ def small_friend(name):
                     ball((s*.415,-.153,.563),.067,fur,(1,.93,1.06),sub=3)
                 else:
                     ball((s*.436,-.073,.488),1,fur,(.067,.077,.110),rot=(-17,-s*12,0),sub=3)
-            with m.part('leg_'+side,(s*.196,0,.17)):
-                ball((s*.203,-.038,.093),1,fur,(.075,.105,.095),rot=(0,s*8,0),sub=3)
-        m.anchor('hand',(-.454,-.097,.427),'arm_R')
+            leg_x = .134 if is_hachi else .196
+            with m.part('leg_'+side,(s*leg_x,0,.17)):
+                ball((s*(leg_x+.007),-.038,.093),1,fur,(.065 if is_hachi else .075,.105,.095),rot=(0,s*8,0),sub=3)
+        m.anchor('hand',(-.398,-.055,.335) if is_hachi else (-.454,-.097,.427),'arm_R')
         m.anchor('top',(0,0,(1.30 if night else FRIENDS[key][2])+.08))
 
 

@@ -118,7 +118,7 @@ export class Player {
   later(sec, fn) { (this.queue || (this.queue = [])).push({ t: sec, fn }); }
 
   lowerNet() {
-    this.netHold = false; this.netTalkTarget = null; this.actor.sneak = false;
+    this.netHold = false; this.actor.sneak = false;
     if (this.actor.playing('raise')) this.actor.anim = null;
   }
 
@@ -190,29 +190,31 @@ export class Player {
     if (G.room) { if (G.room.checkExit(this)) return; }
 
     // 행동
-    if (S.player.tool === 'tool_net' && !this.huntGear) this.useNetInput();
-    if (Input.take('act')) this.act();
-    else if (Input.take('pick')) this.pickup();
+    if (Input.take('talk')) {
+      this.lowerNet();
+      Input.take('act');
+      this.talk();
+    } else {
+      if (S.player.tool === 'tool_net' && !this.huntGear) this.useNetInput();
+      if (Input.take('act')) this.act();
+      else if (Input.take('pick')) this.pickup();
+    }
     a.update(dt);
   }
 
   useNetInput() {
     const a=this.actor;
     if (!this.netHold) {
-      if (!Input.hit('act')) return;
-      const n=this.npcInFront();
-      if (!canNetResident(n) && (G.room || this.wouldTalk())) return;
-      Input.take('act'); this.netHold=true; this.netTalkTarget=n;
-      this.netPressedAt=performance.now(); this.netScene=G.room || G.world;
+      if (!Input.hit('act') || !this.netActionAvailable()) return;
+      Input.take('act');
+      this.netHold = true;
+      this.netScene = G.room || G.world;
     }
     if (this.netScene!==(G.room || G.world)) { this.lowerNet(); return; }
-    const quickTalk=this.netTalkTarget && performance.now()-this.netPressedAt<300;
     if (!Input.held('act')) {
-      const target=this.netTalkTarget;
       this.lowerNet();
-      if (!quickTalk) this.swingNet();
-      else if (target===this.npcInFront()) this.act();
-    } else if (!quickTalk && !a.sneak) {
+      this.swingNet();
+    } else if (!a.sneak) {
       a.sneak=true; a.play('raise',99);
     }
   }
@@ -229,11 +231,12 @@ export class Player {
     }
     return best;
   }
-  wouldTalk() {
-    if(this.npcInFront()||this.doorInFront())return true;
-    if(G.room)return false;
+  netActionAvailable(npc = this.npcInFront()) {
+    if (S.player.tool !== 'tool_net' || this.huntGear) return false;
+    if (this.netHold || canNetResident(npc)) return true;
+    if (G.room || this.doorInFront()) return false;
     const {tx,ty}=this.front(),o=G.village.obj(tx,ty);
-    return ['board','mailbox','bigtree','workbench'].includes(o?.kind)||o?.t==='decor'||o?.t==='decorPart'||G.village.terrainAt(tx,ty)===T.DOCK;
+    return !(['board','mailbox','bigtree','workbench'].includes(o?.kind)||o?.t==='decor'||o?.t==='decorPart'||G.village.terrainAt(tx,ty)===T.DOCK);
   }
   doorInFront() {
     if (G.room || Math.cos(this.yaw) > -0.5) return null;
@@ -248,9 +251,12 @@ export class Player {
     if (this.fishing) return this.fishing.state === 'bite' ? K('Space', '지금 당기기!') : K('Space', '거두기');
     if (this.lock > 0) return '';
     if (this.netHold && this.actor.sneak) return K('Space','떼면 잠자리채 휘두르기');
-    if (S.player.tool==='tool_net' && canNetResident(this.npcInFront())) return K('Space','짧게 말 걸기 · 길게 눌렀다 떼면 채 휘두르기');
+    const npc = this.npcInFront();
+    if (npc) {
+      const talkHint = K('G', '말 걸기');
+      return this.netActionAvailable(npc) ? talkHint + '　' + K('Space', '잠자리채 휘두르기') : talkHint;
+    }
     if (G.room) return G.room.hint(this);
-    if (this.npcInFront()) return K('Space', '말 걸기');
     if (this.doorInFront()) return K('Space', '들어가기');
     const v = G.village, f = this.front(), o = v.obj(f.tx, f.ty), tool = S.player.tool;
     if (o && o.t === 'fix') { if (o.kind === 'mailbox') return K('Space', '우체통 열기'); if (o.kind === 'board') return K('Space', '게시판 보기'); if (o.kind === 'bigtree') return K('Space', '올려다보기'); }
@@ -274,11 +280,15 @@ export class Player {
   }
 
   // ---------------------------------------------------------------- 행동
-  act() {
+  talk() {
     const npc = this.npcInFront();
-    if (netTalk(npc)) return;
+    if (!npc || netTalk(npc)) return;
+    if (G.room) return npc.talk?.(npc);
+    return G.hooks.talk(npc);
+  }
+
+  act() {
     if (G.room) return G.room.act(this);
-    if (npc) return G.hooks.talk(npc);
     const door = this.doorInFront();
     if (door) return G.hooks.enter(door);
     const v = G.village, f = this.front(), o = v.obj(f.tx, f.ty), tool = S.player.tool;

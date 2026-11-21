@@ -291,9 +291,9 @@ export function openMenu() {
     <h3 style="font-weight:normal;margin:12px 0 6px">조작법</h3>
     <div class="keys">
       <span><b>W</b><b>A</b><b>S</b><b>D</b> / 방향키</span><span>걷기 (Shift를 누르면 달리기)</span>
-      <span>휴대폰</span><span>왼쪽 원을 밀어 이동하고, 끝까지 밀어 달려요. 오른쪽 행동 버튼으로 대화하거나 도구를 써요.</span>
-      <span><b>Space</b> / Z / Enter</span><span>말 걸기, 문 열기, 도구 쓰기, 나무 흔들기</span>
-      <span>잠자리채를 들고 주민 앞에서</span><span>Space를 짧게 누르면 대화, 길게 눌렀다 떼면 휘두르기</span>
+      <span>휴대폰</span><span>왼쪽 원을 밀면 걷고, 끝까지 밀면 달려요. 주민 앞에서 대화를 누르면 말을 걸고, 잠자리채를 누르면 채를 휘둘러요.</span>
+      <span><b>G</b></span><span>가까운 주민을 바라보고 말 걸기</span>
+      <span><b>Space</b> / Z / Enter</span><span>도구 쓰기, 문 열기, 나무 흔들기. 잠자리채는 짧게 누르면 휘두르고, 꾹 누르면 살금살금 걷다가 손을 뗄 때 휘둘러요.</span>
       <span><b>F</b> / X</span><span>줍기, 꽃 꺾기 (집에서는 가구 집어넣기)</span>
       <span><b>E</b> / I / Tab</span><span>가방</span>
       <span><b>1</b>~<b>5</b>, <b>Q</b>, <b>0</b></span><span>도구 꺼내기, 차례로 바꾸기(집에서는 가구 돌리기), 집어넣기</span>

@@ -5,6 +5,7 @@ let touchX=0,touchY=0;
 const MAP = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   run: ['ShiftLeft', 'ShiftRight','TouchRun'], act: ['Space', 'KeyZ', 'Enter','TouchAct'], pick: ['KeyF', 'KeyX','TouchPick'], bag: ['KeyE', 'KeyI', 'Tab'],
+  talk: ['KeyG', 'TouchTalk'],
   map: ['KeyM'], dex: ['KeyC'], note: ['KeyN'], chat: ['KeyT'], menu: ['Escape'], cycle: ['KeyQ'], put: ['Backquote', 'Digit0'],
   t1: ['Digit1'], t2: ['Digit2'], t3: ['Digit3'], t4: ['Digit4'], t5: ['Digit5'],
 };

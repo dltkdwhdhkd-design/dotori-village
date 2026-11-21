@@ -139,7 +139,9 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 .touch-stick i {position:absolute;left:50%;top:50%;width:43px;height:43px;border-radius:50%;background:#f4dfa9df;border:3px solid #947451;transform:translate(-50%,-50%);box-shadow:0 3px 0 #74553166;}
 .touch-controls button {border:3px solid #816649;border-radius:50%;background:#fff1c9e8;color:#5a452e;box-shadow:0 3px 0 #65472470;font:inherit;}
 .touch-controls .touch-act {width:72px;height:72px;right:max(13px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));}
-.touch-controls .touch-pick {width:52px;height:52px;right:91px;bottom:22px;font-size:14px;}
+.touch-controls .touch-talk {width:54px;height:54px;right:calc(max(13px,env(safe-area-inset-right)) + 78px);bottom:max(22px,env(safe-area-inset-bottom));}
+.touch-controls .touch-pick {width:48px;height:48px;right:calc(max(13px,env(safe-area-inset-right)) + 138px);bottom:max(22px,env(safe-area-inset-bottom));font-size:14px;}
+.touch-controls .touch-act {font-size:14px;padding:2px;}
 .touch-controls .pressed {background:#f2cf83;box-shadow:inset 0 2px 3px #78542d70;}
 .touch-mode #hud-tools {left:8px;bottom:127px;gap:2px;padding:3px;}
 .touch-mode #hud-tools .tool {width:40px;height:40px;}

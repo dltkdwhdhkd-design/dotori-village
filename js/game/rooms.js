@@ -203,7 +203,6 @@ export class Room {
   }
 
   hint(p) {
-    if (p.npcInFront()) return K('Space', '말 걸기');
     const e = this.probe(p);
     if (e) return K('Space', e.label);
     const t = this.itemInFront(p);
@@ -218,8 +217,6 @@ export class Room {
   }
 
   act(p) {
-    const npc = p.npcInFront();
-    if (npc) { if (npc.talk) npc.talk(npc); return; }
     const e = this.probe(p);
     if (e) return e.act();
     const t = this.itemInFront(p);

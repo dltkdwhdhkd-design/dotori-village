@@ -247,7 +247,8 @@ export function update(dt) {
       weather.update(dt, G.room ? 'none' : G.weather, G.stage.focus.x, G.stage.focus.z);
       UI.setMoney(S.player.money);
       UI.setTools(ownedTools(), S.player.tool, (id) => p.equip(S.player.tool === id ? null : id));
-      UI.hint(free ? p.hint() : '');
+      const touchNet = UI.touch?.active && free && S.player.tool === 'tool_net' && p.netActionAvailable();
+      UI.hint(free ? p.hint() : '', touchNet ? '잠자리채' : '행동');
     }
     saveT += dt;
     if (saveT > 45 && free && !G.room) { saveT = 0; save(); }

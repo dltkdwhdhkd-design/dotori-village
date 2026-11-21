@@ -60,9 +60,12 @@ export const UI = {
     const box = $('hud-menu'); box.innerHTML = '';
     for (const [label, key, fn] of buttons) { const b = el('button', '', `${label}<span>${key}</span>`); b.onclick = () => { Sound.sfx('ui'); fn(); }; box.appendChild(b); }
   },
-  hint(text) {
+  hint(text, actionLabel = '행동') {
     const h = $('hud-hint');
-    if(this.touch?.active && text)text=text.replaceAll('<b>Space</b>','<b>행동</b>').replaceAll('<b>F</b>','<b>줍기</b>');
+    if (this.touch?.active) {
+      this.touch.setActionLabel(actionLabel);
+      text = text.replaceAll('<b>Space</b>', '<b>' + actionLabel + '</b>').replaceAll('<b>G</b>', '<b>대화</b>').replaceAll('<b>F</b>', '<b>줍기</b>');
+    }
     if (!text || this.modal > 0) { h.classList.add('hidden'); this._hint = ''; return; }
     if (this._hint !== text) { h.innerHTML = text; this._hint = text; }
     h.classList.remove('hidden');

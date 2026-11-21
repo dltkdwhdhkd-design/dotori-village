@@ -19,8 +19,10 @@ export function touchControls(root) {
   pad.onpointermove=e=>{if(e.pointerId===stickId)move(e);};
   pad.onpointerup=pad.onpointercancel=pad.onlostpointercapture=e=>{if(e.pointerId===stickId)rest();};
   const releases=[];
-  for(const [label,code,cls] of [['행동','TouchAct','touch-act'],['줍기','TouchPick','touch-pick']]){
+  let actionButton;
+  for(const [label,code,cls] of [['행동','TouchAct','touch-act'],['대화','TouchTalk','touch-talk'],['줍기','TouchPick','touch-pick']]){
     const b=el('button',cls,label);let owner=null;
+    if (code === 'TouchAct') actionButton = b;
     const release=()=>{owner=null;Input.setDown(code,false);b.classList.remove('pressed');};
     releases.push(release);shell.append(b);
     b.onpointerdown=e=>{if(!visible||owner!==null)return;e.preventDefault();owner=e.pointerId;b.setPointerCapture(owner);Input.press(code);Input.setDown(code,true);b.classList.add('pressed');};
@@ -31,6 +33,7 @@ export function touchControls(root) {
   window.addEventListener('blur',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();});
   shell.oncontextmenu=e=>e.preventDefault();
   return {
+    setActionLabel(label) { if (actionButton.textContent !== label) actionButton.textContent = label; },
     show(free){const next=!!(free&&active);if(next===visible)return;visible=next;shell.classList.toggle('active',visible);if(!visible)reset();},
     get active(){return active;}
   };

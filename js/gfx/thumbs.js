@@ -50,16 +50,22 @@ export function thumbOfModel(model, opts = {}) {
 /** 넙치·가자미를 위에서 볼 때 등지느러미가 위로 오게 놓는 각도: 눈이 왼쪽에 몰린 넙치는 머리가 왼쪽, 오른쪽에 몰린 가자미는 머리가 오른쪽 */
 export function flatYaw(look) { return look && look.f === 'flat' && (look.flat || 'L') === 'L' ? Math.PI : 0; }
 
-export function hairThumb(hair) {
-  const key = 'hair:' + hair;
+let portrait;
+export function featureThumb(feature,value) {
+  const key = 'face:' + feature + ':' + value;
   if (cache.has(key)) return cache.get(key);
   if (!has(MODEL)) return '';
   if (!renderer) init();
-  const o = make(MODEL), parts = o.userData.parts;
-  dress({ model: o, parts }, { ...defaultLook(), hat: 0, hair });
+  const o = portrait ||= make(MODEL), parts = o.userData.parts;
+  dress({ model: o, parts }, { ...defaultLook(),hat:0,hair:9,[feature]:value });
   if (parts.mouth_open) parts.mouth_open.visible = false;
   holder.add(o);
-  cam.position.set(1.25, 1.46, 2.5); cam.lookAt(0, 1.06, 0);
+  if (feature==='hair' || feature==='face') {
+    cam.position.set(.32,1.31,2.12);cam.lookAt(0,1.11,0);
+  } else {
+    const y=['cheek','mouth','nose'].includes(feature)?1.01:1.10;
+    cam.position.set(0,y+.02,1.64);cam.lookAt(0,y,0);
+  }
   const curve = CURVE.k.value;
   try {
     CURVE.k.value = 0;

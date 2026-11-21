@@ -15,7 +15,7 @@ from mathutils import Matrix, Vector, Euler, noise
 PALETTE = {
     # 꾸미는 주인공(게임이 색을 입힌다): 살, 코, 머리카락, 눈, 윗옷, 윗옷 포인트, 아래옷, 신발, 모자, 모자 포인트
     'p_blush1':'#f8cfb9','p_blush2':'#f6c7af','p_blush3':'#f4bfa8','p_blush4':'#f2b6a1','p_blush5':'#f1af9e',
-    'p_skin': '#ffdcc0', 'p_nose': '#f0b090', 'p_hair': '#6a4530', 'p_eye': '#3b2b28', 'p_top': '#e8574c', 'p_top2': '#c9463c',
+    'p_hair_light':'#79523c','p_hair_shade':'#63402e', 'p_skin': '#ffdcc0', 'p_nose': '#f0b090', 'p_hair': '#6a4530', 'p_eye': '#3b2b28', 'p_top': '#e8574c', 'p_top2': '#c9463c',
     'p_bot': '#40598f', 'p_shoe': '#8a5a3a', 'p_hat': '#5fae62', 'p_hat2': '#4f9a52',
     # 자연
     'bark': '#8d5c3b', 'bark_d': '#6c4529', 'wood': '#c8925a', 'wood_d': '#a4764a', 'wood_l': '#e0b47c',
@@ -172,7 +172,7 @@ class Model:
                 if p.parent and p.parent in built:
                     ob = built[p.name]
                     ob.parent = built[p.parent]
-                    ob.location = p.pivot - built[p.parent].location
+                    ob.location = p.pivot - next(q.pivot for q in self.parts if q.name == p.parent)
             for (nm, loc, parent) in self.anchors:
                 e = bpy.data.objects.new(self.name + '__' + nm, None)
                 e.empty_display_size = 0.08

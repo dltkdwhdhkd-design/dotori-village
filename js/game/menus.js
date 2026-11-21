@@ -336,7 +336,7 @@ export function showTitle({ onNew, onContinue }) {
       <div class="box wide"><div class="tf"><label>내 이름</label><input type="text" id="t-name" maxlength="6" value="도토리"><label>마을 이름</label><input type="text" id="t-vil" maxlength="6" value="솔바람"></div>
       <div id="t-look"></div>
       <div class="tb"><button class="big alt" id="t-back">돌아가기</button><button class="big" id="t-go">마을로 출발!</button></div></div>`;
-    const ed = lookEditor(defaultLook(), (L) => { if (G.title) G.title.setPlayer(LOOK_MODEL, L, false); });
+    const ed = lookEditor(defaultLook(), (L) => { if (G.title) G.title.setPlayer(LOOK_MODEL, L, false); }, {arrival:true});
     t.querySelector('#t-look').appendChild(ed.el);
     if (G.title) G.title.setPlayer(LOOK_MODEL, ed.look, false);
     t.querySelector('#t-back').onclick = () => { ed.dispose(); main(); };

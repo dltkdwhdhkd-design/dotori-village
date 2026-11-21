@@ -88,16 +88,20 @@ export class Player {
     if (S.player.model !== LOOK_MODEL) {           // 예전의 정해진 모습에서 꾸미는 모습으로
       S.player.model = LOOK_MODEL;
       this.actor.id = LOOK_MODEL; this.actor.setModel(LOOK_MODEL);
-      this.actor.hold(S.player.tool ? ITEMS[S.player.tool].model : null);
+      this.actor.hold(this.huntGear || ITEMS[S.player.tool]?.model);
     }
     dress(this.actor, S.player.look);
     if (G.net && G.net.role) G.net.refresh();
   }
 
+  setHuntGear(model = null) {
+    this.huntGear = model;
+    this.actor.hold(model || ITEMS[S.player.tool]?.model);
+  }
   equip(id, silent = false) {
     if (this.fishing) this.endFishing();
     S.player.tool = id;
-    this.actor.hold(id ? ITEMS[id].model : null);
+    this.actor.hold(this.huntGear || ITEMS[id]?.model);
     this.netHold = false; this.actor.sneak = false;
     if (!silent) Sound.sfx(id ? 'pick' : 'drop');
     if (G.net && G.net.role) G.net.refresh();

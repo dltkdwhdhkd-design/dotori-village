@@ -114,7 +114,7 @@ export class Room {
     return n;
   }
 
-  dispose() { G.stage.scene.remove(this.group); if(this.floorResource){this.floorResource.material.map.dispose();this.floorResource.material.dispose();this.floorResource.geometry.dispose();this.outskirts?.material.dispose();this.outskirts?.geometry.dispose();} this.hunt?.ring?.material.dispose();this.hunt?.ring?.geometry.dispose(); }
+  dispose() { G.stage.scene.remove(this.group); if(this.floorResource){this.floorResource.material.map.dispose();this.floorResource.material.dispose();this.floorResource.geometry.dispose();this.outskirts?.material.dispose();this.outskirts?.geometry.dispose();} this.endHunt?.(); }
   focus(px, pz) { return { x: this.w / 2 + (px - this.w / 2) * 0.45, z: this.h / 2 + (pz - this.h / 2) * 0.5 + 0.9 }; }
 
   free(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.occ[y * this.w + x] === -1; }

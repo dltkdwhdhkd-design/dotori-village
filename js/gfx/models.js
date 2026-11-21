@@ -209,6 +209,7 @@ function indexParts(o) {
     const i = n.name.indexOf('__');
     if (i > 0 && n !== o) { const k = n.name.slice(i + 2); if (!(k in parts)) parts[k] = n; }
   });
+  if (parts.blade && parts.sword) parts.blade.visible = false;
   o.userData.parts = parts;
   return o;
 }

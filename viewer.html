@@ -3,10 +3,12 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30c-6 0-9-6-9-12h18c0 6-3 12-9 12z' fill='%23c98a4b'/%3E%3Cpath d='M5 17c0-6 5-10 11-10s11 4 11 10z' fill='%237a4a2a'/%3E%3Cpath d='M15 3h2v5h-2z' fill='%235a3a22'/%3E%3C/svg%3E">
 <style>html,body{margin:0;height:100%;background:#9fd88a;overflow:hidden;font-family:sans-serif}
 #bar{position:fixed;left:8px;top:8px;background:#fffc;padding:6px 10px;border-radius:8px;font-size:13px}
+#playback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;border-radius:16px;background:#fffaf0;padding:10px 16px;color:#503e34;white-space:nowrap;font-size:14px}
+#playback button{background:#487466;color:white;border:0;border-radius:10px;padding:8px 14px;cursor:pointer} #playback input{accent-color:#487466;width:min(34vw,220px)}#playback output{min-width:75px}
 #bar a{margin-right:8px;color:#3b2a1a}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 </head><body>
-<div id="bar">묶음: <a href="?b=nature">자연</a><a href="?b=buildings">건물</a><a href="?b=furniture">가구</a><a href="?b=items">물건</a><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=chars">캐릭터</a><a href="catalog.html">생물 한눈에 보기</a><a href="catalog.html?b=looks">꾸미기 한눈에 보기</a> · 드래그: 돌리기 / 휠: 확대</div>
+<div id="bar">묶음: <a href="?b=nature">자연</a><a href="?b=nature&amp;garden=1">봄 정원</a><a href="?b=buildings">건물</a><a href="?b=furniture">가구</a><a href="?b=items">물건</a><a href="?b=fish">물고기</a><a href="?b=bugs">곤충</a><a href="?b=chars">캐릭터</a><a href="?b=chars&amp;m=villager_beomi&amp;action=hunt">랏코 토벌 동작</a><a href="catalog.html">생물 한눈에 보기</a><a href="catalog.html?b=looks">꾸미기 한눈에 보기</a> · 드래그: 돌리기 / 휠: 확대</div>
 <script type="module">
 import * as THREE from 'three';
 import { loadBundle, loadSingle, make, MODELS } from './js/gfx/models.js';
@@ -29,18 +31,69 @@ function label(text) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
   s.scale.set(3.2, 0.5, 1); return s;
 }
-let names = [];
+const only=q.get('m');
+const match=name=>!only || only.split(',').some(key=>name.includes(key));
+const garden=b==='nature' && q.get('garden')==='1';
+const demo=q.get('action')==='hunt' && b==='chars' && only==='villager_beomi';
+let names = [], playback=null;
 const LOOK = await import('./js/game/look.js');
 if (b === 'chars') {
   const list = await (await fetch('./assets/chars/chars.json?v=' + VERSION)).json();
-  for (const id of ['player_custom', ...Object.keys(list).filter(k => k !== 'player_custom')]) { try { await loadSingle('./assets/chars/' + list[id].file + '?v=' + VERSION, id); names.push(id); } catch (e) { console.warn(id, e); } }
+  for (const id of ['player_custom', ...Object.keys(list).filter(k => k !== 'player_custom')].filter(match)) { try { await loadSingle('./assets/chars/' + list[id].file + '?v=' + VERSION, id); names.push(id); } catch (e) { console.warn(id, e); } }
 } else {
   await loadBundle('./assets/models/' + b + '.glb?v=' + VERSION);
   names = Object.keys(MODELS);
 }
-const only = q.get('m'); if (only) names = names.filter(n => only.split(',').some(k => n.includes(k)));
+if (only) names = names.filter(match);
 const sp = +(q.get('sp') || (b === 'chars' ? 2.2 : 4)), cols = +(q.get('cols') || Math.min(names.length,Math.ceil(Math.sqrt(names.length * 1.8))));
+if (demo) {
+  const [{Actor},{RakkoSword,DRAW_TIME,SWING_TIME}]=await Promise.all([import('./js/gfx/actor.js'),import('./js/gfx/rakko.js')]);
+  const actor=new Actor('villager_beomi'),rig=new RakkoSword(actor);scene.add(actor.root);
+  const controls=document.createElement('div');controls.id='playback';
+  controls.innerHTML='<button type="button">일시정지</button> <input type="range" aria-label="토벌 동작 시간" min="0" max="6" step=".01" value="0"> <output>대기</output>';
+  document.body.append(controls);
+  const button=controls.querySelector('button'), slider=controls.querySelector('input'), caption=controls.querySelector('output');
+  let playing=true, t=0, last=performance.now();
+  button.onclick=()=>{playing=!playing;button.textContent=playing?'일시정지':'재생';};
+  slider.oninput=()=>{t=+slider.value;playing=false;button.textContent='재생';};
+  playback=()=>{
+    const now=performance.now(),dt=Math.min(.08,(now-last)/1000);last=now;
+    if(playing)t=(t+dt)%6;
+    slider.value=t;
+    const draw=THREE.MathUtils.clamp(Math.min((t-.4)/DRAW_TIME,(5.65-t)/DRAW_TIME),0,1);
+    const swing=t>=2.5 && t<=2.5+SWING_TIME?(t-2.5)/SWING_TIME:0;
+    actor.update(dt);rig.pose(draw,swing);
+    caption.value=draw===0?'대기':t<1.95?'검 꺼내기':swing?'휘두르기':t>4.10?'칼집에 넣기':'준비 자세';
+  };
+}
+if(garden){
+  scene.background.setHex(0xf4eddf);
+  const mound=(radius,depth,y,color)=>{
+    const g=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius*.98,depth,64),new THREE.MeshLambertMaterial({color}));
+    g.position.y=y;g.scale.z=.67;scene.add(g);
+  };
+  mound(3.85,.23,-.17,0xc7a77c);mound(3.90,.12,-.047,0xadcb83);
+  const plant=(id,x,z,scale,yaw,tint)=>{
+    const o=make(id,{tint});o.position.set(x,.02,z);o.rotation.y=yaw;o.scale.setScalar(scale);
+    if(o.userData.parts.snow)o.userData.parts.snow.visible=false;
+    scene.add(o);return o;
+  };
+  const orchard=plant('tree_fruit',-2.18,-.61,.88,.24);
+  for (const slot of ['fruit1','fruit2','fruit3'])orchard.userData.parts[slot]?.add(make('fruit_apple'));
+  plant('tree_blossom',0,-1.05,1.01,.74,{bloom:0xf9b3cb,bloom_d:0xe88aae,bloom_l:0xffe1ea});
+  plant('tree_pine',2.31,-.65,.87,.23);
+  const species=['tulip','pansy','cosmos','mum'];
+  const hues=[0xe87768,0x9e82cb,0xffdfa5,0xe9ae50];
+  for(let j=0;j<2;j++)for(let i=0;i<4;i++){
+    plant('flower_'+species[i],(i-1.5)*1.42+(j ? .18 : -.18),.49+j*.65+.19*Math.cos(i*2),1.40-j*.12,i*.31+j*.8,{petal:hues[i]});
+  }
+  for(let i=0;i<105;i++){
+    const a=i*2.39996,r=Math.sqrt((i+.5)/105);
+    plant(['grass_a','grass_b','grass_f'][i%3],Math.cos(a)*r*3.64,Math.sin(a)*r*2.38,.65+.33*(i%5)/4,a);
+  }
+}
 names.forEach((n, i) => {
+  if(demo || garden)return;
   const o = make(n); const x = (i % cols) * sp, z = Math.floor(i / cols) * sp;
   o.position.set(x, 0, z); scene.add(o);
   if (o.userData.parts.snow && !q.get('snow')) o.userData.parts.snow.visible = false;
@@ -54,15 +107,21 @@ names.forEach((n, i) => {
   }
 });
 const rows = Math.ceil(names.length / cols);
-const cx = (cols - 1) * sp / 2, cz = (rows - 1) * sp / 2;
+const cx = garden ? 0 : (cols - 1) * sp / 2, cz = garden ? 0 : (rows - 1) * sp / 2;
 let yaw = +(q.get('yaw') || 0), pitch = +(q.get('pitch') || 0.75), dist = +(q.get('dist') || Math.max(cols * sp * 1.5, rows * sp * 2.2) + 4);
-function place() { cam.position.set(cx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, cz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(cx, 0.8, cz); }
+function place() { cam.position.set(cx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, cz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(cx, garden ? 1.20 : demo ? .62 : .8, cz); }
+if(garden){yaw=-.12;pitch=.54;dist=Math.max(11.5,16.0/cam.aspect);}
+if(demo){yaw=-.94;pitch=.34;dist=3.65;}
 let drag = null;
-addEventListener('mousedown', e => drag = [e.clientX, e.clientY]);
-addEventListener('mouseup', () => drag = null);
-addEventListener('mousemove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.006; pitch = Math.min(1.5, Math.max(0.05, pitch + (e.clientY - drag[1]) * 0.006)); drag = [e.clientX, e.clientY]; });
-addEventListener('wheel', e => { dist *= e.deltaY > 0 ? 1.1 : 0.9; });
+const canvas=renderer.domElement;canvas.style.touchAction='none';
+canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointerup',()=>{drag=null;});canvas.addEventListener('pointercancel',()=>{drag=null;});
+canvas.addEventListener('pointermove',e=>{
+  if(!drag)return;yaw-=(e.clientX-drag[0])*.006;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-drag[1])*.006,.05,1.5);
+  drag=[e.clientX,e.clientY];
+});
+canvas.addEventListener('wheel',e=>{dist=THREE.MathUtils.clamp(dist*(e.deltaY>0?1.1:.9),.9,260);});
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
-renderer.setAnimationLoop(() => { place(); renderer.render(scene, cam); });
+renderer.setAnimationLoop(() => { playback?.(); place(); renderer.render(scene, cam); });
 document.title = 'ready ' + names.length;
 </script></body></html>

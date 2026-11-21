@@ -4,12 +4,13 @@ import { G, save, runScript, refreshTime } from './game.js';
 import { S, addMoney, addItem, canAdd } from './state.js';
 import { setVillagersVisible } from './npc.js';
 import { make } from '../gfx/models.js';
+import { RakkoSword, DRAW_TIME, SWING_TIME } from '../gfx/rakko.js';
 import { Actor } from '../gfx/actor.js';
 import { UI, Dialog } from '../ui/ui.js';
 import { el } from '../core/util.js';
 import { VILLAGERS } from '../data/villagers.js';
 import { Sound } from '../core/audio.js';
-import { action,life,learn } from './workshop.js';
+import { action,life,learn,available } from './workshop.js';
 import { invite } from './island.js';
 
 const places={
@@ -65,7 +66,12 @@ function workDesk(room){
 }
 function huntDesk(room){
   const b=el('div'),l=life(),h=l.contract;
-  if(h?.phase==='report'){
+  if(room.hunt?.ending){
+    b.append(el('p','note','동료가 장비를 정리하고 있어요. 잠시 후 보고해 주세요.'));
+  }else if(h?.phase==='field'){
+    b.append(el('p','note','오른쪽 풀밭에서 동료와 함께 솜뭉치 괴이를 찾아보세요.'));
+    action(b,'의뢰 철회',()=>{UI.closePanel();l.contract=null;finishHunt(room,false);save();});
+  }else if(h?.phase==='report'){
     b.append(el('p','note','들녘이 조용해졌어요. 접수처에 보고하고 보수를 받으세요.'));
     action(b,'토벌 완료 보고 · 보수 받기',()=>{
       if(l.contract?.phase!=='report')return;const pay=250*l.contract.level;
@@ -77,7 +83,15 @@ function huntDesk(room){
       const level=i+1;action(b,name+' · '+(level*250)+' 도토리',()=>{
         const party=el('div');party.append(el('p','note','함께 출동할 동료를 골라 주세요.'));
         for(const [id,mark] of [['beomi','더 강한 호응'],['goran','추가 용기']])action(party,VILLAGERS[id].name+' · '+mark,()=>{
-          if(room!==G.room)return;l.contract={phase:'field',level,ally:id};save();UI.closePanel();spawnHunt(room);UI.toast('길 오른쪽 풀밭에 괴이가 나타났어요. 동료와 다가가세요.');
+          if(room!==G.room)return;
+          const start=weapon=>{
+            l.contract={phase:'field',level,ally:id,weapon};save();UI.closePanel();spawnHunt(room);
+            UI.toast('오른쪽 풀밭에 괴이가 나타났어요. 가까이 가면 동료가 장비를 꺼내요.');
+          };
+          if(!available('hunt_bell')) return start('hunt_fork');
+          const gear=el('div');action(gear,'분홍 토벌봉 · 대여',()=>start('hunt_fork'));
+          action(gear,'내 잎새 방울봉 · 첫 호응에 용기 회복',()=>start('hunt_bell'));
+          UI.openPanel('토벌 장비 선택',gear);
         });UI.openPanel('토벌 동료',party);
       },l.hunts>=i);
     }
@@ -85,7 +99,7 @@ function huntDesk(room){
   UI.openPanel('토벌 의뢰소 · 완료 '+l.hunts+'건',b);
 }
 function endField(room){
-  const h=room.hunt;if(!h)return;room.group.remove(h.foe,h.ally.root,h.ring);h.ring.geometry.dispose();h.ring.material.dispose();if(h.local){h.local.actor.root.visible=true;h.local.visible=true;}room.hunt=null;
+  const h=room.hunt;if(!h)return;G.player.setHuntGear();room.group.remove(h.foe,h.ally.root,h.ring);h.ring.geometry.dispose();h.ring.material.dispose();if(h.local){h.local.actor.root.visible=true;h.local.visible=true;}room.hunt=null;
 }
 function spawnHunt(room){
   endField(room);const c=life().contract;if(c?.phase!=='field')return;
@@ -94,10 +108,49 @@ function spawnHunt(room){
   ring.rotation.x=-Math.PI/2;ring.position.set(10.6,.013,7.9);room.group.add(ring);
   const local=room.npcs.find(n=>n.id===c.ally);
   if(local){local.visible=false;local.actor.root.visible=false;}
-  room.hunt={foe,ally,ring,local,x:10.6,z:7.9,time:0,hit:false,cycle:-1,hp:c.level+2,hearts:c.ally==='goran'?4:3,level:c.level};
+  ally.setPos(G.player.x+.62,0,G.player.z+.37);
+  room.endHunt=()=>endField(room);
+  room.hunt={foe,ally,ring,local,rig:ally.parts.blade_tip && ally.parts.hand ? new RakkoSword(ally) : null,
+    weapon:c.weapon==='hunt_bell'?'hunt_bell':'hunt_fork',draw:0,engaged:false,swing:0,ending:false,x:10.6,z:7.9,time:0,hit:false,cycle:-1,hp:c.hp ?? c.level+2,hearts:c.hearts ?? (c.ally==='goran'?4:3),chimed:!!c.chimed,level:c.level};
+}
+function finishHunt(room, won){
+  const h=room.hunt;if(!h || h.ending)return;
+  h.ending=true;h.ready=false;h.won=won;h.ring.visible=false;
+}
+function stepParty(h,dt){
+  const p=G.player, distance=Math.hypot(p.x-h.x,p.z-h.z);
+  if(!h.engaged && !h.ending && distance<3.5){
+    h.engaged=true; p.setHuntGear(h.weapon);
+    if(!h.rig)h.ally.hold('hunt_blue');
+  }
+  const advance=h.swing>0 ? Math.sin(Math.PI*(1-h.swing/SWING_TIME)) : 0;
+  let x=p.x+.62,z=p.z+.37;
+  if(distance<2.4 && h.engaged){
+    const dx=p.x-h.x,dz=p.z-h.z;
+    const a=Math.atan2(dx,dz)+.68, radius=.83-.28*advance;
+    x=h.foe.position.x+Math.sin(a)*radius;z=h.foe.position.z+Math.cos(a)*radius;
+  }
+  const k=1-Math.exp(-7*dt), travel=Math.hypot(x-h.ally.x,z-h.ally.z);
+  h.ally.speed=Math.min(1.4,travel*2);h.ally.setPos(h.ally.x+(x-h.ally.x)*k,0,h.ally.z+(z-h.ally.z)*k);
+  if(h.engaged)h.ally.faceTo(h.x,h.z);else if(travel>.08)h.ally.faceTo(x,z);
+  h.ally.update(dt);
+  h.swing=Math.max(0,h.swing-dt);
+  if(!h.ending && h.engaged)h.draw=Math.min(1,h.draw+dt/DRAW_TIME);
+  if(h.ending && !h.swing)h.draw=Math.max(0,h.draw-dt/DRAW_TIME);
+  h.rig?.pose(h.draw,h.swing>0?1-h.swing/SWING_TIME:0);
 }
 function huntFrame(room,dt){
   const h=room.hunt;if(!h || UI.blocking() || G.busy)return;
+  stepParty(h,dt);
+  if(h.ending){
+    if(h.won){h.foe.scale.multiplyScalar(Math.exp(-dt*4));h.foe.position.y+=dt*.6;}
+    if(!h.draw && !h.swing){
+      endField(room);
+      UI.toast(h.won?'괴이가 달아났어요! 노동 갑옷 씨에게 보고하세요.':'동료와 무사히 돌아왔어요.');
+    }
+    return;
+  }
+  if(h.draw<1)return;
   h.time+=dt;const length=3.9-.24*h.level,cycle=Math.floor(h.time/length),phase=h.time%length/length;
   if(cycle!==h.cycle){h.hit=false;h.bump=false;h.cycle=cycle;}
   h.ready=phase<.56;const danger=phase>.73;
@@ -105,22 +158,29 @@ function huntFrame(room,dt){
   h.foe.scale.setScalar((danger?1.31:h.ready?1.08:1.17)+.04*Math.sin(h.time*5));h.foe.rotation.y=.22*Math.sin(h.time*1.6);
   const color=danger?0xed757b:h.ready?0xf5c765:0xb4a9d7;
   h.ring.material.color.setHex(color);h.ring.scale.setScalar(danger?1.9:h.ready?1.02:1.4);
-  const p=G.player;h.ally.setPos(p.x+.62,0,p.z+.37);h.ally.faceTo(h.x,h.z);h.ally.update(dt);
+  const p=G.player;
   if(danger && !h.bump && Math.hypot(p.x-h.foe.position.x,p.z-h.foe.position.z)<1.48){
     h.bump=true;h.hearts--;p.actor.play('hop',.3);UI.toast('깜짝! 남은 용기 '+h.hearts);
-    if(h.hearts<=0){life().contract=null;endField(room);save();UI.toast('동료와 무사히 물러났어요. 접수처에서 다시 도전할 수 있어요.');}
+    if(h.hearts<=0){life().contract=null;finishHunt(room,false);}
+    else life().contract.hearts=h.hearts;
+    save();
   }
 }
 function strike(room){
   const h=room.hunt;if(!h||!h.ready||h.hit)return;
-  h.hit=true;h.hp-=life().contract.ally==='beomi'?2:1;h.ally.play('hop',.4);G.player.do('swing',.38);Sound.sfx('pick');
-  if(h.hp<=0){life().contract.phase='report';endField(room);save();UI.toast('괴이가 달아났어요! 노동 갑옷 씨에게 보고하세요.');}
+  h.hit=true;h.hp-=life().contract.ally==='beomi'?2:1;h.swing=SWING_TIME;
+  if(!h.rig)h.ally.play('swing',SWING_TIME);
+  if(h.weapon==='hunt_bell' && !h.chimed){h.chimed=true;h.hearts++;Sound.sfx('coin');}
+  G.player.actor.faceTo(h.x,h.z);G.player.do('swing',SWING_TIME);Sound.sfx('pick');
+  Object.assign(life().contract,{hp:h.hp,hearts:h.hearts,chimed:h.chimed});
+  if(h.hp<=0){life().contract.phase='report';finishHunt(room,true);}
   else UI.toast('호흡이 맞았어요! 남은 기세 '+h.hp);
+  save();
 }
 function fieldProbe(room,p){
   const dist=(x,z)=>Math.hypot(p.x-x,p.z-z);
-  if(room.hunt && dist(room.hunt.foe.position.x,room.hunt.foe.position.z)<1.85){
-    const h=room.hunt;return {label:h.ready&&!h.hit?'동료와 토벌하기':'물러서기 · 용기 '+h.hearts,act:()=>strike(room)};
+  if(room.hunt && !room.hunt.ending && dist(room.hunt.foe.position.x,room.hunt.foe.position.z)<1.85){
+    const h=room.hunt;return {label:h.draw<1?'토벌 준비 중':h.ready&&!h.hit?'동료와 토벌하기':'물러서기 · 용기 '+h.hearts,act:()=>strike(room)};
   }
   if(dist(7,10.35)<1.15)return {label:'우리 마을로 귀가',act:()=>G.hooks.exit()};
   const w=dayWork(room.area);

@@ -7,7 +7,7 @@ import { Sound } from '../core/audio.js';
 
 export const recipes = [
   ['tool_rod',2,0,1], ['tool_net',2,0,2], ['tool_axe',2,1], ['tool_shovel',2,2], ['tool_can',1,2],
-  ['f_log_stool',2], ['f_log_chair',3], ['f_flowerpot',0,1,2], ['f_log_table',5,1],
+  ['hunt_bell',3,1,3,'hunt'], ['f_log_stool',2], ['f_log_chair',3], ['f_flowerpot',0,1,2], ['f_log_table',5,1],
   ['f_log_bed',6,0,4], ['f_chest',5,2], ['f_mirror',3,2], ['f_bangseok',0,0,5],
   ['f_log_shelf',5,2,0,'meadow'], ['f_deungjan',2,3,0,'cave'], ['f_soban',4,1,0,'ramen'],
   ['f_byeongpung',6,1,4,'hunt'], ['f_guitar',5,2,3,'hunt']
@@ -49,7 +49,7 @@ export function workshop(tab='도구') {
     tabs.replaceChildren(); list.replaceChildren();
     for(const t of ['도구','가구']) action(tabs,t,()=>{tab=t;draw();}).className='tab'+(tab===t?' on':'');
     for(const r of recipes) {
-      if((ITEMS[r[0]].kind==='tool')!==(tab==='도구')) continue;
+      if((['tool','huntGear'].includes(ITEMS[r[0]].kind))!==(tab==='도구')) continue;
       const row=el('div','li'), info=el('div','nm'), costs=r.slice(1,4);
       const locked=r[4] && !life().recipes.includes(r[4]);
       info.append(el('b','',ITEMS[r[0]].name),el('span','sub',locked?({meadow:'풀잎 들녘 일손 돕기',cave:'동굴에서 등불 돌 모으기',ramen:'라멘 골목 일손 돕기',hunt:'첫 토벌 보수 받기'}[r[4]]+' 보상'):costs.map((n,i)=>n?ITEMS[materials[i]].name+' '+available(materials[i])+'/'+n:'').filter(Boolean).join(' · ')));

@@ -4,8 +4,8 @@ import { Actor } from '../gfx/actor.js';
 import { CURVE } from '../gfx/models.js';
 import { el } from '../core/util.js';
 import { Sound } from '../core/audio.js';
-import { SKIN, HAIRC, EYEC, CLOTH, SHOE, HAIR, FACE, BROW, NOSE, EYES, MOUTH, CHEEK, OUTFIT, HAT, GLASS, PRESETS, MODEL, cleanLook, randomLook, dress } from './look.js';
-import { hairThumb } from '../gfx/thumbs.js';
+import { SKIN, HAIRC, EYEC, CLOTH, SHOE, HAIR, ARRIVAL_HAIR, FACE, BROW, NOSE, EYES, MOUTH, CHEEK, CHEEKC, OUTFIT, HAT, GLASS, PRESETS, MODEL, cleanLook, randomLook, dress } from './look.js';
+import { featureThumb } from '../gfx/thumbs.js';
 
 /** 캐릭터 한 명을 작은 화면에 따로 그린다(끌어서 돌릴 수 있다) */
 class Preview {
@@ -57,8 +57,11 @@ class Preview {
 }
 
 const TABS = [
-  ['face', '얼굴', [['얼굴형', 'face', FACE.map(f => f.ko), 'name0'], ['피부', 'skin', SKIN, 'color'], ['눈썹', 'brow', BROW, 'name0'], ['눈', 'eyes', EYES, 'name1'], ['눈 색', 'eyec', EYEC, 'color'], ['코', 'nose', NOSE, 'name0'], ['입', 'mouth', MOUTH, 'name1'], ['볼', 'cheek', CHEEK, 'name0']]],
-  ['hair', '머리', [['머리 모양', 'hair', HAIR, 'name1'], ['머리색', 'hairc', HAIRC, 'color']]],
+  ['face', '피부·얼굴형', [['피부색', 'skin', SKIN, 'color'], ['얼굴형', 'face', FACE.map(f=>f.ko), 'name0']]],
+  ['hair', '헤어', [['머리 모양', 'hair', HAIR, 'name1'], ['머리색', 'hairc', HAIRC, 'color']]],
+  ['eyes', '눈', [['눈 모양', 'eyes', EYES, 'name1'], ['눈 색', 'eyec', EYEC, 'color'], ['눈썹', 'brow', BROW, 'name0']]],
+  ['mouth', '코·입', [['코', 'nose', NOSE, 'name0'], ['입', 'mouth', MOUTH, 'name1']]],
+  ['cheek', '볼', [['볼 모양', 'cheek', CHEEK, 'name0'], ['볼 색', 'cheekc', CHEEKC, 'color', L=>[1,3,4].includes(L.cheek)]]],
   ['wear', '옷', [['옷', 'outfit', OUTFIT.map((o) => o.ko), 'name1'], ['윗옷 색', 'top', CLOTH, 'color'], ['아래옷 색', 'bot', CLOTH, 'color', (L) => L.outfit !== 3], ['신발 색', 'shoe', SHOE, 'color']]],
   ['deco', '꾸밈', [['모자', 'hat', HAT.map((o) => o.ko), 'name0'], ['모자 색', 'hatc', CLOTH, 'color', (L) => !!HAT[L.hat].color], ['안경', 'glass', GLASS, 'name0']]],
 ];
@@ -67,7 +70,7 @@ const TABS = [
  * 꾸미기 화면을 만든다. onChange(look): 고를 때마다 부른다.
  * 돌려주는 것: { el, look(지금 고른 모습), set(look), dispose() }
  */
-export function lookEditor(initial, onChange = null, { w = 230, h = 290 } = {}) {
+export function lookEditor(initial, onChange = null, { w = 230, h = 290, arrival = false } = {}) {
   let look = cleanLook(initial), tab = 'face';
   const root = el('div', 'lookui');
   const left = el('div', 'lk-left'), right = el('div', 'lk-right');
@@ -92,7 +95,7 @@ export function lookEditor(initial, onChange = null, { w = 230, h = 290 } = {}) 
     draw();
   };
   PRESETS.forEach((p, i) => { const b = el('button', 'btn', '본보기 ' + (i + 1)); b.onclick = () => { Sound.sfx('ui'); apply(p); }; quick.appendChild(b); });
-  const rnd = el('button', 'btn go', '무작위'); rnd.onclick = () => { Sound.sfx('ui'); apply(randomLook()); }; quick.appendChild(rnd);
+  const rnd = el('button', 'btn go', '무작위'); rnd.onclick = () => { Sound.sfx('ui'); const L=randomLook(); if(arrival && L.hair>ARRIVAL_HAIR)L.hair-=ARRIVAL_HAIR; apply(L); }; quick.appendChild(rnd);
   const reset = el('button', 'btn', '처음 모습'); reset.onclick = () => apply(initial, false); quick.appendChild(reset);
   const tabs = el('div', 'tabs'), opts = el('div', 'lk-opts');
   right.appendChild(quick); right.appendChild(tabs); right.appendChild(opts);
@@ -117,18 +120,20 @@ export function lookEditor(initial, onChange = null, { w = 230, h = 290 } = {}) 
       row.appendChild(el('div', 'lk-label', label));
       const box = el('div', 'lk-box');
       box.setAttribute('role', 'group'); box.setAttribute('aria-label', label);
-      if (key === 'hair') box.classList.add('lk-hair-grid');
-      list.forEach((v, i) => {
+      const portrait = ['face','hair','eyes','brow','nose','mouth','cheek'].includes(key);
+      if (portrait) box.classList.add('lk-hair-grid');
+      const choices=arrival && key==='hair' ? list.slice(0,ARRIVAL_HAIR) : list;
+      choices.forEach((v, i) => {
         const val = kind === 'name1' ? i + 1 : i;
         const b = kind === 'color' ? el('button', 'sw' + (look[key] === val ? ' on' : '')) : el('button', 'opt' + (look[key] === val ? ' on' : ''), v);
         if (kind === 'color') { b.style.background = v; b.title = label + ' ' + (i + 1); }
         b.dataset.lk = key + '-' + val;
         b.setAttribute('aria-label', kind === 'color' ? b.title : v);
         b.setAttribute('aria-pressed', String(look[key] === val));
-        if (key === 'hair') {
+        if (portrait) {
           const img = document.createElement('img');
           img.alt = ''; img.width = 52; img.height = 52; b.prepend(img);
-          requestAnimationFrame(() => { if (img.isConnected) img.src = hairThumb(val); });
+          requestAnimationFrame(() => { if (img.isConnected) img.src = featureThumb(key,val); });
         }
         b.onclick = () => { Sound.sfx('ui'); apply({ ...look, [key]: val }, kind !== 'color'); };
         box.appendChild(b);

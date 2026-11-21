@@ -11,22 +11,27 @@ import { tinted } from '../gfx/models.js';
 
 export const MODEL = 'player_custom';
 
-export const SKIN = ['#ffe6d2', '#ffdcc0', '#f5cba8', '#e8b890', '#cf9c78', '#b07c58', '#8c5c42'];
+export const SKIN = ['#ffe6d2', '#ffdcc0', '#f5cba8', '#e8b890', '#cf9c78', '#b07c58', '#8c5c42', '#654431'];
+export const CHEEKC = ['#ee8971','#ed8c9b','#cb817f','#d99665','#af7f99','#dd6c66'];
 export const HAIRC = ['#2e2a36', '#4a3324', '#6a4530', '#b8682e', '#e8c060', '#c8503c', '#f08aa8', '#8a6fd0', '#4a8fd8', '#5fae62', '#e9e7ee', '#a9532d', '#80574c', '#d4ab91'];
 export const EYEC = ['#3b2b28', '#6a4526', '#2f4f8f', '#2f6a44', '#6a3f8a', '#55555e', '#946642', '#6c898b'];
 export const CLOTH = ['#e8574c', '#f08a3c', '#ffd04a', '#6fb86a', '#3fa39a', '#4a90d9', '#40598f', '#8a6fd0', '#f08aa8', '#fff3d6', '#9aa0aa', '#3a3a44', '#7a6a52', '#873f42', '#8d935c', '#bad4db'];
 export const SHOE = ['#8a5a3a', '#e8574c', '#f7f7f2', '#3a3a44', '#4a90d9', '#ffd04a'];
 
-export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리', '옆가르마', '양 갈래 땋기', '웨이브 단발', '밤톨 가르마', '귀밑 보브', '옆으로 묶은 번'];
+export const HAIR = ['단발', '삐죽 머리', '양 갈래', '짧은 머리', '긴 머리', '곱슬머리', '올림머리', '묶은 머리', '아주 짧은 머리', '옆가르마', '양 갈래 땋기', '웨이브 단발', '밤톨 가르마', '귀밑 보브', '옆으로 묶은 번', '낮은 양 갈래', '옆으로 땋은 머리', '꽃잎 올림머리', '어깨 웨이브', '쌍둥이 번', '앞머리 웨이브'];
+export const ARRIVAL_HAIR = 15;
 export const FACE = [
   { ko: '기본형', width: 1, height: 1 }, { ko: '동그란 얼굴', width: 1.095, height: .94 },
   { ko: '갸름한 얼굴', width: .93, height: 1.055 },
 ];
 export const BROW = ['부드러운 곡선', '처진 눈썹', '일자 눈썹'];
-export const NOSE = ['삼각 코', '동그란 코', '작은 코'];
-export const EYES = ['또렷한 눈', '동그란 눈', '콩알 눈', '졸린 눈', '웃는 눈', '속눈썹', '놀란 눈', '따뜻한 타원눈'];
+export const NOSE = ['삼각 코', '동그란 코', '작은 코', '네모 코'];
+export const EYES = ['또렷한 눈', '동그란 눈', '콩알 눈', '졸린 눈', '웃는 눈', '속눈썹', '놀란 눈', '따뜻한 타원눈',
+  '올라간 아몬드눈','처진 아몬드눈','나른한 반달눈','긴 속눈썹','세로 타원눈','가로 타원눈',
+  '도도한 눈매','다정한 눈매','동그란 놀람눈','초롱한 작은 눈','날렵한 눈','느긋한 눈',
+  '한 올 속눈썹','순한 속눈썹','세 올 속눈썹','납작한 콩눈','호기심 눈','반짝이는 큰 눈'];
 export const MOUTH = ['미소', '고양이 입', '일자 입', '오므린 입', '활짝 웃음'];
-export const CHEEK = ['없음', '발그레', '주근깨', '둘 다'];
+export const CHEEK = ['없음', '발그레', '주근깨', '둘 다', '네모 볼'];
 // sl: 소매(sls 짧은 · sll 긴)   leg: pants 긴 바지 · shorts 반바지와 양말 · sock 맨다리와 양말
 export const OUTFIT = [
   { ko: '반소매 티', sl: 'sls', leg: 'pants' }, { ko: '후드티', sl: 'sll', leg: 'pants' }, { ko: '원피스', sl: 'sls', leg: 'sock' },
@@ -46,12 +51,12 @@ export const PRESETS = [
   { skin: 1, hair: 3, hairc: 3, eyes: 6, eyec: 1, mouth: 1, cheek: 1, outfit: 3, top: 2, bot: 3, shoe: 1, hat: 0, hatc: 8, glass: 0 },
   { skin: 3, hair: 4, hairc: 1, eyes: 2, eyec: 0, mouth: 5, cheek: 1, outfit: 4, top: 9, bot: 5, shoe: 0, hat: 2, hatc: 3, glass: 0 },
 ];
-export const defaultLook = () => ({ ...PRESETS[0], hair: 13, hairc: 11, eyes: 8, eyec: 6, outfit: 7, top: 9, bot: 13, shoe: 4, hat: 0, face: 0, brow: 0, nose: 1 });
+export const defaultLook = () => ({ ...PRESETS[0], skin: 2, hair: 13, hairc: 11, eyes: 8, eyec: 6, outfit: 7, top: 9, bot: 13, shoe: 4, hat: 0, face: 0, brow: 0, nose: 1, cheekc: 0 });
 
 const LIMIT = { skin: [0, SKIN.length - 1], hair: [1, HAIR.length], hairc: [0, HAIRC.length - 1], eyes: [1, EYES.length], eyec: [0, EYEC.length - 1], mouth: [1, MOUTH.length],
   cheek: [0, CHEEK.length - 1], outfit: [1, OUTFIT.length], top: [0, CLOTH.length - 1], bot: [0, CLOTH.length - 1], shoe: [0, SHOE.length - 1], hat: [0, HAT.length - 1], hatc: [0, CLOTH.length - 1], glass: [0, GLASS.length - 1],
   // 새 필드는 뒤에 붙여 예전 같이 하기 코드의 순서를 유지한다.
-  face: [0, FACE.length - 1], brow: [0, BROW.length - 1], nose: [0, NOSE.length - 1] };
+  face: [0, FACE.length - 1], brow: [0, BROW.length - 1], nose: [0, NOSE.length - 1], cheekc: [0,CHEEKC.length-1] };
 export const LOOK_KEYS = Object.keys(LIMIT);
 
 /** 빠졌거나 범위를 벗어난 값을 기본값으로 채운다(예전 저장, 다른 사람이 보낸 값) */
@@ -88,6 +93,7 @@ export function partsOf(L) {
   on.add('eyes' + L.eyes); on.add('mouth' + L.mouth);
   on.add('brow' + ((L.brow ?? 0) + 1)); on.add('nose' + ((L.nose ?? 0) + 1));
   if (L.cheek === 1 || L.cheek === 3) on.add('blush');
+  if (L.cheek === 4) on.add('blush_square');
   if (L.cheek === 2 || L.cheek === 3) on.add('freckle');
   if (L.hat) on.add('hat' + L.hat);
   if (L.glass) on.add('glass' + L.glass);
@@ -102,10 +108,10 @@ export function partsOf(L) {
 /** 재질 이름 → 색 */
 export function tintOf(L) {
   const skin = SKIN[L.skin], top = CLOTH[L.top], hat = CLOTH[L.hatc];
-  return { ...Object.fromEntries([1,2,3,4,5].map(i=>['p_blush'+i,mix(skin,'#ec846b',i*.075)])), p_skin: skin, p_nose: mix(skin, '#d56343', 0.56), p_hair: HAIRC[L.hairc], p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
+  return { ...Object.fromEntries([1,2,3,4,5].map(i=>['p_blush'+i,mix(skin,CHEEKC[L.cheekc ?? 0],.12+i*.082)])), p_skin: skin, p_nose: mix(skin, '#ec754e', 0.67), p_hair: HAIRC[L.hairc], p_hair_light: mix(HAIRC[L.hairc],'#ffc590',.095), p_hair_shade: mix(HAIRC[L.hairc],'#513749',.14), p_eye: EYEC[L.eyec], p_top: top, p_top2: shade(top, 0.8), p_bot: CLOTH[L.bot], p_shoe: SHOE[L.shoe], p_hat: hat, p_hat2: shade(hat, 0.82) };
 }
 
-const VARIANT = /^(hair|hairfr|hairtop|eyes|mouth|brow|nose|hat|glass|top)\d+$|^(blush|freckle)$|^(sls|sll|pants|shorts|sock)_[LR]$/;
+const VARIANT = /^(hair|hairfr|hairtop|eyes|mouth|brow|nose|hat|glass|top)\d+$|^(blush|blush_square|freckle)$|^(sls|sll|pants|shorts|sock)_[LR]$/;
 
 /** 고른 모습을 캐릭터(Actor)에 입힌다. 갈아 끼우는 부위가 없는 모델(직접 바꿔 넣은 모델·그림)이면 아무 일도 하지 않고 false */
 export function dress(actor, look) {

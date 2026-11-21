@@ -65,22 +65,22 @@ class Char:
         self.top = hc + hr[2]
         m.anchor('hand', (-HAND[0], HAND[1] - 0.02, HAND[2]), 'arm_R')
 
-    def done(self, extra=0.0):
+    def done(self, extra=0.0, body_scale=BODY_K, head_scale=HEAD_K):
         """마무리: 몸을 줄이고 머리를 키워 비율을 맞춘 뒤, 말풍선 자리를 표시한다."""
         m = self.m
         neck = self.head.pivot.copy()
-        new_neck = neck * BODY_K
+        new_neck = neck * body_scale
         for p in m.parts:
             if p is self.head or p.parent == 'head':
                 for v in p.bm.verts:
-                    v.co = new_neck + (v.co - neck) * HEAD_K
-                p.pivot = new_neck + (p.pivot - neck) * HEAD_K
+                    v.co = new_neck + (v.co - neck) * head_scale
+                p.pivot = new_neck + (p.pivot - neck) * head_scale
             else:
                 for v in p.bm.verts:
-                    v.co = v.co * BODY_K
-                p.pivot = p.pivot * BODY_K
-        m.anchors = [(nm, loc * BODY_K, par) for (nm, loc, par) in m.anchors]
-        top = new_neck.z + (self.top - neck.z) * HEAD_K
+                    v.co = v.co * body_scale
+                p.pivot = p.pivot * body_scale
+        m.anchors = [(nm, loc * body_scale, par) for (nm, loc, par) in m.anchors]
+        top = new_neck.z + (self.top - neck.z) * head_scale
         m.anchor('top', (0, 0, top + 0.08 + extra))
 
     @property
@@ -459,13 +459,14 @@ NOSE = {'#ffdcc0': '#ed936b', '#f5cba8': '#dd825b', '#e8b890': '#cc7756'}
 
 
 def human_head(c, skin, nose, modular=False):
+    c.cheeks = .048
     c.skull(skin, sub=4)
     with c.head:
         for s in (-1, 1):
-            ball((s*.401, -.004, c.hc-.045), 1, skin, (.071,.065,.076), sub=3)
-            ball((s*.439, -.048, c.hc-.044), 1, nose, (.028,.018,.039), sub=2)
+            ball((s*.401, -.018, c.hc-.059), 1, skin, (.077,.064,.086), sub=3)
+            ball((s*.438, -.058, c.hc-.057), 1, nose, (.028,.018,.039), sub=2)
     z = c.hc - .087
-    for i in range(1,4) if modular else (1,):
+    for i in range(1,5) if modular else (1,):
         part = c.m.part('nose%d'%i,(0,0,NECK),parent='head') if modular else c.head
         with part:
             if i == 1:
@@ -476,6 +477,11 @@ def human_head(c, skin, nose, modular=False):
                 poly(vs, [(j,(j+1)%len(outline),len(outline)) for j in range(len(outline))],nose,smooth=True)
             elif i == 2:
                 c.dot(0,z,nose,.042,.033,.032,.016)
+            elif i==4:
+                outline=[(-.026,.027),(-.038,.015),(-.038,-.017),(-.026,-.028),(.026,-.028),(.038,-.017),(.038,.015),(.026,.027)]
+                rim=[tuple(c.hp(x,z+v,.016)[0]) for x,v in outline]
+                tip=[tuple(c.hp(x*.79,z+v*.79,.040)[0]) for x,v in outline]
+                poly(rim+tip,[(j,(j+1)%8,8+(j+1)%8,8+j) for j in range(8)]+[tuple(range(8,16))],nose,smooth=True)
             else:
                 c.dot(0,z,nose,.026,.021,.023,.010)
 
@@ -540,7 +546,7 @@ def swept_hair(c, color, long=False):
             a = (i / n * 2 - 1) * math.pi
             front = max(0, math.cos(a))
             edge = 1.97 - .70 * math.cos(a) + (.21 if long else 0) * (1-front)
-            edge += front * (.14 * math.sin(3*a+.8) - .40*math.exp(-((a-.26)/.17)**2)
+            edge += front * (.24 * math.sin(2.8*a+1.3) - .44*math.exp(-((a-.30)/.20)**2)
                              - .18*math.exp(-((a+.59)/.12)**2))
             t = edge * (1 - j/rows)
             verts.append(((rx+.022)*math.sin(t)*math.sin(a), -(ry+.036)*math.sin(t)*math.cos(a),
@@ -553,6 +559,60 @@ def swept_hair(c, color, long=False):
     verts.append((0,0,c.hc+rz+.05))
     faces.extend(((rows-1)*n+i,(rows-1)*n+(i+1)%n,peak) for i in range(n))
     c.fit(poly(verts,faces,color,smooth=True))
+    if color=='p_hair':
+        # Tapered strokes follow the crown and stop above the fringe.
+        for i,(az,span) in enumerate([(-1.12,.52),(-.88,.65),(-.55,.70),(-.32,.62),(.48,.58),(.82,.66),(1.2,.52)]):
+            strip=[];fs=[]
+            for j in range(13):
+                u=j/12;t=.28+span*u
+                a=az + (.21 if az<0 else -.18)*(1-u)**2
+                width=.002+.024*math.sin(math.pi*u)**1.25
+                for side in (-1,1):
+                    b=a+side*width
+                    strip.append(((rx+.024)*math.sin(t)*math.sin(b),-(ry+.038)*math.sin(t)*math.cos(b),
+                                  c.hc+.013+(rz+.040)*math.cos(t)))
+            for j in range(12):fs.append((2*j,2*j+2,2*j+3,2*j+1))
+            c.fit(poly(strip,fs,'p_hair_light' if i%3 else 'p_hair_shade',smooth=True))
+
+
+# Width, height, outer-corner lift, upper lid openness, iris width, lashes.
+EYE_SHAPES = [
+    (.077,.087,.020,.72,.68,0),(.085,.087,-.020,.72,.65,0),
+    (.083,.078,.005,.44,.71,0),(.077,.100,.009,.88,.79,2),
+    (.071,.102,-.006,1,.69,0),(.091,.076,.007,.91,.57,0),
+    (.075,.078,.015,.50,.68,2),(.078,.087,-.020,.88,.72,2),
+    (.081,.100,0,1,.40,0),(.064,.068,0,.89,.79,0),
+    (.086,.080,.026,.57,.53,0),(.082,.079,-.021,.46,.58,0),
+    (.069,.099,.014,1,.65,1),(.087,.091,-.013,.96,.73,1),
+    (.081,.070,.024,.92,.81,3),(.081,.062,-.011,.94,.80,0),
+    (.076,.103,-.013,.69,.50,0),(.089,.094,.013,.87,.81,2),
+]
+
+def shaped_eye(c,s,ex,z,spec,color):
+    w,h,tilt,lid,pupil,lashes=spec
+    def layer(rx,rz,offset,mat,lift,cap,center=0):
+        vs=[tuple(c.hp(ex+s*center,z+offset,lift)[0])];faces=[]
+        for j in range(1,4):
+            for i in range(32):
+                a=math.tau*i/32; u=math.cos(a); v=math.sin(a)
+                y=(v if v<0 else min(v,cap))*rz + tilt*u
+                vs.append(tuple(c.hp(ex+s*(center+rx*u*j/3),z+offset+y*j/3,lift)[0]))
+                k=1+(j-1)*32+i;n=1+(j-1)*32+(i+1)%32
+                face=(0,k,n) if j==1 else (k-32,k,n,n-32)
+                faces.append(face if s>0 else tuple(reversed(face)))
+        poly(vs,faces,mat,smooth=True)
+    layer(w,h,0,'#564338',.006,lid)
+    layer(w*.91,h*.89,-.002,'#fff9e9',.009,lid)
+    # The iris and its reflections stay below the selected upper eyelid.
+    ph=h*(.43+.32*lid); pz=-h*.15
+    face_disc(c,ex-s*.006,z+pz,w*pupil*.90,ph,color,.012)
+    face_disc(c,ex-s*.009,z+pz,w*pupil*.48,ph*.55,'#443730',.015)
+    face_disc(c,ex-.014,z+pz+ph*.41,.009,.011,WHITE,.018)
+    for i in range(lashes):
+        u=.68+.13*i
+        a=c.hp(ex+s*w*u,z+h*min(lid,math.sqrt(1-u*u))+tilt*u,.010)[0]
+        b=c.hp(ex+s*(w*u+.012+i*.002),a.z+.020-i*.002,.011)[0]
+        tube(a,b,.0065,INK,r2=.003,seg=7)
 
 
 def human_eyes(c, style, color, name='eyes'):
@@ -560,6 +620,9 @@ def human_eyes(c, style, color, name='eyes'):
     with c.m.part(name, tuple(c.hp(0,z)[0]), parent='head'):
         for s in (-1,1):
             ex = s*x
+            if isinstance(style,tuple):
+                shaped_eye(c,s,ex,z,style,color)
+                continue
             if style == 'smile':
                 p,rot = c.hp(ex,z-.025,.010)
                 arc(tuple(p),.055,.014,color,15,165,seg=12,tseg=7,rot=(90+rot[0],0,rot[2]))
@@ -591,16 +654,19 @@ def human_eyes(c, style, color, name='eyes'):
 
 
 def finish_player(c):
-    # 얼굴과 머리 장식은 같은 축으로 키워 안경·모자가 함께 맞게 한다.
+    # Shape the skull, ears, bangs, features and glasses in the same coordinates.
+    # The jaw narrows gently below the cheekbones; the neck stays at the collar.
+    def shape(v):
+        rel=(v.z-c.hc)/c.hr[2]
+        jaw=max(0,min(1,(-rel-.12)/.85))
+        v.x *= 1.014-.102*jaw*jaw
+        v.z = NECK+(v.z-NECK)*1.145
     for p in c.m.parts:
         if p is c.head or p.parent=='head':
-            for v in p.bm.verts:
-                v.co.x *= 1.105
-                v.co.z = NECK + (v.co.z-NECK)*1.10
-            p.pivot.x *= 1.105
-            p.pivot.z = NECK + (p.pivot.z-NECK)*1.10
-    c.top = NECK+(c.top-NECK)*1.10
-    c.done()
+            for v in p.bm.verts: shape(v.co)
+            shape(p.pivot)
+    c.top = NECK+(c.top-NECK)*1.145
+    c.done(body_scale=1.035, head_scale=1.0)
 
 
 def sneaker(c):
@@ -723,7 +789,7 @@ def custom(name):
         # ---------------- 얼굴
         human_head(c, SK, NO, modular=True)
         human_brows(c, HA, modular=True)
-        for i, style in enumerate(('oval','big','dot','half','smile','lash','pop','soft'),1):
+        for i, style in enumerate(('oval','big','dot','half','smile','lash','pop','soft')+tuple(EYE_SHAPES),1):
             human_eyes(c, style, EY, 'eyes%d' % i)
         for i, st in enumerate(('smile', 'cat', 'flat', 'o', 'wide')):
             c.mouth(st, z=hc - 0.162, w=0.065, name='mouth%d' % (i + 1), open_part=(i == 0))
@@ -732,6 +798,13 @@ def custom(name):
                 for i in range(1,6):
                     f=1-.105*(i-1)
                     face_disc(c,side*.277,hc-.129,.060*f,.043*f,'p_blush%d'%i,.002+i*.0013)
+        with hp('blush_square'):
+            for side in (-1,1):
+                for j in range(3):
+                    for k in range(3):
+                        x=side*(.247+j*.022);z=hc-.151+k*.016
+                        ring=[tuple(c.hp(x+dx,z+dz,.006)[0]) for dx,dz in [(-.012,-.009),(.012,-.009),(.012,.009),(-.012,.009)]]
+                        poly(ring,[(0,1,2,3)],'p_blush4',smooth=True)
         with hp('freckle'):
             for s in (1, -1):
                 for dx, dz in ((0.0, 0.0), (0.04, 0.02), (-0.036, 0.022)):
@@ -859,6 +932,36 @@ def custom(name):
                 if i == 15:
                     ball((.13,.28,hc+.13),1,HA,(.16,.15,.16),sub=4)
 
+        for index in range(16,22):
+            with hp('hair%d'%index):
+                swept_hair(c,HA,long=index in (17,19))
+                if index==16:  # Low bunches under the ears.
+                    for side in (-1,1):
+                        ball((side*.34,.11,hc-.10),1,HA,(.105,.14,.13),sub=3)
+                        ball((side*.39,.10,hc-.18),1,HA,(.105,.12,.14),rot=(0,side*22,0),sub=3)
+                elif index==17:  # A low braid, visible in profile and from the front.
+                    for j in range(5):
+                        size=.095-.012*j
+                        ball((.29+.017*(j%2),.12-.07*j,hc-.13-.052*j),size,HA,(1,.86,1.1),sub=3)
+                    ball((.30,-.16,hc-.38),.042,TIE,sub=2)
+                elif index==18:
+                    for j in range(6):
+                        a=math.tau*j/6
+                        ball((.09*math.cos(a),.11+.08*math.sin(a),hc+.34),.107,HA,sub=3)
+                elif index==19:
+                    for side in (-1,1):
+                        for j in range(3):
+                            ball((side*(.34+.025*math.sin(j*1.9)),.01+.050*j,hc-.03-.091*j),
+                                 1,HA,(.085,.123,.13),rot=(0,side*(15-j*11),0),sub=3)
+                elif index==20:
+                    for side in (-1,1):
+                        ball((side*.245,.10,hc+.28),.129,HA,(1,.94,.85),sub=3)
+                        torus((side*.245,.10,hc+.225),.103,.009,TIE,seg=20,tseg=6)
+                else:
+                    for j in range(3):
+                        ball((-.14+.072*j,-.13,hc+.285+.015*j),1,HA,(.086,.10,.090),
+                             rot=(14,-24,0),sub=3)
+
         # ---------------- 모자·머리 장식
         with hp('hat1'):                                   # 1 도토리 깍정이 모자
             lathe([(0.3, 0.0), (0.305, 0.03), (0.27, 0.09), (0.18, 0.14), (0.0, 0.165)], '#a8703c', center=(0, 0.05, hc + 0.27), seg=16, rot=(-14, 0, 0))
@@ -977,9 +1080,13 @@ def custom(name):
                 for z in (.388,.42): c.band(z,z+.008,'#d6be72',.021)
                 for x in (-.13,-.06,.02,.10):
                     tube(c.front(.378,.022,x),c.front(.437,.022,x+.009),.007,'#485b42',seg=7)
-                ball(c.front(.409,.034,.067),1,'#677741',(.037,.025,.026),sub=3)
-                for x in (.044,.09):
-                    tube(c.front(.398,.033,.067),c.front(.347,.038,x),.021,'#788541',r2=.012,seg=8)
+                ball(c.front(.407,.036,-.025),1,'#687644',(.040,.024,.032),sub=3)
+                for side in (-1,1):
+                    cx=-.026+side*.048
+                    ball((cx,-.173,.335),1,'#788541',(.039,.020,.085),rot=(-7,side*-23,0),sub=3)
+                    for j in range(2):
+                        cz=.296+j*.037
+                        tube((cx-.025,-.190,cz),(cx+.026,-.190,cz+.012),.004,'#a69762',seg=6)
                 box((0,.163,.531),(.255,.145,.251),'#4976a5',bevel=.043)
                 for side in (-1,1):
                     pts=[c.front(z,.013,side*x) for z,x in [(.454,.116),(.512,.130),(.573,.137),(.627,.139),(.655,.135)]]

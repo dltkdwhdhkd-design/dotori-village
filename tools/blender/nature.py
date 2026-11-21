@@ -9,21 +9,94 @@ def trunk(r=0.2, h=1.3, r2=0.14, roots=3, seg=12):
     for i in range(roots):
         a = math.radians(25 + i * 360 / roots)
         tube((math.cos(a) * r * 0.7, math.sin(a) * r * 0.7, 0.2), (math.cos(a) * r * 2.3, math.sin(a) * r * 2.3, 0.0), r * 0.42, 'bark', r2=r * 0.2, seg=6)
-    lathe([(r * 1.03, 0.62), (r * 1.0, 0.66)], 'bark_d', seg=seg, caps=False)      # 줄기 무늬
-    lathe([(r * 0.96, 0.9), (r * 0.93, 0.94)], 'bark_d', seg=seg, caps=False)
+    for i in range(5):
+        a=math.tau*i/5+.37
+        def point(rad,z,offset):
+            return (rad*math.cos(a+offset),rad*math.sin(a+offset),z)
+        roots=[point(r*1.47,.055,-.11),point(r*1.03,.28,.01),point(r*.99,.53,.09)]
+        for j in range(2):
+            tube(roots[j],roots[j+1],r*(.17-.065*j),'bark_d',r2=r*(.10-.07*j),seg=6)
+    for a,z in [(.87,.54),(2.81,.77),(4.30,.86),(5.21,.63)]:
+        rad=r+(r2-r)*max(0,(z-.50)/(h-.50))
+        pts=[(rad*1.012*math.cos(a+t),rad*1.012*math.sin(a+t),z+.055*t+.014*math.sin(t*7))
+             for t in (-.18,-.09,0,.09,.18)]
+        for k in range(4):
+            tube(pts[k],pts[k+1],.008 if k in (1,2) else .005,'bark_d',seg=5)
+
+
+def crown(x,y,z,r,mat,phase):
+    # A continuous domed crown with soft scallops along its lower silhouette.
+    verts,faces=[],[]
+    sides,rings=32,10
+    for j in range(rings+1):
+        t=math.pi*j/rings
+        for i in range(sides):
+            a=2*math.pi*i/sides
+            lobe=math.cos(5*a+phase+.45*math.cos(t))
+            radius=r*max(.003,math.sin(t))*(1+.085*lobe+.045*math.cos(3*a-phase))
+            verts.append((x+1.06*radius*math.cos(a),y+.95*radius*math.sin(a),
+                          z+r*(.83*math.cos(t)+.085*lobe*math.sin(t)**2)))
+    for j in range(rings):
+        for i in range(sides):
+            k=j*sides+i;n=j*sides+(i+1)%sides
+            faces.append((k,k+sides,n+sides,n))
+    poly(verts,faces,mat,smooth=True)
+
+
+def leaflet(x,y,z,a,length,width,rise,mat):
+    d=(math.cos(a),math.sin(a))
+    vs=[]
+    for t,b in [(0,0),(.26,.78),(.56,1),(.81,.64),(1,0)]:
+        for side in (-1,0,1):
+            w=side*width*b
+            vs.append((x+d[0]*length*t-d[1]*w,y+d[1]*length*t+d[0]*w,
+                       z+rise*t+.18*length*math.sin(t*math.pi)+(.17*width*b if not side else 0)))
+    faces=[(j*3+i,(j+1)*3+i,(j+1)*3+i+1,j*3+i+1) for j in range(4) for i in range(2)]
+    # Folded blades have a visible underside when the camera circles a flower.
+    poly(vs,faces+ [tuple(reversed(f)) for f in faces],mat,smooth=True)
+
+
+def sprig(x,y,z,a,size):
+    # Five distinct little discs are tilted towards the outside of the crown.
+    up=Vector((-.54*math.cos(a),-.54*math.sin(a),.84))
+    side=Vector((-math.sin(a),math.cos(a),0))
+    normal=side.cross(up).normalized();center=Vector((x,y,z))
+    for j in range(5):
+        phi=j*math.tau/5
+        ray=math.cos(phi)*up+math.sin(phi)*side
+        wide=-math.sin(phi)*up+math.cos(phi)*side
+        coords=[]
+        for k in range(12):
+            t=k*math.tau/12
+            coords.append(tuple(center+ray*size*(.43+.51*math.cos(t))
+                                +wide*size*.36*math.sin(t)+normal*size*(.05+.10*math.cos(t))))
+        poly(coords,[tuple(range(12))],'bloom_l',smooth=True)
+    ball(center+normal*.007,size*.19,'bloom_d',sub=1)
 
 
 def puffs(spec):
-    """잎 뭉치: [(x, y, z, 반지름, 재질, 세밀함), ...]"""
-    big = sorted((q[3] for q in spec), reverse=True)[:3]
-    for (x, y, z, r, mt, sub) in spec:
-        lean = .10*math.sin(x*4+y*2)
-        ball((x+lean, y, z), r, mt, (1.08,.93,.86), rot=(5,lean*74,13),sub=3)
-        if r >= big[-1]:
-            for k in range(4):
-                a = k*1.57+x*3.1
-                ball((x+.66*r*math.cos(a),y+.59*r*math.sin(a),z+r*.41),r*.45,mt,
-                     (1.12,.94,.67),rot=(8,10,k*43),sub=2)
+    for i,(x,y,z,r,mat,_) in enumerate(spec):
+        phase=i*2.4
+        if mat=='bloom_l':
+            continue
+        crown(x,y,z,r,mat,phase)
+        if mat.startswith('bloom'):
+            for j in range(13):
+                a=j*2.40+phase
+                height=.20+.62*((j*.618)%1)
+                belt=math.sqrt(1-height**2)
+                swell=1+.085*math.cos(5*a+phase+.45*height)+.045*math.cos(3*a-phase)
+                px=x+1.07*r*belt*swell*math.cos(a);py=y+.96*r*belt*swell*math.sin(a)
+                pz=z+r*(.83*height+.085*math.cos(5*a+phase+.45*height)*belt**2)
+                sprig(px,py,pz,a,.093*r+.018)
+            continue
+        if r<.5: continue
+        for k in range(4):
+            a=phase+k*math.pi*.5
+            accent=mat.split('_')[0]+'_l'
+            px=x+.90*r*math.cos(a);py=y+.82*r*math.sin(a);pz=z+.35*r
+            leaflet(px,py,pz,a+.40,.27*r,.080*r,-.14*r,accent)
+            leaflet(px,py,pz,a-.48,.22*r,.068*r,-.10*r,accent)
 
 
 def tree_fruit():
@@ -31,6 +104,11 @@ def tree_fruit():
         trunk()
         for (x, y, z) in ((-0.5, 0.0, 1.55), (0.5, 0.05, 1.5)):
             tube((0, 0, 1.05), (x, y, z), 0.085, 'bark', r2=0.05, seg=6)
+        for side in (-1,1):
+            fork=(side*.29,.02,.96);tip=(side*.69,-.01,1.39)
+            tube((0,0,.64),fork,.096,'bark',r2=.072,seg=10)
+            tube(fork,tip,.074,'bark',r2=.039,seg=8)
+            tube(fork,(side*.40,-.17,1.35),.051,'bark',r2=.025,seg=8)
         with m.part('canopy'):
             puffs([
                 (0.0, 0.02, 2.12, 1.0, 'leaf', 3),
@@ -75,7 +153,18 @@ def tree_pine():
         tiers = [(0.6, 1.08, 1.15, 'pine_d'), (1.28, 0.88, 1.05, 'pine'), (1.92, 0.68, 0.95, 'pine'), (2.52, 0.46, 0.9, 'pine_l')]
         with m.part('canopy'):
             for (z, r, h, mt) in tiers:      # 아랫단이 둥글게 말린 층
-                lathe([(0.0, z + 0.06), (r * 0.8, z), (r, z + 0.07), (r * 0.9, z + 0.18), (r * 0.42, z + h * 0.6), (0.0, z + h)], mt, seg=12)
+                verts,faces=[],[]
+                sides=40
+                for width,height in [(.025,.03),(.80,.03),(1,.14),(.83,.35),(.43,.65),(.009,1)]:
+                    for i in range(sides):
+                        a=math.tau*i/sides; wave=math.cos(8*a+z*2)
+                        rad=r*width*(1+width*.10*wave)
+                        verts.append((rad*math.cos(a),rad*math.sin(a),z+h*height-.10*width*wave))
+                for j in range(5):
+                    for i in range(sides):
+                        k=j*sides+i;n=j*sides+(i+1)%sides
+                        faces.append((k,n,n+sides,k+sides))
+                poly(verts,faces,mt,smooth=True)
         with m.part('snow'):
             for (z, r, h, mt) in tiers:
                 lathe([(r * 0.62, z + h * 0.42), (r * 0.42, z + h * 0.62), (0.0, z + h + 0.02)], 'snow', seg=12, caps=False)
@@ -108,8 +197,18 @@ def bigtree():
 
 
 def blade(x, y, a, lean, h, w, mat):
-    """풀잎 한 가닥(납작한 잎). a=벌어지는 방향(도), lean=눕는 정도(도)"""
-    cone((x, y, 0), w, h, mat, seg=4, rot=(0, lean, a), scale=(0.45, 1, 1))
+    a=math.radians(a)
+    length=h*math.tan(math.radians(lean))
+    verts=[]
+    for t,width in [(0,.62),(.44,1),(.76,.62),(1,.008)]:
+        run=length*(.18*t+.82*t*t)
+        for side in (-1,0,1):
+            across=side*w*width
+            bend=run+(.18*w if side==0 else 0)*width
+            verts.append((x+bend*math.cos(a)-across*math.sin(a),
+                          y+bend*math.sin(a)+across*math.cos(a),h*(1.62*t-.62*t*t)))
+    faces=[(j*3+i,(j+1)*3+i,(j+1)*3+i+1,j*3+i+1) for j in range(3) for i in range(2)]
+    poly(verts,faces+[tuple(reversed(f)) for f in faces],mat,smooth=True)
 
 
 def grass():
@@ -122,6 +221,13 @@ def grass():
         for i, (a, ln, h) in enumerate(((30, 44, 0.14), (150, 40, 0.16), (268, 46, 0.13))):
             blade(math.cos(math.radians(a)) * 0.02, math.sin(math.radians(a)) * 0.02, a, ln, h, 0.045, 'tuft' if i % 2 else 'tuft_l')
         blade(0, 0, 90, 8, 0.13, 0.04, 'tuft_l')
+        # A ground-hugging clover punctuates the taller ribbon grass.
+        for x,y,z in [(.042,-.025,.065),(-.032,.035,.045)]:
+            tube((x-.017,y,0),(x,y,z),.005,'tuft',seg=5)
+            for j in range(3):
+                a=math.tau*j/3+.45
+                for split in (-.38,.38):
+                    leaflet(x,y,z,a+split,.066,.021,.014,'tuft_l')
     with Model('grass_f'):               # 작은 들꽃이 섞인 풀
         for i, (a, ln, h) in enumerate(((10, 42, 0.15), (130, 46, 0.14), (250, 42, 0.16))):
             blade(math.cos(math.radians(a)) * 0.02, math.sin(math.radians(a)) * 0.02, a, ln, h, 0.045, 'tuft')
@@ -179,33 +285,54 @@ def small_things():
         ball((0, 0, 0), 0.26, 'dirt', (1, 1, 0.22))
 
 
+def petal(x,y,z,a,length,width,rise,cup,notch=0):
+    # Fold each petal on its midrib. The outer edge and the tip lift separately.
+    vs=[];faces=[]
+    for j in range(7):
+        t=j/6
+        for k in range(5):
+            side=(k-2)/2
+            spread=width*(.04+.96*math.sin(math.pi*t*.82)**.78)*side
+            run=length*t*(1-.16*side**2*t)+notch*abs(side)*t**4
+            height=rise*t+cup*(t*t+.38*side**2*math.sin(math.pi*t))+.55*run*math.sin(a)
+            vs.append((x+run*math.cos(a)-spread*math.sin(a),y+run*math.sin(a)+spread*math.cos(a),z+height))
+    for j in range(6):
+        for k in range(4):
+            n=j*5+k;faces.append((n,n+5,n+6,n+1))
+    poly(vs,faces+[tuple(reversed(f)) for f in faces],'petal',smooth=True)
+
+
 def flower(species):
-    with Model('flower_' + species):
-        spots = [(-0.2, 0.12, 0.3), (0.2, 0.08, 0.34), (0.0, -0.16, 0.26)]
-        for (x, y, h) in spots:
-            bx,by=x-.035,y+.026
-            tube((bx,by,0),(x-.025,y+.015,h*.51),.014,'stem',r2=.012,seg=7)
-            tube((x-.025,y+.015,h*.51),(x,y,h+.02),.012,'stem',r2=.009,seg=7)
-            ball((x - 0.07, y, h * 0.45), 0.07, 'stem', (1, 0.45, 0.3), rot=(0, 25, 0))
-            ball((x + 0.07, y, h * 0.6), 0.07, 'stem', (1, 0.45, 0.3), rot=(0, -25, 0))
-            z = h + 0.03
-            if species == 'tulip':
-                ball((x, y, z + 0.03), 0.085, 'petal', (0.9, 0.9, 1.2))
-                for a in (0, 120, 240):
-                    r = math.radians(a)
-                    ball((x+math.cos(r)*.048,y+math.sin(r)*.048,z+.061),1,'petal',(.044,.045,.074),rot=(10,14,a),sub=3)
-            elif species == 'cosmos':
-                for i in range(8):
-                    r = 2 * math.pi * i / 8
-                    ball((x + math.cos(r) * 0.085, y + math.sin(r) * 0.085, z + 0.02), 0.05, 'petal', (1.1, 0.6, 0.25), rot=(0, 0, math.degrees(r)))
-                ball((x, y, z + 0.035), 0.045, 'petal_c', (1, 1, 0.6))
-            elif species == 'pansy':
-                for i, (dx, dy) in enumerate(((-0.05, 0.03), (0.05, 0.03), (-0.06, -0.03), (0.06, -0.03), (0, -0.07))):
-                    ball((x + dx, y + dy, z + 0.02 + (0.01 if i < 2 else 0)), 0.065, 'petal', (1, 1, 0.3))
-                ball((x, y - 0.01, z + 0.04), 0.03, 'petal_c', (1, 1, 0.5))
-            else:  # mum
-                ball((x, y, z + 0.04), 0.095, 'petal', (1, 1, 0.8))
-                ball((x, y, z + 0.09), 0.05, 'petal_c', (1, 1, 0.5))
+    with Model('flower_'+species):
+        for idx,(x,y,h) in enumerate([(-.17,.09,.30),(.15,.07,.36),(-.015,-.14,.245)]):
+            a=idx*2.31
+            base=(x-.03,y+.035,0);joint=(x-.026,y+.018,h*.60)
+            tube(base,joint,.012,'stem',r2=.010,seg=6)
+            tube(joint,(x,y,h),.010,'stem',r2=.007,seg=6)
+            for side in (0,1):
+                leaflet(x-.024,y+.018,.065+side*.055,a+side*2.7,.13,.032,.095,'stem')
+            if species=='tulip':
+                for j in range(6):
+                    ang=a+j*math.tau/6
+                    petal(x,y,h,ang,.080 if j%2 else .067,.054,.088,.042)
+                continue
+            if species=='mum':
+                for ring,(n,length,width,rise) in enumerate([(13,.126,.022,.004),(10,.095,.025,.029),(7,.061,.022,.045)]):
+                    for j in range(n):
+                        petal(x,y,h+ring*.012,a+j*math.tau/n+ring*.3,length,width,rise,.022)
+                center=.027; ch=.080
+            elif species=='pansy':
+                for j,ang in enumerate([.65,2.48,-.12,3.31,4.72]):
+                    petal(x,y,h+(2-j)*.004,ang+a*.09,.105 if j<4 else .12,.067,.018,.022)
+                center=.020;ch=.026
+                for j in range(3):
+                    ang=3.65+j*.52
+                    leaflet(x,y,h+.022,ang,.045,.010,-.004,'petal_c')
+            else:
+                for j in range(8):
+                    petal(x,y,h,a+j*math.tau/8,.126,.037,.010,.020,.010)
+                center=.032;ch=.018
+            ball((x,y,h+ch),center,'petal_c',(1,1,.65),sub=2)
 
 
 def fruits():

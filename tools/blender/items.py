@@ -171,5 +171,26 @@ def materials():
         lump((-0.12, 0.1, 0.06), 1.0, 'rock_l', (0.08, 0.08, 0.06), seed=17, amp=0.2, smooth=True)
 
 
+def patrol_gear():
+    for name,body,trim in [('hunt_fork','#e994aa','#f8ced1'),('hunt_blue','#71adc6','#bde8e8'),('hunt_bell','#77a888','#b9d6a0')]:
+        with Model(name):
+            tube((0,0,-.16),(0,0,.63),.029,body,r2=.024,seg=12)
+            ball((0,0,-.16),.039,trim,sub=2)
+            for z in (-.10,-.06,-.02,.58):
+                torus((0,0,z),.030,.005,trim,seg=12,tseg=6)
+            if name=='hunt_bell':
+                ball((0,0,.70),1,'#e6b65c',(.105,.085,.106),sub=3)
+                torus((0,0,.675),.086,.013,'#f8db85',seg=16,tseg=6)
+                ball((0,-.083,.668),.016,'#966a43',sub=2)
+                for side in (-1,1):
+                    ball((side*.055,0,.81),1,trim,(.046,.024,.080),rot=(0,side*42,0),sub=2)
+            else:
+                for side in (-1,1):
+                    pts=[(0,0,.60),(side*.078,0,.625),(side*.113,0,.67),(side*.115,0,.80)]
+                    for start,end in zip(pts,pts[1:]):
+                        tube(start,end,.025,body,seg=12);ball(end,.025,body,sub=2)
+                ball((0,-.01,.604),.039,trim,sub=2)
+
+
 def build():
-    tools(); misc(); fossils(); materials()
+    tools(); misc(); fossils(); materials(); patrol_gear()

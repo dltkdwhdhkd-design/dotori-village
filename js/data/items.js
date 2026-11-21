@@ -12,6 +12,7 @@ export const FRUIT_KO = { apple: '사과', pear: '배', peach: '복숭아', pers
 export const FLOWER_KO = { tulip: '튤립', cosmos: '코스모스', pansy: '팬지', mum: '국화' };
 export const COLOR_KO = { red: '빨간', yellow: '노란', white: '하얀', pink: '분홍', orange: '주황', purple: '보라', blue: '파란' };
 
+def('hunt_bell',{name:'잎새 방울봉',kind:'huntGear',price:160,model:'hunt_bell',desc:'들녘 의뢰에서 선택하는 토벌 장비. 첫 호응에 용기가 하나 늘어난다.'});
 export const TOOLS = ['tool_net', 'tool_rod', 'tool_shovel', 'tool_axe', 'tool_can'];
 def('tool_net', { name: '잠자리채', kind: 'tool', buy: 500, price: 125, model: 'tool_net', desc: '곤충을 잡는 채. 살금살금 다가가서 휘두르자.' });
 def('tool_rod', { name: '낚싯대', kind: 'tool', buy: 500, price: 125, model: 'tool_rod', desc: '물고기 그림자 앞에 찌를 던지자.' });

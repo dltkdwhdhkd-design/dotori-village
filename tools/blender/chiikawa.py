@@ -1,6 +1,7 @@
 """치이카와 주민과 갑옷 씨. 좌표와 부위 이름은 게임의 Actor 규격을 따른다."""
 import math
 from functools import partial
+from mathutils import Vector
 from lib import Model, arc, ball, box, capsule, lathe, poly, torus, tube
 
 
@@ -192,7 +193,7 @@ def rakko(head, tail):
         ball((0,.250,.264),1,'#f4debb',(.098,.114,.065),sub=3)
 
 
-def back_sword():
+def back_sword(m):
     """랏코 봉제인형 S의 후면 사진. 허리 오른쪽 흰 망토에 붙는 짧은 갈색 칼집."""
     leather, piping = '#925138', '#693b30'
     ivory, engraved = '#f6f2ef', '#a8a0a2'
@@ -220,11 +221,24 @@ def back_sword():
     for side in (-1,1):
         pts=[surface(t,side*w,.035) for t,w in [(.045,.007),(.116,.061),(.18,.064),(.39,.054),(.635,.039)]]
         for a,b in zip(pts,pts[1:]): tube(a,b,.0025,piping,seg=6)
-    piece([(.64,.070),(.65,.081),(.704,.081),(.71,.069)],ivory,.045)
-    piece([(.71,.040),(.74,.040),(.9,.037),(.944,.040)],ivory,.032)
-    for t in (.766,.835,.898):
-        tube(surface(t,-.034,.033),surface(t+.012,.035,.033),.0032,engraved,seg=6)
-    piece([(.94,.047),(.945,.059),(.993,.059),(1,.05)],ivory,.039)
+    with m.part('sword', surface(.83,0,.020), parent='body'):
+        piece([(.64,.070),(.65,.081),(.704,.081),(.71,.069)],ivory,.045)
+        piece([(.71,.040),(.74,.040),(.9,.037),(.944,.040)],ivory,.032)
+        for t in (.766,.835,.898):
+            tube(surface(t,-.034,.033),surface(t+.012,.035,.033),.0032,engraved,seg=6)
+        piece([(.94,.047),(.945,.059),(.993,.059),(1,.05)],ivory,.039)
+        with m.part('blade',surface(.65,0,.018),parent='sword'):
+            # A straight, bevelled stage prop fits inside the illustrated sheath.
+            base = Vector(surface(.65,0,.018))
+            tip = Vector(surface(.035,0,.018))
+            m.anchor('blade_tip',tip,'blade')
+            rim = Vector((.834,0,.551))*.045
+            ridge = Vector((0,.015,0))
+            vs = [tuple(base-rim),tuple(base+rim),tuple(base+ridge),tuple(base-ridge),
+                  tuple(tip),tuple(base.lerp(tip,.80)-rim*.68),tuple(base.lerp(tip,.80)+rim*.68)]
+            poly(vs,[(0,2,5),(5,2,4),(2,1,6),(2,6,4)],'#e6f1ee',smooth=False)
+            poly(vs,[(0,5,3),(5,4,3),(3,6,1),(3,4,6)],'#a5c3d5',smooth=False)
+
 
 
 def shisa(head, tail):
@@ -372,7 +386,7 @@ def small_friend(name):
                         stroke([(x-.008,.666),(x+.008,.714)],.007,INK,.018)
                 features(m,style.__name__)
         if key=='beomi':
-            with body: back_sword()
+            with body: back_sword(m)
         for s,side in [(-1,'R'),(1,'L')]:
             shoulder=(s*.316,-.017,.488) if is_hachi else (s*.418,-.026,.544)
             with m.part('arm_'+side,shoulder):
@@ -393,7 +407,7 @@ def small_friend(name):
             leg_x = .134 if is_hachi else .196
             with m.part('leg_'+side,(s*leg_x,0,.17)):
                 ball((s*(leg_x+.007),-.038,.093),1,'#3d2c2b' if key=='beomi' else fur,(.065 if is_hachi else .075,.105,.095),rot=(0,s*8,0),sub=3)
-        m.anchor('hand',(-.398,-.055,.335) if is_hachi else (-.454,-.097,.427),'arm_R')
+        m.anchor('hand',(-.398,-.055,.335) if is_hachi else ((-.223,-.267,.375) if key=='beomi' else (-.454,-.097,.427)),'arm_R')
         m.anchor('top',(0,0,(1.30 if night else FRIENDS[key][2])+.08))
 
 

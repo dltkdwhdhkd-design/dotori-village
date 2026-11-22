@@ -11,6 +11,8 @@ import { dateOfDay } from '../core/clock.js';
 import { LOANS } from './state.js';
 import { checkAch, fillTasks, refreshGoal } from './quests.js';
 import { G as TT, WK } from '../world/mapgen.js';
+import { freeLots, refreshHouse, townOf, townName, townsOpen, siteLot } from './neighborhood.js';
+import { life } from './workshop.js';
 
 const MIX = { 'red,yellow': 'orange', 'red,white': 'pink', 'blue,red': 'purple', 'pink,red': 'pink', 'orange,yellow': 'orange', 'pink,white': 'pink', 'blue,white': 'blue', 'purple,white': 'purple' };
 
@@ -97,30 +99,30 @@ function dailyMail(day) {
   }
   // 새 이웃(마을 잔치를 마친 뒤부터는 빈터가 있으면 저절로 이사 온다. 그 전에는 집터를 마련해야 온다)
   if (S.prog.done && S.waiting.length && day >= (S.moveInDay || 0)) {
-    const used = new Set(Object.values(S.villagers).map((s) => s.lot));
-    const free = [...Array(G.village.lots.length).keys()].filter((l) => !used.has(l));
-    if (free.length) { moveIn(day, r); S.moveInDay = day + 5 + r.int(0, 3); }
+    if (townsOpen()) {
+      const l=life(), id=S.waiting.find(k=>!l.contacts.includes(k) && !l.projects.some(p=>p.id===k));
+      if (!id || ![0,1].some(town=>freeLots(town).length)) return;
+      l.contacts.push(id);
+      mail('ujik','우직 이장',VILLAGERS[id].name+'에게서 이사 문의가 왔다네. 이웃 초대와 집터에서 어느 마을에 살지 정해 주게.');
+    } else if (!moveIn(r,0)) return;
+    S.moveInDay = day + 5 + r.int(0, 3);
   }
 }
 
 /** 빈 집터 하나에 새 이웃을 들인다 */
-function moveIn(day, r, want = null, chosen = null) {
-  const used = new Set(Object.values(S.villagers).map((s) => s.lot));
-  const free = [...Array(G.village.lots.length).keys()].filter((l) => !used.has(l));
-  if (!free.length || !S.waiting.length) return false;
+function moveIn(r, town, project, site) {
+  const free = freeLots(town,project,site), want=project?.lot ?? siteLot(site);
+  if (!free.length || (want!=null && !free.includes(want))) return false;
   const held=S.islandLife?.projects||[], contacts=S.islandLife?.contacts||[];
-  const candidates=S.waiting.filter(k=>!held.some(p=>p.id===k));
-  const id=chosen||candidates.find(k=>!contacts.includes(k))||(want!=null?candidates[0]:null);
-  const allowed=free.filter(l=>!held.some(p=>p.lot===l&&p.id!==chosen) && (l===want || !(S.prog.pend.sites||[]).includes(l)));
-  if(!id||!S.waiting.includes(id)||!allowed.length|| (want!=null&&!allowed.includes(want)))return false;
-  const lot=want!=null?want:r.pick(allowed);
+  const id=project?.id || S.waiting.find(k=>!contacts.includes(k) && !held.some(p=>p.id===k));
+  if (!id || !S.waiting.includes(id)) return false;
+  const lot=want ?? r.pick(free);
   S.waiting.splice(S.waiting.indexOf(id),1);
   if(contacts.includes(id))S.islandLife.contacts=contacts.filter(k=>k!==id);
-  S.villagers[id] = { lot, friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 };
+  S.villagers[id] = { town, lot, friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 };
   S.residents.push(id);
-  const b = G.village.buildings.find((bb) => bb.lot === lot);
-  if (G.world) G.world.refreshBuilding(b);
-  mail('ujik', '우직 이장', `${S.player.name}에게.\n\n마을에 새 식구가 왔다네.\n이름은 ${VILLAGERS[id].name}. 자네가 다듬어 준 터에 집을 지었으니\n오가다 인사나 나누게나.\n\n이장 우직`, null);
+  refreshHouse(town,lot);
+  mail('ujik', '우직 이장', `${S.player.name}에게.\n\n${townName(town)} 마을에 새 식구가 왔다네. ${VILLAGERS[id].name}의 집은 ${lot+1}번 터일세. 오가다 인사나 나누게나.\n\n이장 우직`, null);
   return true;
 }
 
@@ -148,14 +150,25 @@ function progressDay(day) {
   }
   if (pd.bridge && day >= pd.bridge) { delete pd.bridge; P.bridge = 2; buildBridge(); mail('ujik', '우직 이장', `${S.player.name}에게.\n\n강에 둘째 다리가 놓였네.\n이제 오가기가 한결 편할 걸세.\n\n이장 우직`, null); }
   while(pd.movein.length && day>=pd.movein[0]){
-    if(!moveIn(day,r,pd.sites?.[0]))break;
+    const site=pd.sites?.[0];
+    if(!moveIn(r,townOf(site),null,site))break;
     pd.movein.shift();pd.sites?.shift();
   }
   for(const p of [...(S.islandLife?.projects||[])]){
-    if(p.day && p.day<=day && moveIn(day,r,p.lot,p.id)){
-      S.islandLife.projects=S.islandLife.projects.filter(q=>q!==p);
+    if(!p.day || p.day>day)continue;
+    const town=townOf(p);
+    if(p.move){
+      const resident=S.villagers[p.id];
+      if(!resident || townOf(resident)===town || !freeLots(town,p).includes(p.lot))continue;
+      const from=townOf(resident), oldLot=resident.lot;
+      Object.assign(resident,{town,lot:p.lot});
+      refreshHouse(from,oldLot);refreshHouse(town,p.lot);
+      mail('ujik','우직 이장',VILLAGERS[p.id].name+'의 이사를 마쳤다네. 새집은 '+townName(town)+' 마을 '+(p.lot+1)+'번 터일세.');
+    }else{
+      if(!moveIn(r,town,p))continue;
       P.lots=Math.min(3,P.lots+1);
     }
+    S.islandLife.projects=S.islandLife.projects.filter(q=>q!==p);
   }
   for(const b of G.village.buildings)if(['atelier','campsite'].includes(b.type)||(S.flags.campStart&&['hall','house'].includes(b.type)))G.world?.refreshBuilding(b);
   P.tasks = P.tasks.filter((t) => t.n > 0);            // 손대지 않은 일감은 날마다 새것으로 바뀐다

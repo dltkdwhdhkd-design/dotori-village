@@ -8,6 +8,7 @@ import { UI, Dialog } from '../ui/ui.js';
 import { el } from '../core/util.js';
 import { action, life, workshop } from './workshop.js';
 import { putOnTop, surfaceSlot } from '../gfx/tabletop.js';
+import { currentTown, townOf, townsOpen, townName, townLand, residentsOf, freeLots, refreshHouse } from './neighborhood.js';
 
 
 export function designAllowed() { return !G.room && !G.visit && !G.net?.role; }
@@ -122,13 +123,58 @@ function buildAtFront(type='atelier') {
   v.buildings.push(b);for(const [a,c] of cells)v.set(a,c,{t:'bld',b:b.id});
   G.world.refreshBuilding(b);save();UI.closePanel();note('터를 잡았어요. 다음 날 문을 열어요.');
 }
-export function invite(id) {
-  if(S.residents.includes(id)||life().contacts.includes(id)||life().projects.some(p=>p.id===id))return false;
-  life().contacts.push(id);save();return true;
+function reserveHome(id,town,lot,moving) {
+  const l=life(), resident=S.villagers[id];
+  if(G.visit || G.net?.role || l.projects.some(p=>p.id===id) || !freeLots(town).includes(lot))return false;
+  if(moving ? !resident || townOf(resident)===town : resident || !S.waiting.includes(id))return false;
+  const project={id,town,lot};
+  if(moving){project.move=true;project.day=S.day+1;}
+  l.projects.push(project);
+  l.contacts=l.contacts.filter(k=>k!==id);
+  refreshHouse(town,lot);save();
+  return true;
 }
-export function freeLots() {
-  const taken=new Set([...Object.values(S.villagers).map(v=>v.lot),...(S.prog.pend.sites||[]),...life().projects.map(p=>p.lot)]);
-  return G.village.lots.map((_,i)=>i).filter(i=>!taken.has(i));
+
+async function choosePlot(id,town,moving=false) {
+  const plotList=el('div'), land=townLand(town), plots=freeLots(town);
+  let chosen=false;
+  plotList.append(el('p','note',moving?'집터를 고르면 다음 날 아침에 이사해요.':'새집에는 꽃 화분 하나와 마당의 통나무 걸상이 필요해요.'));
+  for(const lot of plots){
+    const b=land.buildings[land.lots[lot]];
+    action(plotList,(lot+1)+'번 터 · 지도 ('+(b.x+1)+', '+(b.y+1)+')',()=>{
+      chosen=reserveHome(id,town,lot,moving);
+      UI.closePanel();
+      if(!chosen)note('이미 예약된 집터예요. 다른 터를 골라 주세요.');
+    });
+  }
+  if(!plots.length)plotList.append(el('p','','비어 있는 집터가 없어요.'));
+  action(plotList,'취소',()=>UI.closePanel());
+  Dialog.close();
+  await UI.panelAsync(VILLAGERS[id].name+' · '+townName(town)+' 마을 집터',plotList);
+  if(chosen)note(townName(town)+' 마을에 '+VILLAGERS[id].name+'의 집터를 예약했어요.');
+  return chosen;
+}
+
+export async function invite(id) {
+  if(G.visit || G.net?.role || !S.waiting.includes(id) || life().projects.some(p=>p.id===id))return false;
+  if(!townsOpen()){
+    if(life().contacts.includes(id))return false;
+    life().contacts.push(id);save();return true;
+  }
+  const open=[0,1].filter(town=>freeLots(town).length);
+  if(!open.length){note('두 마을 모두 집터가 가득 찼어요.');return false;}
+  const labels=open.map(town=>townName(town)+' 마을로 초대하기');
+  const dest=await Dialog.choose([...labels,'다음에 정하기'],{cancel:labels.length});
+  if(dest>=open.length || dest<0)return false;
+  return choosePlot(id,open[dest]);
+}
+
+export async function proposeMove(id) {
+  const resident=S.villagers[id];
+  if(!resident || !townsOpen() || G.visit || G.net?.role)return;
+  const town=1-townOf(resident);
+  if(life().projects.some(p=>p.id===id))return note('이미 이사할 집터를 골랐어요.');
+  return choosePlot(id,town,true);
 }
 function yardChair(lot) {
   const v=G.village,b=v.buildings[v.lots[lot]];
@@ -138,23 +184,35 @@ function yardChair(lot) {
 }
 export function housing(){
   if(!designAllowed())return note('우리 마을 야외에서 집터를 정해 주세요.');
-  const box=el('div');box.append(el('div','note','여행지에서 이웃에게 말을 걸어 초대하세요. 집터를 고르고 실내용 화분을 납품한 뒤, 바깥 두 칸 이내에 통나무 걸상을 장식하면 이사 준비를 마칠 수 있어요.'));
+  const box=el('div'), towns=townsOpen()?[0,1]:[0];
+  box.append(el('div','note','여행지나 캠핑장에서 이웃을 초대하세요. 새 이웃의 집터에 꽃 화분을 납품하고, 바깥 두 칸 이내에 통나무 걸상을 놓으면 이사 준비를 마칠 수 있어요.'));
   for(const id of life().contacts){
     const row=el('div','li');box.append(row);row.append(el('b','nm',VILLAGERS[id].name));
-    action(row,'집터 고르기',()=>{const choice=el('div');
-      for(const lot of freeLots()){const b=G.village.buildings[G.village.lots[lot]];
-        action(choice,(lot+1)+'번 터 · 지도 ('+(b.x+1)+', '+(b.y+1)+')',()=>{
-          if(!freeLots().includes(lot)||!life().contacts.includes(id))return housing();
-          life().contacts=life().contacts.filter(k=>k!==id);life().projects.push({id,lot});
-          G.world.refreshBuilding(b);save();housing();});}
-      if(!choice.childElementCount)choice.append(el('p','note','현재 비어 있는 집터가 없어요.'));
-      UI.openPanel('집터 고르기',choice);});
+    for(const town of towns)action(row,towns.length===1?'집터 고르기':townName(town)+' 마을 집터',async()=>{
+      await choosePlot(id,town);housing();
+    },freeLots(town).length>0);
   }
   for(const p of life().projects){
-    const b=G.village.buildings[G.village.lots[p.lot]], row=el('div','li'), info=el('div','nm');
-    info.append(el('b','',VILLAGERS[p.id].name+' · '+(p.lot+1)+'번 집터'),el('span','sub','좌표 ('+(b.x+1)+', '+(b.y+1)+') · '+(p.day?'이사 예정':(p.pot?'실내 준비 완료':'실내 꽃 화분 필요')+' · '+(yardChair(p.lot)?'걸상 배치 완료':'실외 통나무 걸상 필요'))));row.append(info);box.append(row);
+    const town=townOf(p),land=townLand(town),b=land.buildings[land.lots[p.lot]],row=el('div','li'),info=el('div','nm');
+    const local=town===currentTown();
+    const status=p.day?'다음 날 아침 이사 예정':!local?'배를 타고 이 마을에서 새집을 준비하세요.':(p.pot?'화분 납품 완료':'꽃 화분 필요')+' · '+(yardChair(p.lot)?'걸상 배치 완료':'통나무 걸상 필요');
+    info.append(el('b','',VILLAGERS[p.id].name+' · '+townName(town)+' '+(p.lot+1)+'번 집터'),el('span','sub','좌표 ('+(b.x+1)+', '+(b.y+1)+') · '+status));row.append(info);box.append(row);
+    if(p.move)action(row,'이사 취소',()=>{
+      life().projects=life().projects.filter(q=>q!==p);refreshHouse(town,p.lot);save();housing();
+    });
+    if(p.day || !local)continue;
     if(!p.pot)action(row,'화분 납품',()=>{if(countItem('f_flowerpot')<1)return note('가방에 꽃 화분이 필요해요.');takeItem('f_flowerpot');p.pot=true;save();housing();});
     else if(!p.day)action(row,'준비 마치기',()=>{if(!yardChair(p.lot))return note('집터 곁에 통나무 걸상을 놓아 주세요.');p.day=S.day+1;save();housing();});
+  }
+  if(townsOpen())for(const town of towns){
+    const ids=residentsOf(town), dest=1-town, vacancies=freeLots(dest).length;
+    box.append(el('h3','',townName(town)+' 마을 주민 · '+ids.length+'명'));
+    if(!ids.length)box.append(el('p','note','아직 이사 온 주민이 없어요.'));
+    for(const id of ids){
+      const row=el('div','li');box.append(row);
+      row.append(el('span','nm',VILLAGERS[id].name+' · '+(S.villagers[id].lot+1)+'번 집'));
+      action(row,townName(dest)+' 마을로 이사',async()=>{await proposeMove(id);housing();},vacancies>0 && !life().projects.some(p=>p.id===id));
+    }
   }
   UI.openPanel('이웃 초대와 집터',box);
 }
@@ -179,8 +237,8 @@ export function campsiteSpec(){
   return {id:'campsite',w:5,h:4,wall:'wall_tent',floor:'floor_mat',items:[{id:'f_yo',x:0,y:0,r:0},{id:'f_deungjan',x:4,y:0,r:0}],
     npcDefs:[{id,model:'villager_'+id,name:v.name,x:2.3,z:1.7,fixed:true,talk:n=>runScript(async()=>{
       await speakScene(n,'camp');
-      if(S.residents.includes(id)||life().contacts.includes(id))return;
-      if(await Dialog.choose(['우리 마을에 이사 올래?','편히 쉬다 가!'],{cancel:1})===0){invite(id);await speakScene(n,'invite');}
+      if(S.residents.includes(id)||(!townsOpen() && life().contacts.includes(id)))return;
+      if(await Dialog.choose(['우리 마을에 이사 올래?','편히 쉬다 가!'],{cancel:1})===0 && await invite(id))await speakScene(n,'invite');
     })}]};
 }
 export function atelierSpec(){return {id:'atelier',w:6,h:5,wall:'wall_wood',floor:'floor_wood',items:[{id:'f_desk',x:2,y:1,r:0,act:()=>workshop(),actLabel:'DIY 작업대'},{id:'f_log_shelf',x:0,y:0,r:0},{id:'f_deungjan',x:5,y:0,r:0}]};}

@@ -28,7 +28,7 @@ export function ferryOffice() {
   if(!route){
     const title=el('label','','새 마을 이름 '),input=el('input');
     input.value='모래별';input.maxLength=8;title.append(input);
-    box.append(title,el('p','note','새 섬에 부두와 마을 터를 지어요. 집 안과 마당은 따로 꾸미고, 가방·창고·주민·박물관은 두 마을이 함께 써요.'));
+    box.append(title,el('p','note','새 섬에 부두와 집터를 지어요. 이웃이 살 마을을 고르고 집 안과 마당을 따로 꾸밀 수 있어요. 가방·창고·박물관은 함께 써요.'));
     box.append(el('p','',`건설비　나무 ${countItem('mat_wood')}/12 · 돌 ${countItem('mat_stone')}/8 · 도토리 ${S.player.money}/500`));
     action(box,'부두와 두 번째 마을 건설 신청',()=>{
       if(!atHomePort()||S.ferry||!hasSupplies())return;

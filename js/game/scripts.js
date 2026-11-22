@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { G, runScript, save, refreshTime, burst, groundY } from './game.js';
 import { Room } from './rooms.js';
 import { counterStock } from './shopStock.js';
-import { atelierSpec, campsiteSpec, freeLots } from './island.js';
+import { atelierSpec, campsiteSpec, proposeMove } from './island.js';
+import { currentTown, townsOpen, townName, freeLots, residentAt, residentsOf, reservedLots } from './neighborhood.js';
 import { museumSpec, HALL_KO } from './museum.js';
 import { COST, stepId, advance, canPay, costText, donated, species, greeted, festivalReady, track, refreshGoal } from './quests.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
@@ -30,18 +31,18 @@ function payCost(c) { for (const [k, n] of Object.entries(c)) { if (k === 'money
 const refreshBld = (type) => { const b = G.village.buildings.find((x) => x.type === type); if (b && G.world) G.world.refreshBuilding(b); };
 /** 새 이웃이 들어올 집터를 하나 잡아 둔다(다음 날 그 자리에 집이 선다) */
 function reserveLot() {
-  const used = new Set(Object.values(S.villagers).map((v) => v.lot)), pd = S.prog.pend;
+  const pd = S.prog.pend;
   pd.sites = pd.sites || [];
   const lot = freeLots()[0];
   if (lot == null) return;
-  pd.sites.push(lot);
+  pd.sites.push({town:currentTown(),lot});
   const b = G.village.buildings.find((x) => x.lot === lot);
   if (b && G.world) G.world.refreshBuilding(b);
 }
 
 // ---------------------------------------------------------------- 주민과 대화
 function vvars(n, extra = {}) { const def = VILLAGERS[n.id]; return { me: def.name, c: def.catch, f: FRUIT_KO[G.village.fruit], ...extra }; }
-function otherName(id) { const o = S.residents.filter((x) => x !== id); return o.length ? VILLAGERS[pick(o)].name : '이장님'; }
+function otherName(id) { const o = residentsOf().filter((x) => x !== id); return o.length ? VILLAGERS[pick(o)].name : '이장님'; }
 
 function chatLine(n) {
   const v=VILLAGERS[n.id],lines=[...voice(n.id,'chat')],now=G.now;
@@ -77,13 +78,13 @@ function makeRequest(id) {
   if (fishNow.length) types.push('fish', 'fish');
   if (bugNow.length) types.push('bug', 'bug');
   types.push('fruit', 'shell');
-  if (S.residents.length > 1 && !(S.parcels || []).length) types.push('deliver', 'deliver');
+  if (residentsOf().length > 1 && !(S.parcels || []).length) types.push('deliver', 'deliver');
   const type = pick(types);
   if (type === 'fish') return { type, item: 'fish_' + pick(fishNow).id };
   if (type === 'bug') return { type, item: 'bug_' + pick(bugNow).id };
   if (type === 'fruit') return { type, item: 'fruit_' + G.village.fruit };
   if (type === 'shell') return { type, item: pick(SHELL_IDS.slice(0, 4)) };
-  return { type, to: pick(S.residents.filter((x) => x !== id)) };
+  return { type, to: pick(residentsOf().filter((x) => x !== id)) };
 }
 
 /** 가방에서 물건 하나를 고르게 한다. 고른 칸 번호(없으면 -1) */
@@ -139,7 +140,10 @@ export async function talkVillager(n) {
       else await say(n, chatLine(n), V({ o: otherName(id) }));
     }
     for (;;) {
-      const c = await Dialog.choose(['얘기하자', '부탁할 일 없어?', '선물 줄게', '그만 가 볼게'], { cancel: 3 });
+      const choices=['얘기하자','부탁할 일 없어?','선물 줄게'];
+      if(townsOpen() && !G.net?.role)choices.push(townName(1-currentTown())+' 마을로 이사할래?');
+      choices.push('그만 가 볼게');
+      const c = await Dialog.choose(choices, { cancel: choices.length-1 });
       if (c === 0) {
         st.talkN = (st.talkN || 0) + 1;
         if (st.talkN > 5) { n.actor.emote('sweat', 1.2); await say(n, voice(id,'annoyed'), V()); break; }
@@ -177,6 +181,8 @@ export async function talkVillager(n) {
         st.giftDay = today;
         n.actor.play(like ? 'joy' : 'nod', 0.8); if (like) n.actor.emote('heart', 1.4);
         await say(n, like ? L.giftLike : L.giftOk, V());
+      } else if(c===3 && choices.length===5){
+        await proposeMove(id);break;
       } else break;
     }
     await say(n, L.bye, V());
@@ -462,7 +468,7 @@ async function festival(u) {
   for (const a of everyone) a.play('joy', 1.2);
   addMoney(10000);
   await say(mayor, '마을 사람들이 조금씩 모은 <b>도토리 10,000개</b>일세. 받아 두게. 그리고 앞으로도 잘 부탁하네!');
-  await narr('마을 잔치를 마쳤다. 이제 마음 가는 대로 지내면 된다. 빈 집터가 남아 있는 동안에는 새 이웃이 계속 이사 온다.');
+  await narr(townsOpen()?'잔치를 마쳤다. 앞으로 이사 문의가 오면 이웃이 살 마을과 집터를 정해 주자.':'마을 잔치를 마쳤다. 이제 마음 가는 대로 지내면 된다. 빈 집터가 남아 있는 동안에는 새 이웃이 계속 이사 온다.');
   S.prog.done = true; S.prog.step = 99; S.moveInDay = dayKey() + 3;
   await UI.fade(true);
   for (const a of front) G.stage.scene.remove(a.root);
@@ -507,10 +513,10 @@ async function talkUjik() {
         }
       } else await say(u, '자네 집은 이제 더 넓힐 데가 없네. 마을에서 제일 큰 집이야!');
     } else if (c === 1) {
-      const names = S.residents.map((id) => VILLAGERS[id].name).join(', ');
-      await say(u, `지금 우리 마을엔 ${names}, 그리고 자네까지 ${S.residents.length + 1}명이 산다네.`);
+      const local=residentsOf(), names = local.map((id) => VILLAGERS[id].name).join(', ');
+      await say(u, local.length ? `지금 우리 마을엔 ${names}, 그리고 자네까지 ${local.length + 1}명이 산다네.` : '아직 이웃이 없네. 여행지에서 마음에 맞는 친구를 만나면 우리 마을로 초대해 보게.');
       const m = G.now.getMonth() + 1, d = G.now.getDate();
-      const b = S.residents.map((id) => VILLAGERS[id]).filter((v) => v.bday[0] === m && v.bday[1] >= d).sort((a, b2) => a.bday[1] - b2.bday[1])[0];
+      const b = local.map((id) => VILLAGERS[id]).filter((v) => v.bday[0] === m && v.bday[1] >= d).sort((a, b2) => a.bday[1] - b2.bday[1])[0];
       if (b) await say(u, `이번 달 ${b.bday[1]}일은 ${b.name}의 생일일세. 선물 하나 챙겨 주면 좋아할 걸세.`);
       else await say(u, pick(['해변에는 날마다 조개가 밀려온다네. 주워다 팔면 쏠쏠하지.', '비 오는 날에만 나오는 녀석들도 있다네. 궂은 날이라고 집에만 있지 말게.', '과일은 따고 나서 사흘이면 다시 열린다네.', '꽃에 물을 주면 다음 날 옆에 새 꽃이 필 때가 있지. 색이 섞이기도 하고.']));
     } else break;
@@ -568,7 +574,7 @@ function roomSpec(b) {
       npcDefs: [{ model: 'npc_ujik', name: NPCS.ujik.name, x: 4, z: 0.6, fixed: true, talk: () => runScript(talkUjik) }],
     };
   }
-  const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot), def = VILLAGERS[vid];
+  const vid = residentAt(b.lot), def = VILLAGERS[vid];
   const [wall, floor] = HOME_STYLE[def.set];
   const n = wrapNpc(vid);
   return {
@@ -588,6 +594,9 @@ function openBuildingRoom(b, spec) {
 function refreshDailyRoom() {
   const room = G.room;
   if (!room) return syncVillagers();
+  if(room.id.startsWith('v:') && residentAt(room.building.lot)!==room.id.slice(2)) {
+    UI.closePanel();exitRoom();return;
+  }
   if (!['home', 'shop', 'museum', 'hall'].includes(room.id) || !room.building) return;
   const spec = roomSpec(room.building);
   if (room.w !== spec.w || room.h !== spec.h || room.wall !== spec.wall) {
@@ -608,8 +617,8 @@ export async function enter(b) {
     if (b.type === 'museum' && S.prog.museum < 1) { await narr(S.prog.pend.museum ? '말뚝과 줄이 쳐져 있다. 내일이면 두루의 조사 천막이 선다고 한다.' : '아직 빈 터다. 팻말에 "박물관 자리"라고 적혀 있다.'); return; }
     if (b.type === 'shop' && (h < 8 || h >= 22)) { Sound.sfx('fail'); await narr('문이 잠겨 있다. 팻말에 "아침 8시부터 밤 10시까지"라고 적혀 있다.'); return; }
     if (b.type === 'house') {
-      const vid = Object.keys(S.villagers).find((k) => S.villagers[k].lot === b.lot);
-      if (!vid) { await narr((S.prog.pend.sites || []).includes(b.lot) ? '집 지을 채비가 한창이다. 내일이면 새 이웃이 이사 온다고 한다.' : '아직 빈 집터다. 언젠가 새 이웃이 이사 올 자리.'); return; }
+      const vid = residentAt(b.lot);
+      if (!vid) { await narr(reservedLots().includes(b.lot) ? '이웃이 들어올 집터다. 이웃 초대와 집터에서 이사 준비를 확인할 수 있다.' : '아직 빈 집터다. 언젠가 새 이웃이 이사 올 자리.'); return; }
       const npc = G.npcs.find((n) => n.id === vid);
       if (!villagerAwake(vid)) { Sound.sfx('fail'); await narr('불이 꺼져 있다. 자고 있는 모양이다.'); return; }
       if (npc && npc.visible) { Sound.sfx('fail'); await narr(`문을 두드려 봤지만 대답이 없다. ${josa(VILLAGERS[vid].name, '은/는')} 밖에 나가 있는 모양이다.`); return; }

@@ -11,6 +11,7 @@ import { VILLAGERS } from '../data/villagers.js';
 import { Sound } from '../core/audio.js';
 import { action,life,learn,available } from './workshop.js';
 import { invite } from './island.js';
+import { townsOpen } from './neighborhood.js';
 import { certifiedPlots, fieldDesk, gradeWork, inspectPlot, plantModel, story, study, openResults } from './fieldwork.js';
 import { ramenDesk, setBowl, startRamenShift } from './ramen.js';
 import { VOICES } from '../data/voices.js';
@@ -83,11 +84,11 @@ function villageTalk(id,area,n,chatOnly=false){
     const cue=memo.rescue===6 && VOICES[id].rescue?'rescue':memo.grade===5 && VOICES[id].grade?'grade':'travel';
     await speakScene(n,cue);
     if(S.residents.includes(id)){await speakScene(n,'resident');return;}
-    if(life().contacts.includes(id)||life().projects.some(p=>p.id===id)){
+    if((!townsOpen() && life().contacts.includes(id))||life().projects.some(p=>p.id===id)){
       await speakScene(n,'pending');UI.toast('이웃 초대와 집터에서 준비 상황을 볼 수 있어요.');return;
     }
     if(await Dialog.choose(['우리 마을로 이사 올래?','여행 이야기 더 듣기'],{cancel:1})===0){
-      invite(id);await speakScene(n,'invite');UI.toast('이웃 초대와 집터에서 터를 고르고 화분과 의자를 준비하세요.');
+      if(await invite(id)){await speakScene(n,'invite');UI.toast('이웃 초대와 집터에서 새집 준비를 확인하세요.');}
     }else await speakScene(n,'camp');
   });
 }

@@ -16,6 +16,7 @@ import { ITEMS, loadData } from '../data/items.js';
 import { VERSION } from '../core/version.js';
 import { VILLAGERS } from '../data/villagers.js';
 import { clamp, rand } from '../core/util.js';
+import { residentsOf, reservedLots } from './neighborhood.js';
 
 export const G = {
   stage: null, world: null, village: null, room: null, player: null, npcs: [], critters: null,
@@ -56,8 +57,8 @@ export function initStage(canvas) {
 export function worldInfo() {
   if (G.visit) return G.visit.info;
   const P = S.prog || { shop: 2, museum: 2, pend: {} }, lots = {};
-  for (const [id, v] of Object.entries(S.villagers)) lots[v.lot] = id;
-  return { shop:P.shop, museum:P.museum, pm:!!P.pend.museum, sites:[...(P.pend.sites||[]),...(S.islandLife?.projects||[]).map(p=>p.lot)], lv:S.player.houseLv, lots, camp:!!S.flags.campStart && S.player.houseLv===0, day:S.day };
+  for (const id of residentsOf()) lots[S.villagers[id].lot] = id;
+  return { shop:P.shop, museum:P.museum, pm:!!P.pend.museum, sites:reservedLots(), lv:S.player.houseLv, lots, camp:!!S.flags.campStart && S.player.houseLv===0, day:S.day };
 }
 
 export function buildWorld(village) {

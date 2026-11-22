@@ -3,6 +3,7 @@ import { Actor } from '../gfx/actor.js';
 import { G, groundY } from './game.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
+import { residentsOf } from './neighborhood.js';
 import { S } from './state.js';
 import { dayKey, hourF } from '../core/clock.js';
 import { rand, hash01 } from '../core/util.js';
@@ -128,7 +129,14 @@ export class Villager {
 /** 지금 사는 주민에 맞춰 목록을 만들고, 나와 있을 주민만 보이게 한다 */
 export function syncVillagers(initial = false) {
   if (G.visit) return;                             // 놀러 간 마을의 이웃은 방장이 알려 주는 대로 움직인다(net.js)
-  for (const id of S.residents) if (!G.npcs.find((n) => n.id === id)) G.npcs.push(new Villager(id));
+  const local = residentsOf();
+  G.npcs = G.npcs.filter(n => {
+    if (local.includes(n.id)) return true;
+    n.hide();
+    G.stage.scene.remove(n.actor.root);
+    return false;
+  });
+  for (const id of local) if (!G.npcs.find((n) => n.id === id)) G.npcs.push(new Villager(id));
   for (const n of G.npcs) {
     const out = villagerOut(n.id);
     if (out && !n.visible) { if (initial) n.scatter(); else n.show(true); }

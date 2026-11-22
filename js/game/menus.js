@@ -6,6 +6,7 @@ import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
 import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, hasSave } from './state.js';
 import { ITEMS, FISH, BUGS, FOSSILS, FISH_BY_ID, BUG_BY_ID, itemName, sellPrice, FRUIT_KO } from '../data/items.js';
 import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
+import { residentsOf } from './neighborhood.js';
 import { UI, Dialog, slotEl, itemRow, acorns } from '../ui/ui.js';
 import { Sound } from '../core/audio.js';
 import { Clock, dayKey, dateLabel, timeLabel, season, SEASON_KO, WEATHER_KO } from '../core/clock.js';
@@ -259,7 +260,7 @@ export function board() {
     const now = G.now, pr = museumProgress();
     await narr(`<b>${S.village.name} 마을 게시판</b>\n${dateLabel(now)} · ${SEASON_KO[season(now)]} · ${WEATHER_KO[G.weather]}`);
     const m = now.getMonth() + 1, d = now.getDate();
-    const bd = S.residents.map((id) => VILLAGERS[id]).filter((v) => v.bday[0] === m && v.bday[1] >= d).sort((a, b) => a.bday[1] - b.bday[1])[0];
+    const bd = residentsOf().map((id) => VILLAGERS[id]).filter((v) => v.bday[0] === m && v.bday[1] >= d).sort((a, b) => a.bday[1] - b.bday[1])[0];
     if (bd) await narr(bd.bday[1] === d ? `오늘은 <b>${bd.name}</b>의 생일! 선물을 주면 기뻐할 거예요.` : `이달 ${bd.bday[1]}일은 ${bd.name}의 생일입니다.`);
     await narr(`박물관 소식: 물고기 ${pr.fish[0]}종, 곤충 ${pr.bug[0]}종, 화석 ${pr.fossil[0]}점 전시 중.`);
     const tips = ['만물상은 아침 8시부터 밤 10시까지 엽니다.', '물고기 그림자 앞에 찌를 던지고, 찌가 쑥 들어가는 순간에 당기세요. 툭툭 건드릴 때는 참아야 합니다.', '곤충은 달려가면 달아납니다. 잠자리채를 든 채 Space를 누르고 살금살금 다가가세요.', '땅에 별 모양으로 갈라진 자리를 삽으로 파면 화석이 나옵니다.', '과일을 풀밭에 심으면 사흘 뒤 나무가 됩니다.', '나무를 흔들면 가끔 도토리 주머니나 보따리가 떨어집니다. 벌집도요.'];

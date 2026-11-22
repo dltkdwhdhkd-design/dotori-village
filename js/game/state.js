@@ -23,7 +23,7 @@ export function newState({ name, village, model, look = null, seed, villageData,
   const residents = ids.slice(0, 2);                 // 처음엔 이웃이 둘뿐이다. 나머지는 마을을 키우면 이사 온다
   const villagers = {};
   const lots = r.shuffle([...Array(villageData.lots.length).keys()]);
-  residents.forEach((id, i) => { villagers[id] = { lot: lots[i], friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 }; });
+  residents.forEach((id, i) => { villagers[id] = { town: 0, lot: lots[i], friend: 0, met: false, talkDay: 0, talkN: 0, req: null, giftDay: 0 }; });
   const st = {
     v: 1, seed,
     player: { name, model, look, x: villageData.spawn.x + 0.5, z: villageData.spawn.y + 0.8, money: 0, loan: 0, houseLv: 0, loanStage: 0, tool: null, stung: false },

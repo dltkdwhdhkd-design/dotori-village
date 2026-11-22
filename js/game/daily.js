@@ -19,7 +19,7 @@ function nearDoor(v, x, y) { for (const b of v.buildings) if (y >= b.y + b.d && 
 
 /** 하루치 변화. 저장된 날짜에서 하루씩 진행한다. */
 function growDay(day) {
-  const v = G.village, r = RNG(hash32(S.seed, day, 77));
+  const v = G.village, r = RNG(hash32(v.seed, day, 77));
   let weeds = 0, flowers = 0, shells = 0;
   const flowerList = [];
   v.each((o, x, y) => {
@@ -59,8 +59,8 @@ function growDay(day) {
 }
 
 /** 오늘 하루 동안 쓰는 표: 도토리 나무, 벌집 나무, 가게 물건 등 */
-export function setupToday(day) {
-  const v = G.village, r = RNG(hash32(S.seed, day, 99));
+export function setupToday(day, resetResidents=true) {
+  const v = G.village, r = RNG(hash32(v.seed, day, 99));
   const trees = [], rocks = [];
   v.each((o, x, y, i) => { if (o.t === 'tree' && o.stage === 3 && o.kind !== 'fruit') trees.push(i); if (o.t === 'rock') rocks.push(i); });
   r.shuffle(trees);
@@ -73,6 +73,7 @@ export function setupToday(day) {
     seeds: r.shuffle([...FLOWER_SPECIES]).slice(0, 3).map((s) => 'seed_' + s),
     fruit: r.chance(0.35) ? 'fruit_' + r.pick(others) : null,
   };
+  if (!resetResidents) return;
   for (const id of Object.keys(S.villagers)) { S.villagers[id].talkN = 0; S.villagers[id].stungSeen = 0; S.villagers[id].reqAsked = 0; }
   S.player.stung = false;
 }
@@ -173,6 +174,7 @@ export function newDay(k, quiet = false) {
   progressDay(k);
   dailyMail(k);
   G.hooks.refreshDailyRoom?.();
+  G.hooks.refreshFerry?.();
   const saved = save();
   if (!quiet) { const d = dateOfDay(k); UI.toast(`${d.getMonth() + 1}월 ${d.getDate()}일, 새 하루가 시작됐다.`, 3500); }
   if (S.mail.some((m) => !m.read)) UI.toast('우체통에 편지가 와 있다.', 3500);
@@ -185,4 +187,11 @@ export function firstDay(k) {
   // 첫날은 나무가 자라면 안 되므로 묘목은 없지만, 과일은 가득 채워 둔다
   setupToday(k);
   S.day = k;
+}
+
+// 비운 마을의 나무·해변·진열만 따라잡는다. 공동체의 일감과 편지는 이미 갱신됐다.
+export function catchUpLand(from,to) {
+  if (from>=to) return;
+  for(let day=Math.max(from+1,to-9);day<=to;day++) growDay(day);
+  setupToday(to,false);
 }

@@ -63,23 +63,23 @@ export function advance() {
 
 // ---------------------------------------------------------------- 오늘의 일감
 const TASK = {
-  fish: { ko: (n) => `물고기 ${n}마리 낚기`, n: [3, 5], pay: [300, 500] },
-  seafish: { ko: (n) => `바다에서 물고기 ${n}마리 낚기`, n: [2, 3], pay: [350, 500] },
-  freshfish: { ko: (n) => `강이나 연못에서 물고기 ${n}마리 낚기`, n: [2, 3], pay: [350, 500] },
-  bug: { ko: (n) => `곤충 ${n}마리 잡기`, n: [3, 5], pay: [300, 500] },
-  newsp: { ko: () => '처음 보는 생물 한 종 잡기', n: [1], pay: [500] },
-  sell: { ko: (n) => `가게에 도토리 ${fmt(n)}개어치 팔기`, n: [1000, 3000], pay: [300, 600] },
-  talk: { ko: (n) => `이웃 ${n}명과 이야기 나누기`, n: [2, 3], pay: [200, 300] },
-  water: { ko: (n) => `꽃 ${n}송이에 물 주기`, n: [3, 5], pay: [200, 300], ok: () => hasItem('tool_can') },
-  weed: { ko: (n) => `잡초 ${n}개 뽑기`, n: [3, 5], pay: [200, 300] },
-  shake: { ko: (n) => `나무 ${n}그루 흔들기`, n: [5], pay: [200] },
-  wood: { ko: (n) => `나무 ${n}개 구하기`, n: [5, 10], pay: [300, 500], ok: () => hasItem('tool_axe') },
-  stone: { ko: (n) => `돌 ${n}개 구하기`, n: [3, 6], pay: [300, 500], ok: () => hasItem('tool_shovel') },
-  fossil: { ko: () => '화석 하나 캐기', n: [1], pay: [400], ok: () => hasItem('tool_shovel') },
-  donate: { ko: () => '박물관에 한 점 기증하기', n: [1], pay: [400], ok: () => S.prog.museum >= 1 },
-  plant: { ko: (n) => `꽃이나 나무 ${n}개 심기`, n: [1, 3], pay: [250, 400] },
-  fruit: { ko: (n) => `과일 ${n}개 따기`, n: [3, 6], pay: [200, 300] },
-  shell: { ko: (n) => `조개 ${n}개 줍기`, n: [2, 4], pay: [200, 300] },
+  fish: { ko: (n) => `물고기 ${n}마리 낚기`, n: [3, 5], pay: [15, 25] },
+  seafish: { ko: (n) => `바다에서 물고기 ${n}마리 낚기`, n: [2, 3], pay: [18, 25] },
+  freshfish: { ko: (n) => `강이나 연못에서 물고기 ${n}마리 낚기`, n: [2, 3], pay: [18, 25] },
+  bug: { ko: (n) => `곤충 ${n}마리 잡기`, n: [3, 5], pay: [15, 25] },
+  newsp: { ko: () => '처음 보는 생물 한 종 잡기', n: [1], pay: [25] },
+  sell: { ko: (n) => `가게에 도토리 ${fmt(n)}개어치 팔기`, n: [1000, 3000], pay: [15, 30] },
+  talk: { ko: (n) => `이웃 ${n}명과 이야기 나누기`, n: [2, 3], pay: [10, 15] },
+  water: { ko: (n) => `꽃 ${n}송이에 물 주기`, n: [3, 5], pay: [10, 15], ok: () => hasItem('tool_can') },
+  weed: { ko: (n) => `잡초 ${n}개 뽑기`, n: [3, 5], pay: [10, 15] },
+  shake: { ko: (n) => `나무 ${n}그루 흔들기`, n: [5], pay: [10] },
+  wood: { ko: (n) => `나무 ${n}개 구하기`, n: [5, 10], pay: [15, 25], ok: () => hasItem('tool_axe') },
+  stone: { ko: (n) => `돌 ${n}개 구하기`, n: [3, 6], pay: [15, 25], ok: () => hasItem('tool_shovel') },
+  fossil: { ko: () => '화석 하나 캐기', n: [1], pay: [20], ok: () => hasItem('tool_shovel') },
+  donate: { ko: () => '박물관에 한 점 기증하기', n: [1], pay: [20], ok: () => S.prog.museum >= 1 },
+  plant: { ko: (n) => `꽃이나 나무 ${n}개 심기`, n: [1, 3], pay: [12, 20] },
+  fruit: { ko: (n) => `과일 ${n}개 따기`, n: [3, 6], pay: [10, 15] },
+  shell: { ko: (n) => `조개 ${n}개 줍기`, n: [2, 4], pay: [10, 15] },
 };
 export const taskText = (t) => TASK[t.k].ko(t.need);
 function newTask(avoid = []) {
@@ -90,6 +90,10 @@ function newTask(avoid = []) {
 export function fillTasks() {
   const P = S.prog;
   P.tasks = (P.tasks || []).filter((t) => TASK[t.k]);
+  for (const t of P.tasks) {
+    const def=TASK[t.k];
+    t.pay=def.pay[Math.max(0,def.n.indexOf(t.need))];
+  }
   while (P.tasks.length < 5) P.tasks.push(newTask(P.tasks.map((t) => t.k)));
 }
 

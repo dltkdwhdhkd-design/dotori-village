@@ -21,11 +21,12 @@ import { TitleScene } from './game/titlescene.js';
 import { ensureBench, housing, islandTools, yardMenu } from './game/island.js';
 import { travel } from './game/travel.js';
 import { workshop } from './game/workshop.js';
+import { ferryOffice, refreshFerry } from './game/ferry.js';
 
 function start(isNew) {
   ensureBench();
   if (G.title) { G.title.dispose(); G.title = null; }
-  Clock.seed = S.seed;
+  Clock.seed = G.village.seed;
   ensureProg();                                   // 예전 저장은 '다 자란 마을'로 이어받는다
   if (!S.flags.mirror) {                          // 거울이 생기기 전에 만든 마을에는 편지로 보낸다
     S.flags.mirror = true;
@@ -85,7 +86,7 @@ async function boot() {
   Clock.offsetMin = Settings.offsetMin || 0;
   Sound.setVolume(Settings.bgm, Settings.sfx);
   initStage(document.getElementById('game'));
-  registerScripts(); registerMenus(); Object.assign(G.hooks,{housing,islandTools,yardMenu,travel,workshop});
+  registerScripts(); registerMenus(); Object.assign(G.hooks,{housing,islandTools,yardMenu,travel,workshop,ferryOffice,refreshFerry});
   G.hooks.newDay = (k) => newDay(k);
   G.hooks.openNet = openNet; G.hooks.openChat = openChat;
   G.hooks.rebuildWorld = () => { buildWorld(G.village); if (G.critters) G.critters._water = null; };   // 다리를 놓는 등 땅 모양이 바뀌었을 때

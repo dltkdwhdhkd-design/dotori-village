@@ -69,7 +69,7 @@ export const UI = {
     const h = $('hud-hint');
     if (this.touch?.active) {
       this.touch.setActionLabel(actionLabel);
-      text = text.replaceAll('<b>Space</b>', '<b>' + actionLabel + '</b>').replaceAll('<b>G</b>', '<b>대화</b>').replaceAll('<b>F</b>', '<b>줍기</b>');
+      text = text.replaceAll('<b>Space</b>', '<b>' + actionLabel + '</b>').replaceAll('<b>G</b>', '<b>대화</b>').replaceAll('<b>F</b>', actionLabel==='공격'?'<b>회피</b>':'<b>줍기</b>');
     }
     if (!text || this.modal > 0) { h.classList.add('hidden'); this._hint = ''; return; }
     if (this._hint !== text) { h.innerHTML = text; this._hint = text; }

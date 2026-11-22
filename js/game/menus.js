@@ -3,7 +3,7 @@ import { journal } from './fieldwork.js';
 import { G, runScript, save, burst, refreshTime, advanceVillageTime, worldInfo } from './game.js';
 import { VERSION } from '../core/version.js';
 import { G as T, MAP_W, MAP_H } from '../world/mapgen.js';
-import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, INV_SIZE, hasSave } from './state.js';
+import { S, Settings, saveSettings, addItem, canAdd, removeAt, hasItem, addMoney, exportSave, importSave, deleteSave, hasSave } from './state.js';
 import { ITEMS, FISH, BUGS, FOSSILS, FISH_BY_ID, BUG_BY_ID, itemName, sellPrice, FRUIT_KO } from '../data/items.js';
 import { VILLAGERS, PERSONALITY } from '../data/villagers.js';
 import { UI, Dialog, slotEl, itemRow, acorns } from '../ui/ui.js';
@@ -15,7 +15,8 @@ import { track, openNote } from './quests.js';
 import { lookEditor } from './lookui.js';
 import { MODEL as LOOK_MODEL, defaultLook, lookOfModel } from './look.js';
 
-import { placeOutside, designAllowed } from './island.js';
+import { placeOutside, designAllowed, yardTableInFront, placeOnYardTable } from './island.js';
+import { isTabletopItem } from '../gfx/tabletop.js';
 import { action } from './workshop.js';
 const KIND_KO = { tool: '도구', fruit: '과일', shell: '조개', fish: '물고기', bug: '곤충', fossil: '화석', fossilid: '화석', furniture: '가구', wall: '벽지', floor: '바닥재', seed: '씨앗', sapling: '묘목', flower: '꽃', medicine: '약', misc: '잡동사니', parcel: '부탁받은 물건' };
 const narr = (t) => Dialog.say('', t);
@@ -28,6 +29,16 @@ function bagActions(i, close, redraw) {
   const s = S.inv[i], it = ITEMS[s.id], p = G.player, acts = [];
   const add = (label, fn, cls = '') => acts.push([label, fn, cls]);
   const inVillage = !G.room, inHome = G.room && G.room.editable;
+  if (isTabletopItem(s.id) && (inHome || designAllowed())) {
+    const target=inHome?G.room.itemInFront(p):yardTableInFront();
+    if (target && target.slot>=0) {
+      const base=target.it||target.o;
+      add(ITEMS[base.id].name+' 위에 올리기',()=>{
+        if (!(inHome?G.room.placeOnTable(p,s.id):placeOnYardTable(s.id))) return UI.toast('이 자리의 소품을 먼저 꺼내 주세요.');
+        removeAt(i);save();Sound.sfx('drop');close();
+      },'go');
+    }
+  }
   if (it.kind === 'tool') add(S.player.tool === s.id ? '집어넣기' : '손에 들기', () => { p.equip(S.player.tool === s.id ? null : s.id); close(); }, 'go');
   if (it.kind === 'fruit') add('먹기', () => { removeAt(i); Sound.sfx('pick'); close(); p.do('joy', 0.7); UI.toast(`${josa(it.name, '을/를')} 먹었다. 아삭, 달다!`); });
   if (it.kind === 'medicine') add('먹기', () => { removeAt(i); S.player.stung = false; Sound.sfx('save'); close(); UI.toast('약을 먹었다. 부기가 가라앉는다.'); });
@@ -47,7 +58,7 @@ function bagActions(i, close, redraw) {
     if(placeOutside(s.id)){removeAt(i);save();Sound.sfx('drop');close();}
   },'go');
   if (inHome && it.kind === 'furniture') add('방에 놓기', () => {
-    if (G.room.placeFront(p, s.id)) { removeAt(i); Sound.sfx('drop'); close(); } else { UI.toast('앞에 놓을 자리가 없다.'); Sound.sfx('fail'); }
+    if (G.room.placeFront(p, s.id)) { removeAt(i); save(); Sound.sfx('drop'); close(); } else { UI.toast('앞에 놓을 자리가 없다.'); Sound.sfx('fail'); }
   }, 'go');
   if (inHome && (it.kind === 'wall' || it.kind === 'floor')) add(it.kind === 'wall' ? '벽에 바르기' : '바닥에 깔기', () => {
     const old = it.kind === 'wall' ? S.home.wall : S.home.floor;
@@ -75,17 +86,17 @@ function bagActions(i, close, redraw) {
 }
 
 export function openBag() {
-  const box = el('div', 'row2'); let sel = -1;
+  const box = el('div', 'row2 bag-layout'); let sel = -1;
   const draw = () => {
     box.innerHTML = '';
     const left = el('div');
-    left.appendChild(el('div', 'note', `도토리 ${acorns(S.player.money)}${S.player.loan > 0 ? `　·　남은 집값 ${fmt(S.player.loan)}` : ''}`));
+    left.appendChild(el('div', 'note', `가방 ${S.inv.filter(Boolean).length}/${S.inv.length}칸　·　도토리 ${acorns(S.player.money)}${S.player.loan > 0 ? `　·　남은 집값 ${fmt(S.player.loan)}` : ''}`));
     const grid = el('div', 'grid');
     S.inv.forEach((s, i) => { const d = slotEl(s, { sel: i === sel }); if (s) d.onclick = () => { sel = i; Sound.sfx('ui'); draw(); }; grid.appendChild(d); });
     left.appendChild(grid);
     const det = el('div', 'detail');
     const s = sel >= 0 ? S.inv[sel] : null;
-    if (!s) det.innerHTML = '<p>물건을 누르면 쓸 수 있는 일이 나온다.</p><p>풀밭에서는 심기·내려놓기, 내 집에서는 가구 놓기와 벽지 바르기를 할 수 있다.</p>';
+    if (!s) det.innerHTML = '<p>물건을 눌러 사용하거나 배치하세요.</p><p>화분 같은 작은 소품은 책상이나 탁자를 바라보고 가방에서 골라 위에 올릴 수 있어요.</p>'+(S.inv.length<40?'<p>칸이 모자라면 DIY 작업대의 가방 탭에서 개조하세요.</p>':'');
     else {
       const it = ITEMS[s.id];
       det.innerHTML = `<h3>${it.name}${s.n > 1 ? ` × ${s.n}` : ''}</h3><p>${KIND_KO[it.kind] || ''}${it.kind !== 'parcel' && it.kind !== 'coin' ? `　·　팔면 ${acorns(sellPrice(s.id, G.village.fruit))}` : ''}</p><p>${it.desc || ''}</p>`;
@@ -106,13 +117,13 @@ export function openStorage() {
     box.innerHTML = '';
     box.appendChild(el('div', 'note', '물건을 누르면 가방과 창고 사이를 오간다. 창고에는 120개까지 들어간다.'));
     const row = el('div', 'row2');
-    const a = el('div'); a.appendChild(el('div', 'note', '가방'));
+    const a = el('div'); a.appendChild(el('div', 'note', '가방 ('+S.inv.filter(Boolean).length+'/'+S.inv.length+'칸)'));
     const g1 = el('div', 'grid');
     S.inv.forEach((s, i) => { const d = slotEl(s); if (s) d.onclick = () => { if (ITEMS[s.id].kind === 'parcel') return; if (S.storage.length >= 120) { UI.toast('창고가 가득 찼다.'); return; } S.storage.push({ id: s.id, n: s.n }); if (S.player.tool === s.id) G.player.equip(null, true); S.inv[i] = null; Sound.sfx('drop'); draw(); }; g1.appendChild(d); });
     a.appendChild(g1);
     const b = el('div'); b.style.flex = '1'; b.appendChild(el('div', 'note', `창고 (${S.storage.length}/120)`));
     const g2 = el('div', 'grid'); g2.style.gridTemplateColumns = 'repeat(5, 76px)'; g2.style.maxHeight = '420px'; g2.style.overflow = 'auto';
-    S.storage.forEach((s, i) => { const d = slotEl(s); d.onclick = () => { if (!canAdd(s.id)) { UI.toast('가방이 가득 찼다.'); return; } addItem(s.id, s.n); S.storage.splice(i, 1); Sound.sfx('pick'); draw(); }; g2.appendChild(d); });
+    S.storage.forEach((s, i) => { const d = slotEl(s); d.onclick = () => { if (!addItem(s.id,s.n)) { UI.toast('이 물건을 모두 꺼낼 공간이 부족해요.'); return; } S.storage.splice(i, 1); Sound.sfx('pick'); draw(); }; g2.appendChild(d); });
     b.appendChild(g2);
     row.appendChild(a); row.appendChild(b); box.appendChild(row);
   };

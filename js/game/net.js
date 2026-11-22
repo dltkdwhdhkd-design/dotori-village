@@ -261,7 +261,7 @@ function applyTiles(m, fromHost) {
 
 // ---------------------------------------------------------------- 방장: 문 열기
 function sendSnap(to) {
-  send({ t: 'snap', to, v: G.village.serialize(), info: worldInfo(), seed: S.seed, off: Clock.offsetMin, advanceMs: Clock.advanceMs, vn: S.village.name, hn: S.player.name });
+  send({ t: 'snap', to, v: G.village.serialize(), info: worldInfo(), seed: Clock.seed, off: Clock.offsetMin, advanceMs: Clock.advanceMs, vn: S.village.name, hn: S.player.name });
 }
 export async function openGate() {
   if(G.room?.area)return UI.toast('귀가한 뒤 우리 마을의 문을 열 수 있어요.');

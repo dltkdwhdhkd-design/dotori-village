@@ -3,13 +3,14 @@ import * as THREE from 'three';
 import { make, patchMaterial } from '../gfx/models.js';
 import { roomTexture } from '../gfx/roomtex.js';
 import { Actor } from '../gfx/actor.js';
-import { G } from './game.js';
+import { G, save } from './game.js';
+import { drawTabletop, putOnTop, surfaceSlot } from '../gfx/tabletop.js';
 import { ITEMS } from '../data/items.js';
 import { Input } from '../core/input.js';
 import { Sound } from '../core/audio.js';
 import { UI } from '../ui/ui.js';
-import { S, addItem, canAdd } from './state.js';
-import { clamp, rand } from '../core/util.js';
+import { S, addItem } from './state.js';
+import { clamp, rand, el } from '../core/util.js';
 import { signMesh } from './museum.js';
 import { clearNetMood, updateNetMood } from './netplay.js';
 
@@ -93,6 +94,7 @@ export class Room {
       for (let y = it.y; y < it.y + fh; y++) for (let x = it.x; x < it.x + fw; x++) if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.occ[y * this.w + x] = i;
       const def = ITEMS[it.id];
       const o = make(def ? def.model : it.id, def && def.tint ? { tint: def.tint } : {});
+      drawTabletop(o,it);
       o.position.set(it.x + fw / 2, it.lift || 0, it.y + fh / 2);
       o.rotation.y = -(it.r || 0) * Math.PI / 2;
       if (it.scale) o.scale.setScalar(it.scale);
@@ -158,7 +160,7 @@ export class Room {
   }
 
   resolve(x, z, r) {
-    const door = Math.abs(x - this.w / 2) < 0.62;
+    const door = !this.exitField && Math.abs(x - this.w / 2) < 0.62;
     const pt = this.portalAt(x);
     x = clamp(x, r, this.w - r);
     z = clamp(z, pt ? -0.45 : r + 0.15, door ? this.h + 0.5 : this.h - r);
@@ -180,6 +182,7 @@ export class Room {
   }
 
   checkExit(p) {
+    if (this.exitField) return false;
     if (p.z > this.h + 0.28) { G.hooks.exit(); return true; }
     const pt = this.portalAt(p.x);
     if (pt && p.z < -0.12) { G.hooks.portal(pt.to); return true; }
@@ -199,7 +202,9 @@ export class Room {
     const x = Math.floor(f.x), y = Math.floor(f.z);
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return null;
     const i = this.occ[y * this.w + x];
-    return i >= 0 ? { i, it: this.items[i], x, y } : { i: -1, x, y };
+    if (i < 0) return {i:-1,x,y};
+    const it=this.items[i], slot=surfaceSlot(it,x-it.x,y-it.y);
+    return {i,it,x,y,slot,top:it.tops?.[slot]};
   }
 
   hint(p) {
@@ -209,6 +214,7 @@ export class Room {
     if (!t || t.i < 0) return this.editable ? K('E', '가방에서 가구 꺼내 놓기') : '';
     const def = ITEMS[t.it.id];
     let h = '';
+    if (this.editable && t.slot>=0) return K('Space', (ITEMS[t.top?.id]?.name || def.name)+' 배치 관리')+'　'+K('F','집어넣기')+'　'+K('Q','돌리기');
     if (t.it.sale != null) return K('Space', `${def.name} 살펴보기`);
     if (t.it.act) h = K('Space', t.it.actLabel || '살펴보기');
     else if (def && def.use) h = K('Space', { storage: '창고 열기', bed: '누워서 쉬기(저장)', lamp: '불 켜고 끄기', tv: '켜기', radio: '틀기', piano: '쳐 보기', guitar: '쳐 보기', mirror: '모습 바꾸기' }[def.use] || '쓰기');
@@ -221,9 +227,20 @@ export class Room {
     if (e) return e.act();
     const t = this.itemInFront(p);
     if (!t || t.i < 0) return;
-    const def = ITEMS[t.it.id];
+    if (this.editable && t.slot>=0) {
+      const box=el('div','acts'), name=ITEMS[t.top?.id || t.it.id].name;
+      const button=(label,fn)=>{const b=el('button','btn',label);b.onclick=()=>{UI.closePanel();fn();};box.append(b);};
+      if(t.top && ITEMS[t.top.id].use) button(name+' 사용하기',()=>this.useFurniture(ITEMS[t.top.id],p));
+      button(name+' 돌리기',()=>this.rotateInFront(p));
+      button(name+' 가방에 넣기',()=>this.pickup(p));
+      if(t.top) button(ITEMS[t.it.id].name+' 통째로 돌리기',()=>this.rotateInFront(p,true));
+      UI.openPanel(name,box);return;
+    }
     if (t.it.sale != null) return G.hooks.buyDisplay(this, t.i);
     if (t.it.act) return t.it.act(t.it);
+    this.useFurniture(ITEMS[t.it.id],p);
+  }
+  useFurniture(def,p) {
     if (!def || !def.use) return;
     if (def.use === 'storage') return G.hooks.openStorage();
     if (def.use === 'bed') return G.hooks.rest();
@@ -237,24 +254,35 @@ export class Room {
     if (!this.editable) return;
     const t = this.itemInFront(p);
     if (!t || t.i < 0) return;
-    if (!canAdd(t.it.id)) { UI.toast('가방이 가득 찼다.'); Sound.sfx('fail'); return; }
-    addItem(t.it.id);
-    this.items.splice(t.i, 1);
+    if (!t.top && t.it.tops?.some(Boolean)) return UI.toast('먼저 위에 올린 소품을 꺼내 주세요.');
+    if (!addItem(t.top?.id || t.it.id)) { UI.toast('가방이 가득 찼다.'); Sound.sfx('fail'); return; }
+    if (t.top) t.it.tops[t.slot]=null; else this.items.splice(t.i, 1);
     this.rebuildItems(); Sound.sfx('pick'); p.do('pick', 0.3);
     if (this.onChange) this.onChange();
+    save();
   }
-  rotateInFront(p) {
+  rotateInFront(p,wholeTable=false) {
     if (!this.editable) return;
     const t = this.itemInFront(p);
     if (!t || t.i < 0) return;
+    if (t.top && !wholeTable) {
+      t.top.r=(t.top.r+1)%4;
+      this.rebuildItems(); Sound.sfx('ui'); save(); return;
+    }
     const it = t.it, old = it.r || 0;
     for (let k = 1; k <= 3; k++) {
       it.r = (old + k) % 4;
-      if (this.canPlace(it, t.i)) { this.rebuildItems(); Sound.sfx('ui'); if (this.onChange) this.onChange(); return; }
+      if (this.canPlace(it, t.i)) { this.rebuildItems(); Sound.sfx('ui'); if (this.onChange) this.onChange(); save(); return; }
     }
     it.r = old; Sound.sfx('fail');
   }
   /** 주인공 앞에 가구를 놓는다. 자리가 없으면 false */
+  placeOnTable(p,id) {
+    const t=this.itemInFront(p);
+    if (!this.editable || !t || !putOnTop(t.it,t.slot,id)) return false;
+    this.rebuildItems();
+    return true;
+  }
   placeFront(p, id) {
     const f = p.front(0.9);
     const bx = Math.floor(f.x), by = Math.floor(f.z);

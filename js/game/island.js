@@ -1,12 +1,13 @@
 import { speakScene } from './speech.js';
 import { G, save, runScript } from './game.js';
-import { S, countItem, takeItem, addItem, canAdd } from './state.js';
+import { S, countItem, takeItem, addItem } from './state.js';
 import { G as T, WK } from '../world/mapgen.js';
 import { ITEMS } from '../data/items.js';
 import { VILLAGERS } from '../data/villagers.js';
 import { UI, Dialog } from '../ui/ui.js';
 import { el } from '../core/util.js';
 import { action, life, workshop } from './workshop.js';
+import { putOnTop, surfaceSlot } from '../gfx/tabletop.js';
 
 
 export function designAllowed() { return !G.room && !G.visit && !G.net?.role; }
@@ -50,9 +51,9 @@ function decorFits(cells,own) {
     return (own?.has(i)||terrainFree(x,y)) && [T.GRASS,T.PATH,T.STONE,T.SAND].includes(v.terrainAt(x,y));
   }) && preservesAccess(v,cells.map(([x,y])=>v.idx(x,y)));
 }
-function put(x,y,id,r,cells){
+function put(x,y,id,r,cells,tops){
   const v=G.village,base=v.idx(x,y);
-  for(const [a,b] of cells)v.set(a,b,a===x && b===y?{t:'decor',id,r}:{t:'decorPart',base});
+  for(const [a,b] of cells)v.set(a,b,a===x && b===y?{t:'decor',id,r,tops}:{t:'decorPart',base});
 }
 export function placeOutside(id) {
   if(!designAllowed())return false;
@@ -60,17 +61,41 @@ export function placeOutside(id) {
   if(!decorFits(cells)) {note('문과 통로를 남겨 두고 빈 땅을 바라봐 주세요.');return false;}
   put(f.tx,f.ty,id,0,cells);return true;
 }
-export function yardMenu(x,y){
-  if(!designAllowed())return;
+function yardDecorAt(tx,ty) {
+  let x=tx,y=ty;
   const v=G.village;let o=v.obj(x,y);
   if(o?.t==='decorPart'){x=o.base%v.W;y=Math.floor(o.base/v.W);o=v.obj(x,y);}
-  if(o?.t!=='decor')return;
+  if(o?.t!=='decor')return null;
+  const slot=surfaceSlot(o,tx-x,ty-y);
+  return {o,x,y,slot,top:o.tops?.[slot]};
+}
+export function yardTableInFront() {
+  if (!designAllowed()) return null;
+  const f=G.player.front();
+  return yardDecorAt(f.tx,f.ty);
+}
+export function placeOnYardTable(id) {
+  const target=yardTableInFront();
+  if (!target || !putOnTop(target.o,target.slot,id)) return false;
+  G.village.touch(target.x,target.y);
+  return true;
+}
+export function yardMenu(tx,ty){
+  if(!designAllowed())return;
+  const target=yardDecorAt(tx,ty);
+  if (!target) return;
+  const v=G.village,{o,x,y,slot,top}=target;
   const cells=decorCells(x,y,o.id,o.r),clear=()=>cells.forEach(([a,b])=>v.set(a,b,null)),box=el('div');
-  action(box,'돌리기',()=>{const r=(o.r+1)%4, next=decorCells(x,y,o.id,r);
+  const finish=()=>{v.touch(x,y);save();UI.closePanel();};
+  if (top) {
+    action(box,ITEMS[top.id].name+' 돌리기',()=>{top.r=(top.r+1)%4;finish();});
+    action(box,ITEMS[top.id].name+' 가방에 넣기',()=>{if(!addItem(top.id))return note('가방이 가득 찼어요.');o.tops[slot]=null;finish();});
+  }
+  action(box,top?ITEMS[o.id].name+' 통째로 돌리기':'돌리기',()=>{const r=(o.r+1)%4, next=decorCells(x,y,o.id,r);
     if(!decorFits(next,new Set(cells.map(([a,b])=>v.idx(a,b)))))return note('돌릴 공간이 부족해요.');
-    clear();put(x,y,o.id,r,next);save();UI.closePanel();});
-  action(box,'가방에 넣기',()=>{if(!canAdd(o.id))return note('가방이 가득 찼어요.');addItem(o.id);clear();save();UI.closePanel();});
-  UI.openPanel(ITEMS[o.id].name,box);
+    clear();put(x,y,o.id,r,next,o.tops);save();UI.closePanel();});
+  if (!top) action(box,'가방에 넣기',()=>{if(o.tops?.some(Boolean))return note('먼저 위에 올린 소품을 꺼내 주세요.');if(!addItem(o.id))return note('가방이 가득 찼어요.');clear();save();UI.closePanel();});
+  UI.openPanel(top?ITEMS[o.id].name+' 위의 '+ITEMS[top.id].name:ITEMS[o.id].name,box);
 }
 const brush={grass:['잔디 복원',T.GRASS],path:['흙길',T.PATH],pave:['돌길',T.STONE],pond:['물길 파기',T.WATER],cliff:['절벽 쌓기',T.CLIFF]};
 export function reshape(id) {
@@ -137,6 +162,7 @@ export function islandTools(){
   if(!designAllowed())return note('섬 공사는 우리 마을 야외에서 혼자 진행해요.');
   const box=el('div'), f=point();box.append(el('p','note','바라보는 칸 ('+(f.tx+1)+', '+(f.ty+1)+')에서 작업해요.'));
   action(box,'이웃 초대와 집터',housing);
+  action(box,'두 번째 마을 개척 · 여객선',()=>G.hooks.ferryOffice());
   action(box,'캠핑장 짓기 · 나무 6 / 돌 2',()=>buildAtFront('campsite'),S.player.houseLv>=1 && !G.village.buildings.some(b=>b.type==='campsite'));
   action(box,'공동 공방 짓기 · 나무 10 / 돌 4',()=>buildAtFront('atelier'),S.player.houseLv>=1 && !G.village.buildings.some(b=>b.type==='atelier'));
   box.append(el('p','note',S.prog.done?'바꿀 지형을 고르세요.':'내 집을 지으면 공동 공방을 세울 수 있어요. 마을 잔치를 마치면 길·하천·절벽 공사가 열려요.'));

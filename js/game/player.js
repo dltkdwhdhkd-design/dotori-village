@@ -190,6 +190,11 @@ export class Player {
     if (G.room) { if (G.room.checkExit(this)) return; }
 
     // 행동
+    if (G.room?.hunt) {
+      if (Input.take('pick')) G.room.dodge();
+      else if (Input.take('act')) G.room.attack();
+      a.update(dt);return;
+    }
     if (Input.take('talk')) {
       this.lowerNet();
       Input.take('act');
@@ -248,6 +253,7 @@ export class Player {
 
   /** 화면 아래에 띄울 안내 */
   hint() {
+    if (G.room?.hunt) return K('Space','연속 누르기')+'　'+K('F','방향을 잡고 회피');
     if (this.fishing) return this.fishing.state === 'bite' ? K('Space', '지금 당기기!') : K('Space', '거두기');
     if (this.lock > 0) return '';
     if (this.netHold && this.actor.sneak) return K('Space','떼면 잠자리채 휘두르기');

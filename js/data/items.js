@@ -34,8 +34,10 @@ def('sapling_blossom', { name: '벚나무 묘목', kind: 'sapling', tree: 'bloss
 def('sapling_pine', { name: '소나무 묘목', kind: 'sapling', tree: 'pine', buy: 300, price: 75, model: 'sapling', scale: 1.5, desc: '심으면 며칠에 걸쳐 소나무로 자란다.' });
 def('medicine', { name: '약', kind: 'medicine', buy: 200, price: 50, model: 'medicine', desc: '벌에 쏘였을 때 먹는다.' });
 def('weed', { name: '잡초', kind: 'misc', price: 10, stack: 99, model: 'weedbit', desc: '뽑아 온 잡초. 헐값이지만 팔 수는 있다.' });
-def('mat_wood', { name: '나무', kind: 'material', price: 30, stack: 30, model: 'mat_wood', desc: '집과 다리를 지을 때 쓰는 재료. 도끼로 나무를 찍으면 나온다.' });
-def('mat_stone', { name: '돌', kind: 'material', price: 40, stack: 30, model: 'mat_stone', desc: '집과 다리를 지을 때 쓰는 재료. 삽으로 바위를 두드리면 나온다.' });
+def('mat_wood', { name: '나무', kind: 'material', buy: 110, price: 30, stack: 30, model: 'mat_wood', desc: '집과 다리를 지을 때 쓰는 재료. 도끼로 나무를 찍으면 나온다.' });
+def('mat_stone', { name: '돌', kind: 'material', buy: 140, price: 40, stack: 30, model: 'mat_stone', desc: '집과 다리를 지을 때 쓰는 재료. 삽으로 바위를 두드리면 나온다.' });
+def('mat_cloth', {name:'풀섬유 천', kind:'material', buy:180, price:35, stack:30, model:'mat_cloth', desc:'말린 들풀을 촘촘하게 엮은 천. 가방 안감과 패브릭 소품을 만들 때 써요.'});
+def('mat_cord', {name:'꼰 끈', kind:'material', buy:90, price:15, stack:30, model:'mat_cord', desc:'풀줄기를 꼬아 만든 끈. 주머니 입구를 조이거나 바구니 손잡이를 묶을 수 있어요.'});
 def('nest', { name: '벌집', kind: 'misc', price: 300, model: 'nest', desc: '말벌이 떠난 빈 집.' });
 def('coin', { name: '도토리 주머니', kind: 'coin', value: 100, model: 'bag', desc: '' });
 def('parcel', { name: '꾸러미', kind: 'parcel', price: 0, model: 'bundle', desc: '부탁받은 물건. 받을 이웃에게 전해 주자.' });
@@ -71,6 +73,9 @@ export const FURNITURE = [
   ['f_bin', '휴지통', 1, 1, 300], ['f_fan', '선풍기', 1, 1, 1200], ['f_heater', '난로', 1, 1, 1400, '', 'lamp'], ['f_chest', '창고 상자', 1, 1, 1500, '', 'storage'],
   ['f_bookpile', '쌓아 둔 책', 1, 1, 500], ['f_easel', '이젤', 1, 1, 1300], ['f_guitar', '기타', 1, 1, 1900, '', 'guitar'], ['f_flowerpot', '꽃 화분', 1, 1, 500],
   ['f_wintertree', '겨울 트리', 1, 1, 2000], ['f_snowman', '눈사람 장식', 1, 1, 1200], ['f_mirror', '전신 거울', 1, 1, 1200, '', 'mirror'],
+  ['f_picnic_basket','소풍 바구니',1,1,950], ['f_meadow_box','들꽃 화단',2,1,1300],
+  ['f_camp_kettle','야영 주전자',1,1,1600], ['f_shell_lamp','진주 조개등',1,1,1700,'','lamp'],
+  ['f_ramen_tray','라멘 한 상',1,1,1400], ['f_herb_rack','허브 건조대',2,1,1200],
 ];
 export const SERIES_KO = { log: '통나무', hanok: '한옥', pastel: '파스텔' };
 for (const [id, name, w, d, buy, series, use] of FURNITURE) def(id, { name, kind: 'furniture', w, d, buy, price: Math.round(buy / 4), series: series || '', use: use || '', model: id, desc: (series ? SERIES_KO[series] + ' 시리즈. ' : '') + '집 안에 놓을 수 있는 가구.' });

@@ -59,13 +59,14 @@ def log_series():
 
 
 def hanok_series():
-    with Model('f_soban'):                    # 소반
+    with Model('f_soban') as m:               # 소반
         cyl((0, 0, 0.3), 0.36, 0.05, LAC_L, seg=12)
         torus((0, 0, 0.35), 0.35, 0.02, LAC, seg=12, tseg=4)
         for i in range(4):
             a = math.radians(45 + i * 90)
             tube((math.cos(a) * 0.24, math.sin(a) * 0.24, 0.3), (math.cos(a) * 0.3, math.sin(a) * 0.3, 0), 0.03, LAC, seg=5)
-        ball((-0.08, 0, 0.4), 0.07, '#f5f0e0', (1, 1, 0.6)); ball((0.1, 0.05, 0.4), 0.05, '#8ecfc4', (1, 1, 0.8))
+        with m.part('setting0'):
+            ball((-0.08, 0, 0.4), 0.07, '#f5f0e0', (1, 1, 0.6)); ball((0.1, 0.05, 0.4), 0.05, '#8ecfc4', (1, 1, 0.8))
     with Model('f_bangseok'):                 # 방석
         boxb((0, 0, 0), (0.7, 0.7, 0.1), '#c9584a', bevel=0.045)
         box((0, 0, 0.1), (0.36, 0.36, 0.012), '#f2c230')
@@ -121,13 +122,14 @@ def pastel_series():
             boxb((x, -0.04, 0.4), (0.7, 0.5, 0.1), '#c4eadc', bevel=0.045)
         legs4(1.6, 0.6, 0.1, '#fff8e8', 0.08, 0.04)
         boxb((0.5, 0.12, 0.5), (0.3, 0.1, 0.3), '#ffd0d8', rot=(-14, 0, 12), bevel=0.04)
-    with Model('f_pastel_table'):
+    with Model('f_pastel_table') as m:
         cyl((0, 0, 0.44), 0.4, 0.06, '#fff8e8', seg=14)
         cyl((0, 0, 0.04), 0.06, 0.4, '#ffb3c8', seg=8)
         cyl((0, 0, 0), 0.22, 0.04, '#ffb3c8', seg=10)
-        cyl((0.1, 0.05, 0.5), 0.06, 0.1, '#a9dccb', seg=8)
-        for i in range(3):
-            ball((0.1 + math.cos(i * 2.1) * 0.05, 0.05 + math.sin(i * 2.1) * 0.05, 0.66), 0.045, ('#ff9fc2', '#ffd84a', '#ffffff')[i])
+        with m.part('setting0'):
+            cyl((0.1, 0.05, 0.5), 0.06, 0.1, '#a9dccb', seg=8)
+            for i in range(3):
+                ball((0.1 + math.cos(i * 2.1) * 0.05, 0.05 + math.sin(i * 2.1) * 0.05, 0.66), 0.045, ('#ff9fc2', '#ffd84a', '#ffffff')[i])
     chair('f_pastel_chair', '#ffd0d8', '#f7a9bd', '#fff8e8')
     with Model('f_pastel_vanity'):
         boxb((0, 0.1, 0.44), (0.84, 0.5, 0.1), '#fff0f4', bevel=0.02)
@@ -185,16 +187,18 @@ def general():
             ball((x, -0.32, 0.72), 0.03, '#e8574c')
         cyl((0.2, 0.05, 0.86), 0.14, 0.14, '#e8a83c', seg=10)
         tube((0.34, 0.05, 0.96), (0.5, 0.05, 0.96), 0.02, '#3a3a44', seg=5)
-    with Model('f_desk'):                     # 2×1
+    with Model('f_desk') as m:                # 2×1
         boxb((0, 0.04, 0.62), (1.7, 0.74, 0.08), '#e9d2a8', bevel=0.02)
         boxb((0.55, 0.04, 0), (0.56, 0.7, 0.62), '#d9b98a', bevel=0.02)
         for z in (0.16, 0.42):
             box((0.55, -0.32, z), (0.44, 0.02, 0.18), '#e9d2a8'); ball((0.55, -0.34, z), 0.025, '#8a6238')
         for sy in (-1, 1):
             boxb((-0.76, 0.04 + sy * 0.3, 0), (0.07, 0.07, 0.62), '#d9b98a')
-        boxb((-0.3, 0.14, 0.7), (0.5, 0.04, 0.34), '#3a3a44', rot=(-12, 0, 0))
-        box((-0.3, -0.12, 0.71), (0.46, 0.2, 0.02), '#b8bcc4')
-        cyl((0.5, 0.1, 0.7), 0.06, 0.12, '#4a90d9', seg=8)
+        with m.part('setting0'):
+            boxb((-0.3, 0.14, 0.7), (0.5, 0.04, 0.34), '#3a3a44', rot=(-12, 0, 0))
+            box((-0.3, -0.12, 0.71), (0.46, 0.2, 0.02), '#b8bcc4')
+        with m.part('setting1'):
+            cyl((0.5, 0.1, 0.7), 0.06, 0.12, '#4a90d9', seg=8)
     with Model('f_piano'):                    # 2×1
         boxb((0, 0.12, 0), (1.6, 0.5, 1.2), '#2a2a32', bevel=0.02)
         boxb((0, -0.2, 0.62), (1.5, 0.3, 0.08), '#2a2a32', bevel=0.01)

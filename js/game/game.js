@@ -27,7 +27,7 @@ export const G = {
 
 // ---------------------------------------------------------------- 자산 불러오기
 export async function loadAssets(onProgress) {
-  const bundles = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs','places'];
+  const bundles = ['nature', 'buildings', 'furniture', 'items', 'fish', 'bugs','places','crafts'];
   let done = 0;
   const V = '?v=' + VERSION;
   const chars = await fetch('./assets/chars/chars.json' + V).then((r) => r.json());
@@ -93,6 +93,7 @@ export function buildWorld(village) {
     itemScale: (id) => { const it = ITEMS[id]; if (!it) return 1; if (it.kind === 'fish' || it.kind === 'misc') return 0.8; if (it.kind === 'tool') return 0.7; return it.scale ? Math.min(it.scale, 1.5) : 1; },
   });
   if (G.room) G.world.setVisible(false);
+  G.hooks.refreshFerry?.();
   refreshTime(true);
 }
 
@@ -258,14 +259,25 @@ export function update(dt) {
     }
     const p = G.player;
     if (p) {
-      if (G.room) { const f = G.room.focus(p.x, p.z); G.stage.setFocus(f.x, f.y||0, f.z); }
+      const boat = !G.room && G.world?.ferryBoat;
+      if (boat) {
+        boat.position.y = WATER_Y + .025 + .035 * Math.sin(G.time * 2);
+        boat.rotation.z = .025 * Math.sin(G.time * 1.55);
+      }
+      if (boat && boat.userData.departure != null) {
+        boat.position.z = G.village.dock.y + 2.1 + (G.time - boat.userData.departure) * 2.1;
+        p.actor.setPos(boat.position.x, boat.position.y + .38, boat.position.z);
+        G.stage.setFocus(boat.position.x, 0, boat.position.z, true);
+      } else if (G.room) { const f = G.room.focus(p.x, p.z); G.stage.setFocus(f.x, f.y||0, f.z); }
       else G.stage.setFocus(clamp(p.x, 9, MAP_W - 9), 0, clamp(p.z, 8, MAP_H - 2.5));
-      if (G.world && !G.room) G.world.update(dt, G.time, G.stage.focus.x, G.stage.focus.z);
+      if (G.world && !G.room) {
+        G.world.update(dt, G.time, G.stage.focus.x, G.stage.focus.z);
+      }
       weather.update(dt, G.room ? 'none' : G.weather, G.stage.focus.x, G.stage.focus.z);
       UI.setMoney(S.player.money);
       UI.setTools(ownedTools(), S.player.tool, (id) => p.equip(S.player.tool === id ? null : id));
       const touchNet = UI.touch?.active && free && S.player.tool === 'tool_net' && p.netActionAvailable();
-      UI.hint(free ? p.hint() : '', touchNet ? '잠자리채' : '행동');
+      UI.hint(free ? p.hint() : '', G.room?.hunt?'공격':touchNet ? '잠자리채' : '행동');
     }
     saveT += dt;
     if (saveT > 45 && free && !G.room) { saveT = 0; save(); }

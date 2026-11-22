@@ -66,6 +66,13 @@ button { font-family:inherit; font-size:inherit; color:inherit; cursor:pointer; 
 .slot.unknown img { filter:brightness(0); opacity:.22; }
 .slot .mark { position:absolute; left:4px; top:2px; font-size:13px; color:var(--green); }
 .row2 { display:flex; gap:18px; align-items:flex-start; }
+@media (max-width:720px) {
+  .bag-layout {flex-direction:column;align-items:stretch;gap:10px;}
+  .bag-layout .grid {grid-template-columns:repeat(5,minmax(0,1fr));max-height:39dvh;overflow:auto;gap:4px;}
+  .bag-layout .slot {width:100%;height:auto;aspect-ratio:1;box-sizing:border-box;}
+  .bag-layout .slot img {width:90%;height:90%;}
+  .bag-layout .detail {min-width:0;}
+}
 .detail { flex:1; min-width:230px; background:var(--paper); border:2px solid var(--line); border-radius:16px; padding:12px 14px; min-height:220px; }
 .detail h3 { margin:0 0 6px; font-size:22px; font-weight:normal; }
 .detail p { margin:4px 0; font-size:16px; line-height:1.45; color:#7a5a3c; }
@@ -144,6 +151,10 @@ canvas.map { width:100%; border-radius:14px; border:2px solid var(--line); image
 .touch-controls .touch-talk {width:54px;height:54px;right:calc(max(13px,env(safe-area-inset-right)) + 78px);bottom:max(22px,env(safe-area-inset-bottom));}
 .touch-controls .touch-pick {width:48px;height:48px;right:calc(max(13px,env(safe-area-inset-right)) + 138px);bottom:max(22px,env(safe-area-inset-bottom));font-size:14px;}
 .touch-controls .touch-act {font-size:14px;padding:2px;}
+.touch-controls.hunting .touch-pick {right:calc(max(13px,env(safe-area-inset-right)) + 80px);}
+.hunt-status {position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 15px;background:#fff4ddec;border:2px solid #8e7855;border-radius:15px;line-height:1.45;text-align:center;white-space:pre;font-size:14px;color:#4e4336;pointer-events:none;}
+#ui:has(.hunt-status) :is(#hud-goal,#hud-tools,#hud-clock,#hud-money) {display:none;}
+.hunt-status button {display:block;pointer-events:auto;margin:4px auto 0;font-size:12px;padding:1px 8px;}
 .touch-controls .pressed {background:#f2cf83;box-shadow:inset 0 2px 3px #78542d70;}
 .touch-mode #hud-tools {left:8px;bottom:127px;gap:2px;padding:3px;}
 .touch-mode #hud-tools .tool {width:40px;height:40px;}

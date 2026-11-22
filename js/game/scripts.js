@@ -2,12 +2,13 @@
 import * as THREE from 'three';
 import { G, runScript, save, refreshTime, burst, groundY } from './game.js';
 import { Room } from './rooms.js';
+import { counterStock } from './shopStock.js';
 import { atelierSpec, campsiteSpec, freeLots } from './island.js';
 import { museumSpec, HALL_KO } from './museum.js';
 import { COST, stepId, advance, canPay, costText, donated, species, greeted, festivalReady, track, refreshGoal } from './quests.js';
 import { Villager, villagerAwake, villagerOut, syncVillagers, setVillagersVisible } from './npc.js';
-import { S, addItem, canAdd, takeItem, hasItem, countItem, freeSlots, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
-import { ITEMS, FISH, BUGS, FISH_BY_ID, BUG_BY_ID, FOSSILS, FURNITURE, WALLS, FLOORS, FRUIT_KO, SHELL_IDS, itemName, sellPrice, isDonatable } from '../data/items.js';
+import { S, addItem, canAdd, takeItem, hasItem, countItem, addMoney, removeAt, LOANS, ROOM_SIZE } from './state.js';
+import { ITEMS, FISH, BUGS, FISH_BY_ID, BUG_BY_ID, FOSSILS, FRUIT_KO, SHELL_IDS, itemName, sellPrice, isDonatable } from '../data/items.js';
 import { VILLAGERS, PERSONALITY, NPCS, HOME_LAYOUT, HOME_STYLE } from '../data/villagers.js';
 import { VOICES, voice, seasonalVoice } from '../data/voices.js';
 import { speak } from './speech.js';
@@ -57,17 +58,16 @@ function greetLine(n) {
   const h=hourF();return voice(n.id,'greet')[h>=5 && h<11?0:h>=11 && h<17?1:h>=17 && h<21?2:3];
 }
 
-async function giveReward(n, scale = 1) {
-  if (rand() < 0.45 && freeSlots() > 0) {
-    const r = rand();
-    const id = r < 0.6 ? pick(FURNITURE)[0] : r < 0.75 ? pick(WALLS.filter((w) => w[2] > 0))[0] : r < 0.9 ? pick(FLOORS.filter((w) => w[2] > 0))[0] : 'fruit_' + pick(Object.keys(FRUIT_KO).filter((f) => f !== G.village.fruit));
-    addItem(id); Sound.sfx('catch');
-    await narr(`${n.name}에게서 <b>${josa(itemName(id), '을/를')}</b> 받았다!`);
-  } else {
-    const amt = Math.round((300 + rand() * 700) * scale / 10) * 10;
-    addMoney(amt); Sound.sfx('coin');
-    await narr(`${n.name}에게서 <b>도토리 ${fmt(amt)}개</b>를 받았다!`);
+async function giveReward(n, type) {
+  const pay={deliver:12, fruit:18, shell:18, fish:28, bug:28}[type] ?? 18;
+  if (rand()<.2) {
+    const id=pick(['mat_cord','seed_cosmos','seed_pansy']);
+    if (addItem(id)) {
+      Sound.sfx('catch');await narr(`${n.name}에게서 답례로 <b>${josa(itemName(id), '을/를')}</b> 받았다.`);return;
+    }
   }
+  addMoney(pay); Sound.sfx('coin');
+  await narr(`${n.name}에게서 답례로 <b>도토리 ${pay}개</b>를 받았다.`);
 }
 
 function makeRequest(id) {
@@ -120,17 +120,18 @@ export async function talkVillager(n) {
         takeItem('parcel'); S.parcels = S.parcels.filter((q) => q !== par);
         n.actor.play('joy', 0.8);
         await say(n, L.recv, V({ o: VILLAGERS[par.from].name }));
-        await giveReward(n, 1);
+        await giveReward(n, 'deliver');
         st.friend += 3;
         if (S.villagers[par.from]) { S.villagers[par.from].friend += 4; S.villagers[par.from].req = null; }
       } else if (st.req && st.req.type !== 'deliver' && hasItem(st.req.item)) {
         await narr(`가방에 ${def.name}의 부탁이었던 <b>${josa(itemName(st.req.item), '이/가')}</b> 있다.`);
         const c = await Dialog.choose(['건네준다', '아직 안 준다'], { cancel: 1 });
         if (c === 0) {
-          takeItem(st.req.item); const price = sellPrice(st.req.item, G.village.fruit);
+          const type=st.req.type;
+          takeItem(st.req.item);
           st.req = null; st.friend += 5; n.actor.play('joy', 0.8); n.actor.emote('heart', 1.4);
           await say(n, L.thanks, V());
-          await giveReward(n, 1 + Math.min(3, price / 400));
+          await giveReward(n, type);
         }
       } else if (S.player.stung && st.stungSeen !== today) { st.stungSeen = today; n.actor.play('surprise', 0.6); await say(n, L.stung, V()); }
       else if (st.talkDay !== today) { st.talkDay = today; st.friend += 2; n.actor.play('nod', 0.5); await say(n, sleepy ? voice(id,'sleepy') : greetLine(n), V()); }
@@ -186,20 +187,26 @@ export async function talkVillager(n) {
 function shopBuyPanel() {
   return new Promise((res) => {
     const box = el('div');
+    let tab = '오늘의 소품';
     const draw = () => {
       box.innerHTML = '';
       const tent = S.prog.shop < 2;
-      box.appendChild(el('div', 'note', `가진 도토리: ${acorns(S.player.money)}　·　${tent ? '가게를 번듯하게 지으면 가구와 벽지도 들여놓는대요.' : '가구는 가게 안에 진열돼 있어요. 다가가서 살펴보세요.'}`));
+      box.appendChild(el('div', 'note', `가진 도토리 ${acorns(S.player.money)}　·　${tent ? '천막 좌판의 오늘 소품은 두 가지예요.' : '큰 가구는 매장 바닥 진열대에서도 살 수 있어요.'}`));
+      const groups=counterStock(G.village.fruit,G.village.seed), tabs=el('div','tabs');
+      for (const [name] of groups) {
+        const b=el('button','tab'+(tab===name?' on':''),name);
+        b.onclick=()=>{tab=name;draw();};tabs.append(b);
+      }
+      box.append(tabs);
       const list = el('div', 'list');
-      const stock = [];
-      for (const t of ['tool_shovel', 'tool_can', 'tool_axe', 'tool_net', 'tool_rod']) if (!hasItem(t)) stock.push(t);
-      stock.push(...S.shop.seeds, 'sapling_blossom', 'sapling_pine', 'medicine');
-      if (!tent) { stock.push(S.shop.wall, S.shop.floor); if (S.shop.fruit && !S.shop.sold.includes(S.shop.fruit)) stock.push(S.shop.fruit); }
-      for (const id of stock) {
-        const it = ITEMS[id], price = it.kind === 'fruit' ? 900 : it.buy;
-        const row = itemRow(id, it.desc, acorns(price));
-        const b = el('button', 'btn go', '사기'); b.disabled = S.player.money < price || !canAdd(id);
-        b.onclick = () => { addMoney(-price); addItem(id); if (it.kind === 'fruit') S.shop.sold.push(id); Sound.sfx('coin'); draw(); };
+      for (const {id,price,limited} of groups.find(([name])=>name===tab)[1]) {
+        const sold=limited && S.shop.sold.includes(id);
+        const row = itemRow(id, (limited?'오늘 1개 · ':'')+ITEMS[id].desc, acorns(price));
+        const b = el('button', 'btn go', sold?'품절':'사기'); b.disabled = sold || S.player.money < price || !canAdd(id);
+        b.onclick = () => {
+          if ((limited && S.shop.sold.includes(id)) || S.player.money<price || !addItem(id)) return;
+          addMoney(-price); if (limited) S.shop.sold.push(id); save(); Sound.sfx('coin'); draw();
+        };
         row.appendChild(b); list.appendChild(row);
       }
       box.appendChild(list);
@@ -637,6 +644,7 @@ export async function portal(to) {
   });
 }
 export async function exitRoom() {
+  if (G.room?.exitField) return G.room.exitField();
   if (G.room && G.room.exitTo) return portal(G.room.exitTo);
   await runScript(async () => {
     Sound.sfx('door');

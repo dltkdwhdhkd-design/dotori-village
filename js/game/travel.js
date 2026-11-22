@@ -4,8 +4,7 @@ import { G, save, runScript, refreshTime } from './game.js';
 import { S, addMoney, addItem, canAdd } from './state.js';
 import { setVillagersVisible } from './npc.js';
 import { make } from '../gfx/models.js';
-import { RakkoSword, DRAW_TIME, SWING_TIME } from '../gfx/rakko.js';
-import { Actor } from '../gfx/actor.js';
+import { enterHuntField } from './huntField.js';
 import { UI, Dialog } from '../ui/ui.js';
 import { el } from '../core/util.js';
 import { VILLAGERS } from '../data/villagers.js';
@@ -109,11 +108,10 @@ function workDesk(room){
 }
 function huntDesk(room){
   const b=el('div'),l=life(),h=l.contract;
-  if(room.hunt?.ending){
-    b.append(el('p','note','동료가 장비를 정리하고 있어요. 잠시 후 보고해 주세요.'));
-  }else if(h?.phase==='field'){
-    b.append(el('p','note','오른쪽 풀밭에서 동료와 함께 솜뭉치 괴이를 찾아보세요.'));
-    action(b,'의뢰 철회',()=>{UI.closePanel();l.contract=null;finishHunt(room,false);save();});
+  if(h?.phase==='field'){
+    b.append(el('p','note','접수한 의뢰가 있어요. 출발하면 바람고개 초지로 이동해요.'));
+    action(b,'토벌 전용 필드로 출발',()=>enterHuntField(room));
+    action(b,'의뢰 철회',()=>{UI.closePanel();l.contract=null;save();});
   }else if(h?.phase==='report'){
     b.append(el('p','note','들녘이 조용해졌어요. 접수처에 보고하고 보수를 받으세요.'));
     action(b,'토벌 완료 보고 · 보수 받기',()=>{
@@ -121,15 +119,14 @@ function huntDesk(room){
       l.contract=null;l.hunts++;learn('hunt');addMoney(pay);save();UI.closePanel();Sound.sfx('fanfare');UI.toast('토벌 완료! 도토리 '+pay+'개와 토벌반 가구 도안을 받았어요.');
     });
   }else{
-    b.append(el('p','note','길을 가로막은 솜뭉치 괴이를 몰아내요. 금빛으로 빛날 때 다가가 행동하면 동료가 호응해요. 붉게 부풀면 떨어져 주세요.'));
+    b.append(el('p','note','바람고개 초지에서 앞을 보고 공격하고 붉은 예고선을 피하세요. 괴이가 지쳤을 때 동료와 연계할 수 있어요.'));
     for(const [i,name] of ['들녘 순찰','커다란 솜뭉치','저녁 안개 무리'].entries()){
       const level=i+1;action(b,name+' · '+(level*250)+' 도토리',()=>{
         const party=el('div');party.append(el('p','note','함께 출동할 동료를 골라 주세요.'));
         for(const [id,mark] of [['beomi','더 강한 호응'],['goran','추가 용기']])action(party,VILLAGERS[id].name+' · '+mark,()=>{
           if(room!==G.room)return;
           const start=weapon=>{
-            l.contract={phase:'field',level,ally:id,weapon};save();UI.closePanel();spawnHunt(room);
-            UI.toast('오른쪽 풀밭에 괴이가 나타났어요. 가까이 가면 동료가 장비를 꺼내요.');
+            l.contract={phase:'field',level,ally:id,weapon};save();enterHuntField(room);
           };
           if(!available('hunt_bell')) return start('hunt_fork');
           const gear=el('div');action(gear,'분홍 사스마타 · 대여',()=>start('hunt_fork'));
@@ -141,93 +138,9 @@ function huntDesk(room){
   }
   UI.openPanel('토벌 의뢰소 · 완료 '+l.hunts+'건',b);
 }
-function endField(room){
-  const h=room.hunt;if(!h)return;G.player.setHuntGear();room.group.remove(h.foe,h.ally.root,h.ring);h.ring.geometry.dispose();h.ring.material.dispose();if(h.local){h.local.actor.root.visible=true;h.local.visible=true;}room.hunt=null;
-}
-function spawnHunt(room){
-  endField(room);const c=life().contract;if(c?.phase!=='field')return;
-  const foe=place(room,'field_wisp',10.6,7.9,1.1), ally=new Actor('villager_'+c.ally);room.group.add(ally.root);
-  const ring=new THREE.Mesh(new THREE.RingGeometry(.59,.74,44),new THREE.MeshBasicMaterial({color:0xf5c765,side:THREE.DoubleSide,transparent:true,opacity:.85}));
-  ring.rotation.x=-Math.PI/2;ring.position.set(10.6,.013,7.9);room.group.add(ring);
-  const local=room.npcs.find(n=>n.id===c.ally);
-  if(local){local.visible=false;local.actor.root.visible=false;}
-  ally.setPos(G.player.x+.62,0,G.player.z+.37);
-  room.endHunt=()=>endField(room);
-  room.hunt={foe,ally,ring,local,rig:ally.parts.blade_tip && ally.parts.hand ? new RakkoSword(ally) : null,
-    allyId:c.ally,weapon:c.weapon==='hunt_bell'?'hunt_bell':'hunt_fork',draw:0,engaged:false,swing:0,ending:false,x:10.6,z:7.9,time:0,hit:false,cycle:-1,hp:c.hp ?? c.level+2,hearts:c.hearts ?? (c.ally==='goran'?4:3),chimed:!!c.chimed,level:c.level};
-}
-function finishHunt(room, won){
-  const h=room.hunt;if(!h || h.ending)return;
-  h.ending=true;h.ready=false;h.won=won;h.ring.visible=false;
-}
-function stepParty(h,dt){
-  const p=G.player, distance=Math.hypot(p.x-h.x,p.z-h.z);
-  if(!h.engaged && !h.ending && distance<3.5){
-    h.engaged=true; p.setHuntGear(h.weapon);
-    UI.toast(h.allyId==='beomi'?'랏코　“곁에 있다. 신호를 기다려라.”':'하치와레　“저 빛, 아까도 봤어! 다음엔 같이 맞춰 볼까?”');
-    if(!h.rig)h.ally.hold('hunt_blue');
-  }
-  const advance=h.swing>0 ? Math.sin(Math.PI*(1-h.swing/SWING_TIME)) : 0;
-  let x=p.x+.62,z=p.z+.37;
-  if(distance<2.4 && h.engaged){
-    const dx=p.x-h.x,dz=p.z-h.z;
-    const a=Math.atan2(dx,dz)+.68, radius=.83-.28*advance;
-    x=h.foe.position.x+Math.sin(a)*radius;z=h.foe.position.z+Math.cos(a)*radius;
-  }
-  const k=1-Math.exp(-7*dt), travel=Math.hypot(x-h.ally.x,z-h.ally.z);
-  h.ally.speed=Math.min(1.4,travel*2);h.ally.setPos(h.ally.x+(x-h.ally.x)*k,0,h.ally.z+(z-h.ally.z)*k);
-  if(h.engaged)h.ally.faceTo(h.x,h.z);else if(travel>.08)h.ally.faceTo(x,z);
-  h.ally.update(dt);
-  h.swing=Math.max(0,h.swing-dt);
-  if(!h.ending && h.engaged)h.draw=Math.min(1,h.draw+dt/DRAW_TIME);
-  if(h.ending && !h.swing)h.draw=Math.max(0,h.draw-dt/DRAW_TIME);
-  h.rig?.pose(h.draw,h.swing>0?1-h.swing/SWING_TIME:0);
-}
-function huntFrame(room,dt){
-  const h=room.hunt;if(!h || UI.blocking() || G.busy)return;
-  stepParty(h,dt);
-  if(h.ending){
-    if(h.won){h.foe.scale.multiplyScalar(Math.exp(-dt*4));h.foe.position.y+=dt*.6;}
-    if(!h.draw && !h.swing){
-      endField(room);
-      const parting=h.allyId==='beomi'?'랏코　“다친 곳은 없나? 돌아가자.”':'하치와레　“우리 둘 다 여기 있네. 다행이다!”';
-      UI.toast(h.won?parting+' · 접수처에 보고하세요.':parting);
-    }
-    return;
-  }
-  if(h.draw<1)return;
-  h.time+=dt;const length=3.9-.24*h.level,cycle=Math.floor(h.time/length),phase=h.time%length/length;
-  if(cycle!==h.cycle){h.hit=false;h.bump=false;h.cycle=cycle;}
-  h.ready=phase<.56;const danger=phase>.73;
-  h.foe.position.set(h.x+.30*Math.sin(h.time*1.6),.07+.17*Math.abs(Math.sin(h.time*3)),h.z+.14*Math.cos(h.time*1.6));
-  h.foe.scale.setScalar((danger?1.31:h.ready?1.08:1.17)+.04*Math.sin(h.time*5));h.foe.rotation.y=.22*Math.sin(h.time*1.6);
-  const color=danger?0xed757b:h.ready?0xf5c765:0xb4a9d7;
-  h.ring.material.color.setHex(color);h.ring.scale.setScalar(danger?1.9:h.ready?1.02:1.4);
-  const p=G.player;
-  if(danger && !h.bump && Math.hypot(p.x-h.foe.position.x,p.z-h.foe.position.z)<1.48){
-    h.bump=true;h.hearts--;p.actor.play('hop',.3);UI.toast('깜짝! 남은 용기 '+h.hearts);
-    if(h.hearts<=0){life().contract=null;finishHunt(room,false);}
-    else life().contract.hearts=h.hearts;
-    save();
-  }
-}
-function strike(room){
-  const h=room.hunt;if(!h||!h.ready||h.hit)return;
-  h.hit=true;h.hp-=life().contract.ally==='beomi'?2:1;h.swing=SWING_TIME;
-  if(!h.rig)h.ally.play('swing',SWING_TIME);
-  if(h.weapon==='hunt_bell' && !h.chimed){h.chimed=true;h.hearts++;Sound.sfx('coin');}
-  G.player.actor.faceTo(h.x,h.z);G.player.do('swing',SWING_TIME);Sound.sfx('pick');
-  Object.assign(life().contract,{hp:h.hp,hearts:h.hearts,chimed:h.chimed});
-  if(h.hp<=0){life().contract.phase='report';finishHunt(room,true);}
-  else UI.toast('호흡이 맞았어요! 남은 기세 '+h.hp);
-  save();
-}
 function fieldProbe(room,p){
   const dist=(x,z)=>Math.hypot(p.x-x,p.z-z);
   if(room.area==='ramen' && dist(7.18,3.18)<1.04)return {label:'시사의 조리대 · 라멘 만들기',act:()=>startRamenShift(room)};
-  if(room.hunt && !room.hunt.ending && dist(room.hunt.foe.position.x,room.hunt.foe.position.z)<1.85){
-    const h=room.hunt;return {label:h.draw<1?'토벌 준비 중':h.ready&&!h.hit?'동료와 토벌하기':'물러서기 · 용기 '+h.hearts,act:()=>strike(room)};
-  }
   if(room.area==='meadow' && story().posted && dist(5.95,9.8)<1.20)return {label:'풀 뽑기 검정 합격자 명단',act:openResults};
   if(dist(7,10.35)<1.15)return {label:'우리 마을로 귀가',act:()=>G.hooks.exit()};
   if(room.area==='cave'){
@@ -263,22 +176,25 @@ export function visitArea(area){
     const npcDefs=ids.map((id,i)=>({id,model:'villager_'+id,name:VILLAGERS[id].name,x:[4.3,8.1,11.3][i],z:[4.1,4.7,3.7][i],fixed:true,talk:n=>villageTalk(id,area,n)}));
     npcDefs.push({id:'desk',model:area==='ramen'?'npc_duru':'npc_ujik',name:area==='ramen'?'라멘 갑옷 씨':'노동 갑옷 씨',x:5.9,z:4.9,fixed:true,talk:()=>workDesk(G.room)});
     G.world.setVisible(false);G.critters.setVisible(false);setVillagersVisible(false);
-    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>{refreshPlots(r);huntFrame(r,dt);rescueFrame(r,dt);steamFrame(r,G.time);}})});
+    const room=G.room=new Room({id:'trip-'+area,area,w:14,h:11,items:[],landscape,npcDefs,setup:r=>({probe:p=>fieldProbe(r,p),update:dt=>{refreshPlots(r);rescueFrame(r,dt);steamFrame(r,G.time);}})});
     room.building={doors:[S.player.x-.5],y:S.player.z-.45,d:0};
     G.stage.setMode(true,11);p.setPos(7,8.8);p.yaw=Math.PI;p.actor.face(Math.PI,true);
     const f=room.focus(p.x,p.z);G.stage.setFocus(f.x,0,f.z,true);
     if(area==='cave')buildRescue(room);
-    if(area==='meadow')spawnHunt(room);refreshTime(true);await UI.fade(false);UI.toast(d.name+' 도착 · 갑옷 씨에게 말을 걸어 보세요.');
+    refreshTime(true);await UI.fade(false);UI.toast(d.name+' 도착 · 갑옷 씨에게 말을 걸어 보세요.');
   });
 }
 export function travel(){
   const box=el('div');
-  if(G.room?.area){
+  if(G.room?.exitField){
+    action(box,'토벌 접수처로 복귀',()=>G.room.exitField());
+  }else if(G.room?.area){
     const room=G.room;box.append(el('p','note',places[room.area].name+' 여행 중'));
     action(box,'마을 의뢰',()=>workDesk(room));
     action(box,'우리 마을로 돌아가기',()=>{UI.closePanel();G.hooks.exit();});
   }else{
     if(G.room||G.visit||G.net?.role)return UI.toast('우리 마을 야외에서 여행을 떠나요.');
+    action(box,'두 마을 여객선 · 개척과 왕복',()=>G.hooks.ferryOffice());
     for(const [id,d] of Object.entries(places)){const row=el('div','li'),txt=el('div','nm');txt.append(el('b','',d.name),el('span','sub',d.desc));row.append(txt);action(row,'여행하기',()=>visitArea(id));box.append(row);}
   }
   UI.openPanel('마을 여행',box);

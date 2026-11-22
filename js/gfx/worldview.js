@@ -1,5 +1,6 @@
 // 마을을 3D로 보여 주는 부분: 지형 위에 나무·꽃·건물·다리 등을 세운다
 import * as THREE from 'three';
+import { drawTabletop } from './tabletop.js';
 import { make, MODELS, setMatColor, getMat, sharedMat, patchMaterial, FX } from './models.js';
 import { Terrain, PAD } from './terrain.js';
 import { makeBlobShadow } from './stage.js';
@@ -266,7 +267,7 @@ export class WorldView {
       g.rotation.y = (h - 0.5) * 1.2; shadow = 0.22;
       if (this.hooks.itemScale) g.scale.setScalar(this.hooks.itemScale(o.id));
     } else if(o.t==='decor'){
-      g=make(this.hooks.decorModel(o.id));g.rotation.y=-(o.r||0)*Math.PI/2;shadow=.38;
+      g=make(this.hooks.decorModel(o.id));drawTabletop(g,o);g.rotation.y=-(o.r||0)*Math.PI/2;shadow=.38;
     } else if (o.t === 'fix') {
       if (o.kind === 'part') return null;
       const nm = o.kind === 'boulder' ? 'boulder' + (o.v || 1) : o.kind==='workbench'?'workbench':o.kind;

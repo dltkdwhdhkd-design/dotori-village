@@ -83,7 +83,7 @@ export function importSave(text) { const o = JSON.parse(text); if (!o || !o.play
 // ---------------------------------------------------------------- 가방
 export function addItem(id, n = 1) {
   const it = ITEMS[id];
-  if (!it) return false;
+  if (!canAdd(id, n)) return false;
   const max = it.stack || 1;
   if (max > 1) {
     for (const s of S.inv) if (s && s.id === id && s.n < max) { const put = Math.min(n, max - s.n); s.n += put; n -= put; if (n <= 0) return true; }
@@ -97,10 +97,16 @@ export function addItem(id, n = 1) {
   }
   return true;
 }
-export function canAdd(id) {
+export function canAdd(id, n = 1) {
   const it = ITEMS[id];
-  if (S.inv.includes(null)) return true;
-  return !!(it && it.stack && S.inv.some((s) => s && s.id === id && s.n < it.stack));
+  if (!it || !Number.isSafeInteger(n) || n < 1) return false;
+  const max = it.stack || 1;
+  for (const slot of S.inv) {
+    if (!slot) n -= max;
+    else if (slot.id === id) n -= max - slot.n;
+    if (n <= 0) return true;
+  }
+  return false;
 }
 export function removeAt(i, n = 1) {
   const s = S.inv[i];

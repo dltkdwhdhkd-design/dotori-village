@@ -97,7 +97,7 @@ function dailyMail(day) {
       mail(id, def.name, text, r.pick(pool.length ? pool : FURNITURE.map((f) => f[0])));
     }
   }
-  // 새 이웃(마을 잔치를 마친 뒤부터는 빈터가 있으면 저절로 이사 온다. 그 전에는 집터를 마련해야 온다)
+  // 잔치 이후 한 마을에서는 새 이웃이 입주하고, 여객선이 열리면 이사 문의가 온다.
   if (S.prog.done && S.waiting.length && day >= (S.moveInDay || 0)) {
     if (townsOpen()) {
       const l=life(), id=S.waiting.find(k=>!l.contacts.includes(k) && !l.projects.some(p=>p.id===k));
@@ -114,7 +114,8 @@ function moveIn(r, town, project, site) {
   const free = freeLots(town,project,site), want=project?.lot ?? siteLot(site);
   if (!free.length || (want!=null && !free.includes(want))) return false;
   const held=S.islandLife?.projects||[], contacts=S.islandLife?.contacts||[];
-  const id=project?.id || S.waiting.find(k=>!contacts.includes(k) && !held.some(p=>p.id===k));
+  const candidates=S.waiting.filter(k=>!held.some(p=>p.id===k));
+  const id=project?.id || candidates.find(k=>!contacts.includes(k)) || (site!=null && !townsOpen() ? candidates[0] : null);
   if (!id || !S.waiting.includes(id)) return false;
   const lot=want ?? r.pick(free);
   S.waiting.splice(S.waiting.indexOf(id),1);
@@ -169,6 +170,11 @@ function progressDay(day) {
       P.lots=Math.min(3,P.lots+1);
     }
     S.islandLife.projects=S.islandLife.projects.filter(q=>q!==p);
+  }
+  if(!S.waiting.length && pd.movein.length){
+    const unused=pd.sites||[];
+    pd.movein=[];pd.sites=[];
+    for(const site of unused)refreshHouse(townOf(site),siteLot(site));
   }
   for(const b of G.village.buildings)if(['atelier','campsite'].includes(b.type)||(S.flags.campStart&&['hall','house'].includes(b.type)))G.world?.refreshBuilding(b);
   P.tasks = P.tasks.filter((t) => t.n > 0);            // 손대지 않은 일감은 날마다 새것으로 바뀐다
